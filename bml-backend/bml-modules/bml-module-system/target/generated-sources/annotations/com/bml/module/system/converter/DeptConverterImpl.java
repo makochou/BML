@@ -9,8 +9,8 @@ import javax.annotation.processing.Generated;
 
 @Generated(
     value = "org.mapstruct.ap.MappingProcessor",
-    date = "2026-02-10T09:45:14+0800",
-    comments = "version: 1.5.5.Final, compiler: javac, environment: Java 21.0.8 (Oracle Corporation)"
+    date = "2026-02-11T00:11:15+0800",
+    comments = "version: 1.5.5.Final, compiler: Eclipse JDT (IDE) 3.45.0.v20260128-0750, environment: Java 21.0.9 (Eclipse Adoptium)"
 )
 public class DeptConverterImpl implements DeptConverter {
 
@@ -23,12 +23,12 @@ public class DeptConverterImpl implements DeptConverter {
         SysDept sysDept = new SysDept();
 
         sysDept.setId( dto.getId() );
-        sysDept.setParentId( dto.getParentId() );
         sysDept.setDeptName( dto.getDeptName() );
-        sysDept.setSort( dto.getSort() );
-        sysDept.setLeader( dto.getLeader() );
-        sysDept.setPhone( dto.getPhone() );
         sysDept.setEmail( dto.getEmail() );
+        sysDept.setLeader( dto.getLeader() );
+        sysDept.setParentId( dto.getParentId() );
+        sysDept.setPhone( dto.getPhone() );
+        sysDept.setSort( dto.getSort() );
         sysDept.setStatus( dto.getStatus() );
 
         return sysDept;
@@ -42,16 +42,16 @@ public class DeptConverterImpl implements DeptConverter {
 
         SysDeptVO sysDeptVO = new SysDeptVO();
 
-        sysDeptVO.setId( entity.getId() );
-        sysDeptVO.setParentId( entity.getParentId() );
-        sysDeptVO.setDeptName( entity.getDeptName() );
-        sysDeptVO.setSort( entity.getSort() );
-        sysDeptVO.setLeader( entity.getLeader() );
-        sysDeptVO.setPhone( entity.getPhone() );
-        sysDeptVO.setEmail( entity.getEmail() );
-        sysDeptVO.setStatus( entity.getStatus() );
-        sysDeptVO.setCreateTime( entity.getCreateTime() );
         sysDeptVO.setChildren( toVOList( entity.getChildren() ) );
+        sysDeptVO.setCreateTime( entity.getCreateTime() );
+        sysDeptVO.setDeptName( entity.getDeptName() );
+        sysDeptVO.setEmail( entity.getEmail() );
+        sysDeptVO.setId( entity.getId() );
+        sysDeptVO.setLeader( entity.getLeader() );
+        sysDeptVO.setParentId( entity.getParentId() );
+        sysDeptVO.setPhone( entity.getPhone() );
+        sysDeptVO.setSort( entity.getSort() );
+        sysDeptVO.setStatus( entity.getStatus() );
 
         return sysDeptVO;
     }

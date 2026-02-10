@@ -9,8 +9,8 @@ import javax.annotation.processing.Generated;
 
 @Generated(
     value = "org.mapstruct.ap.MappingProcessor",
-    date = "2026-02-10T19:34:02+0800",
-    comments = "version: 1.5.5.Final, compiler: javac, environment: Java 21.0.8 (Oracle Corporation)"
+    date = "2026-02-11T00:11:17+0800",
+    comments = "version: 1.5.5.Final, compiler: Eclipse JDT (IDE) 3.45.0.v20260128-0750, environment: Java 21.0.9 (Eclipse Adoptium)"
 )
 public class ApiGroupConverterImpl implements ApiGroupConverter {
 
@@ -23,8 +23,8 @@ public class ApiGroupConverterImpl implements ApiGroupConverter {
         ApiGroup apiGroup = new ApiGroup();
 
         apiGroup.setId( dto.getId() );
-        apiGroup.setName( dto.getName() );
         apiGroup.setDescription( dto.getDescription() );
+        apiGroup.setName( dto.getName() );
         apiGroup.setSort( dto.getSort() );
         apiGroup.setStatus( dto.getStatus() );
 
@@ -39,12 +39,12 @@ public class ApiGroupConverterImpl implements ApiGroupConverter {
 
         ApiGroupVO apiGroupVO = new ApiGroupVO();
 
+        apiGroupVO.setCreateTime( entity.getCreateTime() );
+        apiGroupVO.setDescription( entity.getDescription() );
         apiGroupVO.setId( entity.getId() );
         apiGroupVO.setName( entity.getName() );
-        apiGroupVO.setDescription( entity.getDescription() );
         apiGroupVO.setSort( entity.getSort() );
         apiGroupVO.setStatus( entity.getStatus() );
-        apiGroupVO.setCreateTime( entity.getCreateTime() );
 
         return apiGroupVO;
     }

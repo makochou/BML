@@ -9,8 +9,8 @@ import javax.annotation.processing.Generated;
 
 @Generated(
     value = "org.mapstruct.ap.MappingProcessor",
-    date = "2026-02-10T19:34:02+0800",
-    comments = "version: 1.5.5.Final, compiler: javac, environment: Java 21.0.8 (Oracle Corporation)"
+    date = "2026-02-11T00:11:17+0800",
+    comments = "version: 1.5.5.Final, compiler: Eclipse JDT (IDE) 3.45.0.v20260128-0750, environment: Java 21.0.9 (Eclipse Adoptium)"
 )
 public class ApiInfoConverterImpl implements ApiInfoConverter {
 
@@ -23,16 +23,16 @@ public class ApiInfoConverterImpl implements ApiInfoConverter {
         ApiInfo apiInfo = new ApiInfo();
 
         apiInfo.setId( dto.getId() );
+        apiInfo.setAuthType( dto.getAuthType() );
+        apiInfo.setExample( dto.getExample() );
         apiInfo.setGroupId( dto.getGroupId() );
+        apiInfo.setMethod( dto.getMethod() );
         apiInfo.setName( dto.getName() );
         apiInfo.setPath( dto.getPath() );
-        apiInfo.setMethod( dto.getMethod() );
-        apiInfo.setStatus( dto.getStatus() );
-        apiInfo.setAuthType( dto.getAuthType() );
+        apiInfo.setRemark( dto.getRemark() );
         apiInfo.setRequestParams( dto.getRequestParams() );
         apiInfo.setResponseParams( dto.getResponseParams() );
-        apiInfo.setExample( dto.getExample() );
-        apiInfo.setRemark( dto.getRemark() );
+        apiInfo.setStatus( dto.getStatus() );
 
         return apiInfo;
     }
@@ -45,18 +45,18 @@ public class ApiInfoConverterImpl implements ApiInfoConverter {
 
         ApiInfoVO apiInfoVO = new ApiInfoVO();
 
-        apiInfoVO.setId( entity.getId() );
+        apiInfoVO.setAuthType( entity.getAuthType() );
+        apiInfoVO.setCreateTime( entity.getCreateTime() );
+        apiInfoVO.setExample( entity.getExample() );
         apiInfoVO.setGroupId( entity.getGroupId() );
+        apiInfoVO.setId( entity.getId() );
+        apiInfoVO.setMethod( entity.getMethod() );
         apiInfoVO.setName( entity.getName() );
         apiInfoVO.setPath( entity.getPath() );
-        apiInfoVO.setMethod( entity.getMethod() );
-        apiInfoVO.setStatus( entity.getStatus() );
-        apiInfoVO.setAuthType( entity.getAuthType() );
+        apiInfoVO.setRemark( entity.getRemark() );
         apiInfoVO.setRequestParams( entity.getRequestParams() );
         apiInfoVO.setResponseParams( entity.getResponseParams() );
-        apiInfoVO.setExample( entity.getExample() );
-        apiInfoVO.setRemark( entity.getRemark() );
-        apiInfoVO.setCreateTime( entity.getCreateTime() );
+        apiInfoVO.setStatus( entity.getStatus() );
 
         return apiInfoVO;
     }

@@ -10,8 +10,8 @@ import org.springframework.stereotype.Component;
 
 @Generated(
     value = "org.mapstruct.ap.MappingProcessor",
-    date = "2026-02-10T09:45:13+0800",
-    comments = "version: 1.5.5.Final, compiler: javac, environment: Java 21.0.8 (Oracle Corporation)"
+    date = "2026-02-11T00:11:15+0800",
+    comments = "version: 1.5.5.Final, compiler: Eclipse JDT (IDE) 3.45.0.v20260128-0750, environment: Java 21.0.9 (Eclipse Adoptium)"
 )
 @Component
 public class UserConverterImpl implements UserConverter {
@@ -25,15 +25,15 @@ public class UserConverterImpl implements UserConverter {
         SysUser sysUser = new SysUser();
 
         sysUser.setId( dto.getId() );
-        sysUser.setUsername( dto.getUsername() );
-        sysUser.setPassword( dto.getPassword() );
-        sysUser.setNickname( dto.getNickname() );
-        sysUser.setEmail( dto.getEmail() );
-        sysUser.setPhone( dto.getPhone() );
-        sysUser.setGender( dto.getGender() );
         sysUser.setAvatar( dto.getAvatar() );
-        sysUser.setStatus( dto.getStatus() );
         sysUser.setDeptId( dto.getDeptId() );
+        sysUser.setEmail( dto.getEmail() );
+        sysUser.setGender( dto.getGender() );
+        sysUser.setNickname( dto.getNickname() );
+        sysUser.setPassword( dto.getPassword() );
+        sysUser.setPhone( dto.getPhone() );
+        sysUser.setStatus( dto.getStatus() );
+        sysUser.setUsername( dto.getUsername() );
 
         return sysUser;
     }
@@ -46,18 +46,18 @@ public class UserConverterImpl implements UserConverter {
 
         SysUserVO sysUserVO = new SysUserVO();
 
-        sysUserVO.setId( entity.getId() );
-        sysUserVO.setUsername( entity.getUsername() );
-        sysUserVO.setNickname( entity.getNickname() );
-        sysUserVO.setEmail( entity.getEmail() );
-        sysUserVO.setPhone( entity.getPhone() );
-        sysUserVO.setGender( entity.getGender() );
         sysUserVO.setAvatar( entity.getAvatar() );
-        sysUserVO.setStatus( entity.getStatus() );
-        sysUserVO.setDeptId( entity.getDeptId() );
         sysUserVO.setCreateTime( entity.getCreateTime() );
-        sysUserVO.setLoginIp( entity.getLoginIp() );
+        sysUserVO.setDeptId( entity.getDeptId() );
+        sysUserVO.setEmail( entity.getEmail() );
+        sysUserVO.setGender( entity.getGender() );
+        sysUserVO.setId( entity.getId() );
         sysUserVO.setLoginDate( entity.getLoginDate() );
+        sysUserVO.setLoginIp( entity.getLoginIp() );
+        sysUserVO.setNickname( entity.getNickname() );
+        sysUserVO.setPhone( entity.getPhone() );
+        sysUserVO.setStatus( entity.getStatus() );
+        sysUserVO.setUsername( entity.getUsername() );
 
         return sysUserVO;
     }

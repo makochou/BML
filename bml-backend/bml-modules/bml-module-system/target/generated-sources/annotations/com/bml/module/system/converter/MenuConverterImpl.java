@@ -9,8 +9,8 @@ import javax.annotation.processing.Generated;
 
 @Generated(
     value = "org.mapstruct.ap.MappingProcessor",
-    date = "2026-02-10T09:45:14+0800",
-    comments = "version: 1.5.5.Final, compiler: javac, environment: Java 21.0.8 (Oracle Corporation)"
+    date = "2026-02-11T00:11:15+0800",
+    comments = "version: 1.5.5.Final, compiler: Eclipse JDT (IDE) 3.45.0.v20260128-0750, environment: Java 21.0.9 (Eclipse Adoptium)"
 )
 public class MenuConverterImpl implements MenuConverter {
 
@@ -23,18 +23,18 @@ public class MenuConverterImpl implements MenuConverter {
         SysMenu sysMenu = new SysMenu();
 
         sysMenu.setId( dto.getId() );
-        sysMenu.setParentId( dto.getParentId() );
+        sysMenu.setComponent( dto.getComponent() );
+        sysMenu.setIcon( dto.getIcon() );
+        sysMenu.setIsFrame( dto.getIsFrame() );
         sysMenu.setMenuName( dto.getMenuName() );
         sysMenu.setMenuType( dto.getMenuType() );
+        sysMenu.setParentId( dto.getParentId() );
         sysMenu.setPath( dto.getPath() );
-        sysMenu.setComponent( dto.getComponent() );
         sysMenu.setPerms( dto.getPerms() );
-        sysMenu.setIcon( dto.getIcon() );
-        sysMenu.setSort( dto.getSort() );
-        sysMenu.setVisible( dto.getVisible() );
-        sysMenu.setStatus( dto.getStatus() );
-        sysMenu.setIsFrame( dto.getIsFrame() );
         sysMenu.setRemark( dto.getRemark() );
+        sysMenu.setSort( dto.getSort() );
+        sysMenu.setStatus( dto.getStatus() );
+        sysMenu.setVisible( dto.getVisible() );
 
         return sysMenu;
     }
@@ -47,21 +47,21 @@ public class MenuConverterImpl implements MenuConverter {
 
         SysMenuVO sysMenuVO = new SysMenuVO();
 
+        sysMenuVO.setChildren( toVOList( entity.getChildren() ) );
+        sysMenuVO.setComponent( entity.getComponent() );
+        sysMenuVO.setCreateTime( entity.getCreateTime() );
+        sysMenuVO.setIcon( entity.getIcon() );
         sysMenuVO.setId( entity.getId() );
-        sysMenuVO.setParentId( entity.getParentId() );
+        sysMenuVO.setIsFrame( entity.getIsFrame() );
         sysMenuVO.setMenuName( entity.getMenuName() );
         sysMenuVO.setMenuType( entity.getMenuType() );
+        sysMenuVO.setParentId( entity.getParentId() );
         sysMenuVO.setPath( entity.getPath() );
-        sysMenuVO.setComponent( entity.getComponent() );
         sysMenuVO.setPerms( entity.getPerms() );
-        sysMenuVO.setIcon( entity.getIcon() );
-        sysMenuVO.setSort( entity.getSort() );
-        sysMenuVO.setVisible( entity.getVisible() );
-        sysMenuVO.setStatus( entity.getStatus() );
-        sysMenuVO.setIsFrame( entity.getIsFrame() );
         sysMenuVO.setRemark( entity.getRemark() );
-        sysMenuVO.setCreateTime( entity.getCreateTime() );
-        sysMenuVO.setChildren( toVOList( entity.getChildren() ) );
+        sysMenuVO.setSort( entity.getSort() );
+        sysMenuVO.setStatus( entity.getStatus() );
+        sysMenuVO.setVisible( entity.getVisible() );
 
         return sysMenuVO;
     }
