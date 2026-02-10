@@ -1,0 +1,14 @@
+spring:
+  profiles:
+    active: dev
+  application:
+    name: bml-backend
+    
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+
+bml:
+  swagger:
+    enabled: true

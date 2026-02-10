@@ -1,0 +1,6 @@
+com\bml\core\base\service\BaseService.class
+com\bml\core\base\dto\PageQuery.class
+com\bml\core\base\entity\BaseEntity.class
+com\bml\core\base\controller\BaseController.class
+com\bml\core\base\mapper\BmlBaseMapper.class
+com\bml\core\base\service\impl\BaseServiceImpl.class
