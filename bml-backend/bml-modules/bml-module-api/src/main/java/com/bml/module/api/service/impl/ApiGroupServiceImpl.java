@@ -22,10 +22,10 @@ public class ApiGroupServiceImpl extends BaseServiceImpl<ApiGroupMapper, ApiGrou
 
     @Override
     public List<ApiGroupVO> selectGroupList(ApiGroupDTO dto) {
+        // @TableLogic 自动追加 deleted=0 条件，无需手动添加
         List<ApiGroup> list = this.lambdaQuery()
                 .like(StrUtil.isNotBlank(dto.getName()), ApiGroup::getName, dto.getName())
                 .eq(dto.getStatus() != null, ApiGroup::getStatus, dto.getStatus())
-                .eq(ApiGroup::getDeleted, 0)
                 .orderByAsc(ApiGroup::getSort)
                 .list();
         return ApiGroupConverter.INSTANCE.toVOList(list);

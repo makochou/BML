@@ -56,8 +56,4 @@ public class ApiGroupController extends BaseController {
     public Result<Void> remove(@PathVariable Long groupId) {
         return toAjax(apiGroupService.removeById(groupId));
     }
-    
-    protected Result<Void> toAjax(boolean result) {
-        return result ? success() : fail("操作失败");
-    }
 }

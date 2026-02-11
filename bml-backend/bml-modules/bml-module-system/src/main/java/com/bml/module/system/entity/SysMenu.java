@@ -1,10 +1,14 @@
 package com.bml.module.system.entity;
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.bml.core.base.entity.BaseEntity;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * 菜单权限表
@@ -54,6 +58,6 @@ public class SysMenu extends BaseEntity {
     private String remark;
 
     @Schema(description = "子菜单")
-    @com.baomidou.mybatisplus.annotation.TableField(exist = false)
-    private java.util.List<SysMenu> children = new java.util.ArrayList<>();
+    @TableField(exist = false)
+    private List<SysMenu> children = new ArrayList<>();
 }

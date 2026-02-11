@@ -1,83 +1,259 @@
 package com.bml.module.system.controller;
 
 import com.bml.core.common.result.Result;
+import com.bml.core.framework.security.model.LoginUser;
+import com.bml.core.framework.security.model.TokenVO;
+import com.bml.core.framework.security.service.TokenService;
 import com.bml.core.framework.security.utils.SecurityUtils;
 import com.bml.module.system.dto.LoginBody;
+import com.bml.module.system.dto.RefreshTokenDTO;
 import com.bml.module.system.entity.SysMenu;
 import com.bml.module.system.entity.SysUser;
-import com.bml.core.framework.security.model.LoginUser;
 import com.bml.module.system.service.SysLoginService;
 import com.bml.module.system.service.SysMenuService;
 import com.bml.module.system.service.SysRoleService;
 import com.bml.module.system.service.SysUserService;
+import com.bml.module.system.vo.UserInfoVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.Resource;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RestController;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.util.StringUtils;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 /**
  * 认证控制器
+ * <p>
+ * 提供用户认证相关的 API 接口，包括登录、登出、刷新Token、获取用户信息和路由信息。
+ * 所有认证接口的路径前缀为 {@code /auth/}。
+ * </p>
+ *
+ * <h3>接口列表：</h3>
+ * <table>
+ * <tr>
+ * <th>方法</th>
+ * <th>路径</th>
+ * <th>说明</th>
+ * <th>认证要求</th>
+ * </tr>
+ * <tr>
+ * <td>POST</td>
+ * <td>/auth/login</td>
+ * <td>用户登录</td>
+ * <td>无需认证</td>
+ * </tr>
+ * <tr>
+ * <td>POST</td>
+ * <td>/auth/refresh</td>
+ * <td>刷新Token</td>
+ * <td>无需认证</td>
+ * </tr>
+ * <tr>
+ * <td>POST</td>
+ * <td>/auth/logout</td>
+ * <td>用户登出</td>
+ * <td>需要认证</td>
+ * </tr>
+ * <tr>
+ * <td>GET</td>
+ * <td>/auth/info</td>
+ * <td>获取当前用户信息</td>
+ * <td>需要认证</td>
+ * </tr>
+ * <tr>
+ * <td>GET</td>
+ * <td>/auth/routers</td>
+ * <td>获取路由菜单</td>
+ * <td>需要认证</td>
+ * </tr>
+ * </table>
  *
  * @author BML Team
  */
-@Tag(name = "认证中心")
+@Tag(name = "认证中心", description = "登录、登出、Token刷新、用户信息获取")
 @RestController
+@RequestMapping("/auth")
 public class AuthController {
 
     @Resource
     private SysLoginService loginService;
-    
+
     @Resource
     private SysMenuService menuService;
-    
+
     @Resource
     private SysRoleService roleService;
 
     @Resource
     private SysUserService userService;
 
-    @Operation(summary = "登录方法")
-    @PostMapping("/auth/login")
-    public Result<Map<String, String>> login(@RequestBody LoginBody loginBody) {
-        String token = loginService.login(loginBody.getUsername(), loginBody.getPassword());
-        Map<String, String> map = new HashMap<>();
-        map.put("token", token);
-        return Result.ok(map);
+    @Resource
+    private TokenService tokenService;
+
+    /**
+     * 用户登录
+     * <p>
+     * 验证用户名和密码，认证通过后返回双令牌（AccessToken + RefreshToken）。
+     * </p>
+     *
+     * <h4>请求示例：</h4>
+     * 
+     * <pre>
+     * POST /api/auth/login
+     * Content-Type: application/json
+     *
+     * {
+     *   "username": "admin",
+     *   "password": "admin123"
+     * }
+     * </pre>
+     *
+     * <h4>响应示例：</h4>
+     * 
+     * <pre>
+     * {
+     *   "code": 200,
+     *   "message": "操作成功",
+     *   "data": {
+     *     "accessToken": "eyJhbGciOiJIUzI1NiJ9...",
+     *     "refreshToken": "eyJhbGciOiJIUzI1NiJ9...",
+     *     "expiresIn": 7200
+     *   }
+     * }
+     * </pre>
+     *
+     * @param loginBody 登录参数（用户名、密码）
+     * @return 包含双令牌的统一响应
+     */
+    @Operation(summary = "用户登录", description = "账号密码登录，返回AccessToken和RefreshToken")
+    @PostMapping("/login")
+    public Result<TokenVO> login(@RequestBody LoginBody loginBody) {
+        // 直接返回 TokenVO（由 SysLoginService → TokenService 构建）
+        TokenVO tokenVO = loginService.login(loginBody.getUsername(), loginBody.getPassword());
+        return Result.ok(tokenVO);
     }
-    
-    @Operation(summary = "获取用户信息")
-    @GetMapping("/system/user/getInfo")
-    public Result<Map<String, Object>> getInfo() {
+
+    /**
+     * 刷新 AccessToken
+     * <p>
+     * 当 AccessToken 过期时，前端使用 RefreshToken 获取新的 AccessToken。
+     * RefreshToken 本身在有效期内不会更新，过期后需要重新登录。
+     * </p>
+     *
+     * <h4>请求示例：</h4>
+     * 
+     * <pre>
+     * POST /api/auth/refresh
+     * Content-Type: application/json
+     *
+     * {
+     *   "refreshToken": "eyJhbGciOiJIUzI1NiJ9..."
+     * }
+     * </pre>
+     *
+     * @param dto 包含 refreshToken 的请求体（使用 {@link RefreshTokenDTO} 替代原始 Map）
+     * @return 包含新 AccessToken 的统一响应
+     */
+    @Operation(summary = "刷新Token", description = "使用RefreshToken获取新的AccessToken")
+    @PostMapping("/refresh")
+    public Result<TokenVO> refresh(@Validated @RequestBody RefreshTokenDTO dto) {
+        // 调用 TokenService 刷新 AccessToken
+        TokenVO tokenVO = tokenService.refreshAccessToken(dto.getRefreshToken());
+        return Result.ok(tokenVO);
+    }
+
+    /**
+     * 用户登出
+     * <p>
+     * 清除 Redis 中的用户会话缓存，使当前用户的所有 Token 立即失效。
+     * </p>
+     *
+     * <h4>请求示例：</h4>
+     * 
+     * <pre>
+     * POST /api/auth/logout
+     * Authorization: Bearer {accessToken}
+     * </pre>
+     *
+     * @param request HTTP 请求（从中提取当前用户的 Token）
+     * @return 统一响应
+     */
+    @Operation(summary = "用户登出", description = "清除登录状态，使Token失效")
+    @PostMapping("/logout")
+    public Result<Void> logout(HttpServletRequest request) {
+        // 1. 从请求中获取当前登录用户
+        LoginUser loginUser = tokenService.getLoginUser(request);
+
+        // 2. 如果用户存在，删除 Redis 中的缓存
+        if (loginUser != null && StringUtils.hasText(loginUser.getUserKey())) {
+            tokenService.deleteLoginUser(loginUser.getUserKey());
+        }
+
+        return Result.ok();
+    }
+
+    /**
+     * 获取当前登录用户信息
+     * <p>
+     * 返回当前用户的基本信息、角色列表和权限标识列表。
+     * 前端可据此渲染用户界面和控制按钮权限。
+     * </p>
+     *
+     * <h4>响应示例：</h4>
+     * 
+     * <pre>
+     * {
+     *   "code": 200,
+     *   "data": {
+     *     "user": { "id": 1, "username": "admin", ... },
+     *     "roles": ["admin", "common"],
+     *     "permissions": ["*:*:*"]
+     *   }
+     * }
+     * </pre>
+     *
+     * @return 包含用户信息、角色和权限的 {@link UserInfoVO}
+     */
+    @Operation(summary = "获取当前用户信息", description = "返回用户信息、角色列表和权限标识列表")
+    @GetMapping("/info")
+    public Result<UserInfoVO> getInfo() {
+        // 1. 获取当前用户ID
         Long userId = SecurityUtils.getUserId();
+
+        // 2. 查询用户基本信息
         SysUser user = userService.getById(userId);
-        // LoginUser loginUser = SecurityUtils.getLoginUser(); // Generic T
-        // Set<String> permissions = ((LoginUser)loginUser).getPermissions(); // Need cast
-        
-        // But better fetch permissions from Service or just use LoginUser if available
-        // Let's use LoginUser for permissions as it is cached in token/security context
-        LoginUser loginUser = (LoginUser) SecurityUtils.getLoginUser();
+
+        // 3. 从 SecurityContext 中获取权限列表（已在登录时缓存到 LoginUser 中）
+        LoginUser loginUser = SecurityUtils.getLoginUser();
         Set<String> permissions = loginUser.getPermissions();
-        
-        // Roles from Service
+
+        // 4. 查询角色标识列表
         Set<String> roles = roleService.selectRolePermissionByUserId(userId);
-        
-        Map<String, Object> map = new HashMap<>();
-        map.put("user", user);
-        map.put("roles", roles);
-        map.put("permissions", permissions);
-        return Result.ok(map);
+
+        // 5. 组装返回数据
+        UserInfoVO userInfoVO = UserInfoVO.builder()
+                .user(user)
+                .roles(roles)
+                .permissions(permissions)
+                .build();
+
+        return Result.ok(userInfoVO);
     }
-    
-    @Operation(summary = "获取路由信息")
-    @GetMapping("/system/menu/getRouters")
+
+    /**
+     * 获取路由菜单信息
+     * <p>
+     * 返回当前用户有权限访问的菜单树，前端据此生成导航路由。
+     * </p>
+     *
+     * @return 菜单树列表
+     */
+    @Operation(summary = "获取路由菜单", description = "返回当前用户的菜单树，用于前端路由生成")
+    @GetMapping("/routers")
     public Result<List<SysMenu>> getRouters() {
         Long userId = SecurityUtils.getUserId();
         List<SysMenu> menus = menuService.selectMenuTreeByUserId(userId);

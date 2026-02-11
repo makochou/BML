@@ -20,8 +20,14 @@ public class ApiInfo extends BaseEntity {
     @Schema(description = "所属分组ID")
     private Long groupId;
 
+    @Schema(description = "所属控制器类名")
+    private String controller;
+
     @Schema(description = "接口名称")
     private String name;
+
+    @Schema(description = "权限标识")
+    private String permFlag;
 
     @Schema(description = "请求路径")
     private String path;

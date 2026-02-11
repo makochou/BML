@@ -1,9 +1,8 @@
 package com.bml.module.system.controller;
 
 import com.bml.core.base.controller.BaseController;
-import com.bml.core.base.dto.PageQuery;
 import com.bml.core.common.result.Result;
-import com.bml.core.framework.security.utils.SecurityUtils;
+import com.bml.module.system.dto.SysUserDTO;
 import com.bml.module.system.entity.SysUser;
 import com.bml.module.system.service.SysUserService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -16,7 +15,38 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 /**
- * 用户信息
+ * 用户管理控制器
+ * <p>
+ * 提供系统用户的 CRUD 操作接口，所有接口均需要对应的权限标识。
+ * </p>
+ *
+ * <h3>权限标识说明：</h3>
+ * <table>
+ * <tr>
+ * <th>操作</th>
+ * <th>权限标识</th>
+ * </tr>
+ * <tr>
+ * <td>查询用户列表</td>
+ * <td>{@code system:user:list}</td>
+ * </tr>
+ * <tr>
+ * <td>查询用户详情</td>
+ * <td>{@code system:user:query}</td>
+ * </tr>
+ * <tr>
+ * <td>新增用户</td>
+ * <td>{@code system:user:add}</td>
+ * </tr>
+ * <tr>
+ * <td>修改用户</td>
+ * <td>{@code system:user:edit}</td>
+ * </tr>
+ * <tr>
+ * <td>删除用户</td>
+ * <td>{@code system:user:remove}</td>
+ * </tr>
+ * </table>
  *
  * @author BML Team
  */
@@ -28,60 +58,72 @@ public class SysUserController extends BaseController {
     @Resource
     private SysUserService userService;
 
+    /**
+     * 获取用户列表
+     *
+     * @param dto 查询条件（用户名、手机号、状态等）
+     * @return 用户列表
+     */
     @Operation(summary = "获取用户列表")
     @PreAuthorize("@ss.hasPermi('system:user:list')")
     @GetMapping("/list")
-    public Result<List<com.bml.module.system.vo.SysUserVO>> list(com.bml.module.system.dto.SysUserDTO user,
-            PageQuery pageQuery) {
-        // Paging is handled by PageHelper or MyBatisPlus interceptor if configured
-        List<SysUser> list = userService.selectUserList(user);
-        return Result.ok(com.bml.module.system.converter.UserConverter.INSTANCE.toVOList(list));
-    }
-
-    @Operation(summary = "根据编号获取详细信息")
-    @PreAuthorize("@ss.hasPermi('system:user:query')")
-    @GetMapping(value = "/{userId}")
-    public Result<com.bml.module.system.vo.SysUserVO> getInfo(@PathVariable Long userId) {
-        SysUser user = userService.getById(userId);
-        return Result.ok(com.bml.module.system.converter.UserConverter.INSTANCE.toVO(user));
-    }
-
-    @Operation(summary = "新增用户")
-    @PreAuthorize("@ss.hasPermi('system:user:add')")
-    @PostMapping
-    public Result<Void> add(@Validated @RequestBody com.bml.module.system.dto.SysUserDTO userDto) {
-        // Set CreateBy in Service or via AOP/MyBatisMetaObjectHandler (FieldFill.INSERT
-        // is configured in BaseEntity)
-        // Manual set for now if strictly required by logic, or rely on Entity generic
-        // filling.
-        // For strict "Perfect Code", AuditorAware is better, but here we can manually
-        // set in DTO? No, DTO doesn't have createBy.
-        // We can set it in Service after conversion.
-        // Let's assume MyBatisPlus MetaObjectHandler handles it, or Service sets it.
-        // Previously Controller set it. Let's move that to Service or assume Handler.
-        // Just calling service here.
-        return toAjax(userService.insertUser(userDto));
-    }
-
-    @Operation(summary = "修改用户")
-    @PreAuthorize("@ss.hasPermi('system:user:edit')")
-    @PutMapping
-    public Result<Void> edit(@Validated @RequestBody com.bml.module.system.dto.SysUserDTO userDto) {
-        return toAjax(userService.updateUser(userDto));
-    }
-
-    @Operation(summary = "删除用户")
-    @PreAuthorize("@ss.hasPermi('system:user:remove')")
-    @DeleteMapping("/{userIds}")
-    public Result<Void> remove(@PathVariable List<Long> userIds) {
-        return toAjax(userService.removeBatchByIds(userIds));
+    public Result<List<SysUser>> list(SysUserDTO dto) {
+        return Result.ok(userService.selectUserList(dto));
     }
 
     /**
-     * 响应返回结果
-     * (Normally in BaseController, but 'toAjax' convention helper)
+     * 根据用户编号获取详细信息
+     *
+     * @param userId 用户ID
+     * @return 用户详细信息
      */
-    protected Result<Void> toAjax(boolean result) {
-        return result ? success() : fail("操作失败");
+    @Operation(summary = "根据用户编号获取详细信息")
+    @PreAuthorize("@ss.hasPermi('system:user:query')")
+    @GetMapping(value = "/{userId}")
+    public Result<SysUser> getInfo(@PathVariable Long userId) {
+        return Result.ok(userService.getById(userId));
+    }
+
+    /**
+     * 新增用户
+     *
+     * @param dto 用户信息
+     * @return 操作结果
+     */
+    @Operation(summary = "新增用户")
+    @PreAuthorize("@ss.hasPermi('system:user:add')")
+    @PostMapping
+    public Result<Void> add(@Validated @RequestBody SysUserDTO dto) {
+        return toAjax(userService.insertUser(dto));
+    }
+
+    /**
+     * 修改用户
+     *
+     * @param dto 用户信息
+     * @return 操作结果
+     */
+    @Operation(summary = "修改用户")
+    @PreAuthorize("@ss.hasPermi('system:user:edit')")
+    @PutMapping
+    public Result<Void> edit(@Validated @RequestBody SysUserDTO dto) {
+        return toAjax(userService.updateUser(dto));
+    }
+
+    /**
+     * 删除用户
+     *
+     * @param userId 用户ID
+     * @return 操作结果
+     */
+    @Operation(summary = "删除用户")
+    @PreAuthorize("@ss.hasPermi('system:user:remove')")
+    @DeleteMapping("/{userId}")
+    public Result<Void> remove(@PathVariable Long userId) {
+        // 校验是否允许操作（超级管理员不可删除）
+        SysUser user = new SysUser();
+        user.setId(userId);
+        userService.checkUserAllowed(user);
+        return toAjax(userService.removeById(userId));
     }
 }

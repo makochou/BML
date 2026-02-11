@@ -1,10 +1,14 @@
 package com.bml.module.system.entity;
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.bml.core.base.entity.BaseEntity;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * 部门表
@@ -42,6 +46,6 @@ public class SysDept extends BaseEntity {
     private Integer status;
 
     @Schema(description = "子部门")
-    @com.baomidou.mybatisplus.annotation.TableField(exist = false)
-    private java.util.List<SysDept> children = new java.util.ArrayList<>();
+    @TableField(exist = false)
+    private List<SysDept> children = new ArrayList<>();
 }

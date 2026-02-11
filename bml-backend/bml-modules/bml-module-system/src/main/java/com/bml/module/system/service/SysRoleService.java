@@ -1,6 +1,7 @@
 package com.bml.module.system.service;
 
 import com.bml.core.base.service.BaseService;
+import com.bml.module.system.dto.SysRoleDTO;
 import com.bml.module.system.entity.SysRole;
 
 import java.util.List;
@@ -16,7 +17,7 @@ public interface SysRoleService extends BaseService<SysRole> {
     /**
      * 根据条件分页查询角色数据
      */
-    java.util.List<SysRole> selectRoleList(com.bml.module.system.dto.SysRoleDTO role);
+    List<SysRole> selectRoleList(SysRoleDTO role);
 
     /**
      * 根据用户ID查询角色列表
@@ -31,10 +32,10 @@ public interface SysRoleService extends BaseService<SysRole> {
     /**
      * 新增角色
      */
-    boolean insertRole(com.bml.module.system.dto.SysRoleDTO roleDto);
+    boolean insertRole(SysRoleDTO roleDto);
 
     /**
      * 修改角色
      */
-    boolean updateRole(com.bml.module.system.dto.SysRoleDTO roleDto);
+    boolean updateRole(SysRoleDTO roleDto);
 }

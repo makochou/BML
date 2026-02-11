@@ -16,7 +16,7 @@
         <dependency>
             <groupId>com.bml</groupId>
             <artifactId>bml-core-framework</artifactId>
-            <version>${project.parent.version}</version>
+            <version>${project.version}</version>
         </dependency>
 
         <!-- MapStruct -->

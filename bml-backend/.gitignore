@@ -1,0 +1,51 @@
+# ============================================================================
+# BML Backend .gitignore
+# ============================================================================
+
+# --- Maven 构建产物 ---
+target/
+*.jar
+*.war
+*.ear
+!.mvn/wrapper/maven-wrapper.jar
+
+# --- IDE 配置文件 ---
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# VS Code
+.vscode/
+
+# Eclipse
+.classpath
+.project
+.settings/
+bin/
+
+# --- 系统文件 ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- 日志文件 ---
+*.log
+*.log.*
+
+# --- 临时文件 ---
+*.tmp
+*.bak
+*.swp
+*~
+
+# --- 环境配置（不应提交到仓库） ---
+# application-local.yml
+# .env
+
+# --- 依赖相关 ---
+dep_tree.txt
+effective_pom.log
+errors.txt

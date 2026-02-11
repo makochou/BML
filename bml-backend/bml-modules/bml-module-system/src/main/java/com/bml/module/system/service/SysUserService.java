@@ -1,7 +1,10 @@
 package com.bml.module.system.service;
 
 import com.bml.core.base.service.BaseService;
+import com.bml.module.system.dto.SysUserDTO;
 import com.bml.module.system.entity.SysUser;
+
+import java.util.List;
 
 /**
  * 用户管理 服务接口
@@ -13,7 +16,7 @@ public interface SysUserService extends BaseService<SysUser> {
     /**
      * 根据条件分页查询用户列表
      */
-    java.util.List<SysUser> selectUserList(com.bml.module.system.dto.SysUserDTO user);
+    List<SysUser> selectUserList(SysUserDTO user);
 
     /**
      * 根据用户名查询用户
@@ -28,10 +31,10 @@ public interface SysUserService extends BaseService<SysUser> {
     /**
      * 新增用户
      */
-    boolean insertUser(com.bml.module.system.dto.SysUserDTO userDto);
+    boolean insertUser(SysUserDTO userDto);
 
     /**
      * 修改用户
      */
-    boolean updateUser(com.bml.module.system.dto.SysUserDTO userDto);
+    boolean updateUser(SysUserDTO userDto);
 }

@@ -4,6 +4,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.bml.module.system.mapper.SysRoleMapper">
 
+    <!-- 角色结果映射 -->
     <resultMap type="com.bml.module.system.entity.SysRole" id="SysRoleResult">
         <id     property="id"             column="id"               />
         <result property="roleName"       column="role_name"        />
@@ -15,15 +16,18 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="createTime"     column="create_time"      />
     </resultMap>
 
-    <sql id="selectRoleVo">
-        select r.id, r.role_name, r.role_code, r.sort, r.data_scope, r.status, r.create_time, r.remark 
-        from sys_role r
-    </sql>
-
+    <!--
+        根据用户ID查询角色列表
+        关联关系：sys_role -> sys_user_role -> sys_user
+        过滤条件：角色未被逻辑删除
+    -->
     <select id="selectRolesByUserId" parameterType="Long" resultMap="SysRoleResult">
-        <include refid="selectRoleVo"/>
-        left join sys_user_role ur on ur.role_id = r.id
-        where ur.user_id = #{userId} and r.deleted = 0
+        SELECT r.id, r.role_name, r.role_code, r.sort,
+               r.data_scope, r.status, r.create_time, r.remark
+          FROM sys_role r
+         INNER JOIN sys_user_role ur ON ur.role_id = r.id
+         WHERE ur.user_id = #{userId}
+           AND r.deleted = 0
     </select>
     
 </mapper>

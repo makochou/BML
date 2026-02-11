@@ -1,6 +1,7 @@
 package com.bml.module.system.service;
 
 import com.bml.core.base.service.BaseService;
+import com.bml.module.system.dto.SysDeptDTO;
 import com.bml.module.system.entity.SysDept;
 
 import java.util.List;
@@ -15,10 +16,7 @@ public interface SysDeptService extends BaseService<SysDept> {
     /**
      * 查询部门树列表
      */
-    /**
-     * 查询部门树列表
-     */
-    List<SysDept> selectDeptList(com.bml.module.system.dto.SysDeptDTO dept);
+    List<SysDept> selectDeptList(SysDeptDTO dept);
 
     /**
      * 构建前端所需要树结构
@@ -33,15 +31,15 @@ public interface SysDeptService extends BaseService<SysDept> {
     /**
      * 校验部门名称是否唯一
      */
-    boolean checkDeptNameUnique(com.bml.module.system.dto.SysDeptDTO dept);
+    boolean checkDeptNameUnique(SysDeptDTO dept);
 
     /**
      * 新增部门
      */
-    boolean insertDept(com.bml.module.system.dto.SysDeptDTO deptDto);
+    boolean insertDept(SysDeptDTO deptDto);
 
     /**
      * 修改部门
      */
-    boolean updateDept(com.bml.module.system.dto.SysDeptDTO deptDto);
+    boolean updateDept(SysDeptDTO deptDto);
 }

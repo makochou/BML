@@ -4,6 +4,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.bml.module.system.mapper.SysMenuMapper">
 
+    <!-- 菜单结果映射 -->
     <resultMap type="com.bml.module.system.entity.SysMenu" id="SysMenuResult">
         <id     property="id"             column="id"               />
         <result property="menuName"       column="menu_name"        />
@@ -21,30 +22,43 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         <result property="remark"         column="remark"           />
     </resultMap>
 
+    <!--
+        根据用户ID查询菜单权限标识
+        关联关系：sys_menu -> sys_role_menu -> sys_user_role -> sys_role
+        过滤条件：菜单和角色均为正常状态且未删除，perms 非空
+        注意：此处使用原生 SQL 查询，@TableLogic 不生效，需手动加 deleted=0
+    -->
     <select id="selectMenuPermsByUserId" parameterType="Long" resultType="String">
-        select distinct m.perms
-        from sys_menu m
-        left join sys_role_menu rm on m.id = rm.menu_id
-        left join sys_user_role ur on rm.role_id = ur.role_id
-        left join sys_role r on r.id = ur.role_id
-        where m.status = 1 and m.deleted = 0
-          and r.status = 1 and r.deleted = 0
-          and ur.user_id = #{userId}
-          and m.perms is not null
-          and m.perms != ''
+        SELECT DISTINCT m.perms
+          FROM sys_menu m
+         INNER JOIN sys_role_menu rm ON m.id = rm.menu_id
+         INNER JOIN sys_user_role ur ON rm.role_id = ur.role_id
+         INNER JOIN sys_role r ON r.id = ur.role_id
+         WHERE m.status = 1 AND m.deleted = 0
+           AND r.status = 1 AND r.deleted = 0
+           AND ur.user_id = #{userId}
+           AND m.perms IS NOT NULL
+           AND m.perms != ''
     </select>
 
+    <!--
+        根据用户ID查询菜单树（目录+菜单，不含按钮）
+        关联关系同上
+        注意：此处使用原生 SQL 查询，@TableLogic 不生效，需手动加 deleted=0
+    -->
     <select id="selectMenuTreeByUserId" parameterType="Long" resultMap="SysMenuResult">
-        select distinct m.id, m.parent_id, m.menu_name, m.path, m.component, m.visible, m.status, ifnull(m.perms,'') as perms, m.is_frame, m.menu_type, m.icon, m.sort, m.create_time
-        from sys_menu m
-        left join sys_role_menu rm on m.id = rm.menu_id
-        left join sys_user_role ur on rm.role_id = ur.role_id
-        left join sys_role r on r.id = ur.role_id
-        where m.menu_type in ('M', 'C') 
-          and m.status = 1 and m.deleted = 0
-          and r.status = 1 and r.deleted = 0
-          and ur.user_id = #{userId}
-        order by m.parent_id, m.sort
+        SELECT DISTINCT m.id, m.parent_id, m.menu_name, m.path, m.component,
+               m.visible, m.status, IFNULL(m.perms, '') AS perms,
+               m.is_frame, m.menu_type, m.icon, m.sort, m.create_time
+          FROM sys_menu m
+         INNER JOIN sys_role_menu rm ON m.id = rm.menu_id
+         INNER JOIN sys_user_role ur ON rm.role_id = ur.role_id
+         INNER JOIN sys_role r ON r.id = ur.role_id
+         WHERE m.menu_type IN ('M', 'C')
+           AND m.status = 1 AND m.deleted = 0
+           AND r.status = 1 AND r.deleted = 0
+           AND ur.user_id = #{userId}
+         ORDER BY m.parent_id, m.sort
     </select>
     
 </mapper>

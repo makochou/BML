@@ -4,6 +4,8 @@ import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
 import com.bml.core.base.service.impl.BaseServiceImpl;
 import com.bml.core.common.constant.GlobalConstants;
+import com.bml.module.system.converter.MenuConverter;
+import com.bml.module.system.dto.SysMenuDTO;
 import com.bml.module.system.entity.SysMenu;
 import com.bml.module.system.mapper.SysMenuMapper;
 import com.bml.module.system.service.SysMenuService;
@@ -14,16 +16,33 @@ import java.util.stream.Collectors;
 
 /**
  * 菜单管理 服务实现
+ * <p>
+ * 提供菜单的查询、新增、修改、删除以及菜单树构建等功能。
+ * 超级管理员（{@link GlobalConstants#SYSTEM_USER_ID}）可查看所有菜单，
+ * 普通用户仅能查看自身角色关联的菜单。
+ * </p>
  *
  * @author BML Team
  */
 @Service
 public class SysMenuServiceImpl extends BaseServiceImpl<SysMenuMapper, SysMenu> implements SysMenuService {
 
+    /**
+     * 根据条件查询菜单列表（管理端使用）
+     * <p>
+     * 超级管理员显示所有菜单，普通用户按角色过滤。
+     * 注意：MyBatis-Plus 的 {@code @TableLogic} 会自动追加 deleted=0 条件，
+     * 无需在业务代码中手动添加。
+     * </p>
+     *
+     * @param menu   查询条件 DTO
+     * @param userId 当前用户ID
+     * @return 菜单列表
+     */
     @Override
-    public List<SysMenu> selectMenuList(com.bml.module.system.dto.SysMenuDTO menu, Long userId) {
-        List<SysMenu> menuList = null;
-        // 管理员显示所有菜单信息
+    public List<SysMenu> selectMenuList(SysMenuDTO menu, Long userId) {
+        List<SysMenu> menuList;
+        // 超级管理员显示所有菜单信息
         if (GlobalConstants.SYSTEM_USER_ID.equals(userId)) {
             menuList = this.lambdaQuery()
                     .like(StrUtil.isNotEmpty(menu.getMenuName()), SysMenu::getMenuName, menu.getMenuName())
@@ -33,12 +52,24 @@ public class SysMenuServiceImpl extends BaseServiceImpl<SysMenuMapper, SysMenu> 
                     .orderByAsc(SysMenu::getParentId, SysMenu::getSort)
                     .list();
         } else {
-            // TODO: User permission filtering
+            // 普通用户：按角色关联查询菜单
             menuList = baseMapper.selectMenuTreeByUserId(userId);
         }
         return menuList;
     }
 
+    /**
+     * 根据用户ID查询菜单权限标识集合
+     * <p>
+     * 查询用户通过角色关联的所有菜单权限标识（perms），
+     * 支持逗号分隔的多权限标识拆分。
+     * 示例：perms="system:user:list,system:user:query" → {"system:user:list",
+     * "system:user:query"}
+     * </p>
+     *
+     * @param userId 用户ID
+     * @return 权限标识集合
+     */
     @Override
     public Set<String> selectMenuPermsByUserId(Long userId) {
         List<String> perms = baseMapper.selectMenuPermsByUserId(userId);
@@ -51,30 +82,56 @@ public class SysMenuServiceImpl extends BaseServiceImpl<SysMenuMapper, SysMenu> 
         return permsSet;
     }
 
+    /**
+     * 根据用户ID查询菜单树信息（用于前端路由构建）
+     * <p>
+     * 仅查询目录（M）和菜单（C）类型，不包括按钮（F）。
+     * 查询结果会自动构建为父子树形结构。
+     * </p>
+     *
+     * @param userId 用户ID
+     * @return 菜单树列表
+     */
     @Override
     public List<SysMenu> selectMenuTreeByUserId(Long userId) {
-        List<SysMenu> menus = null;
+        List<SysMenu> menus;
         if (GlobalConstants.SYSTEM_USER_ID.equals(userId)) {
-            // 超级管理员显示所有
+            // 超级管理员显示所有正常状态的目录和菜单
             menus = this.lambdaQuery()
                     .in(SysMenu::getMenuType, "M", "C")
-                    .eq(SysMenu::getStatus, 1)
-                    .eq(SysMenu::getDeleted, 0)
+                    .eq(SysMenu::getStatus, GlobalConstants.STATUS_NORMAL)
                     .orderByAsc(SysMenu::getParentId, SysMenu::getSort)
                     .list();
         } else {
             menus = baseMapper.selectMenuTreeByUserId(userId);
         }
-        return getChildPerms(menus, 0L);
+        return buildTree(menus, GlobalConstants.ROOT_NODE_ID);
     }
 
+    /**
+     * 构建前端路由所需的菜单结构
+     * <p>
+     * TODO: 将菜单实体转换为前端路由所需的格式（RouterVO），
+     * 包括路由路径、组件路径、meta信息等。当前直接返回原始菜单列表。
+     * </p>
+     *
+     * @param menus 菜单列表
+     * @return 路由菜单列表
+     */
     @Override
     public List<SysMenu> buildMenus(List<SysMenu> menus) {
+        // TODO: 转换为 RouterVO 以适配前端路由格式
         return menus;
     }
 
+    /**
+     * 校验同一父级下菜单名称是否唯一
+     *
+     * @param menu 菜单 DTO（包含 menuName、parentId、id）
+     * @return {@code true} 表示名称已存在（不唯一），{@code false} 表示唯一
+     */
     @Override
-    public boolean checkMenuNameUnique(com.bml.module.system.dto.SysMenuDTO menu) {
+    public boolean checkMenuNameUnique(SysMenuDTO menu) {
         long count = this.lambdaQuery()
                 .eq(SysMenu::getMenuName, menu.getMenuName())
                 .eq(SysMenu::getParentId, menu.getParentId())
@@ -83,67 +140,81 @@ public class SysMenuServiceImpl extends BaseServiceImpl<SysMenuMapper, SysMenu> 
         return count > 0;
     }
 
+    /**
+     * 新增菜单
+     *
+     * @param menuDto 菜单 DTO
+     * @return 是否成功
+     */
     @Override
-    public boolean insertMenu(com.bml.module.system.dto.SysMenuDTO menuDto) {
-        SysMenu menu = com.bml.module.system.converter.MenuConverter.INSTANCE.toEntity(menuDto);
+    public boolean insertMenu(SysMenuDTO menuDto) {
+        SysMenu menu = MenuConverter.INSTANCE.toEntity(menuDto);
         return this.save(menu);
     }
 
+    /**
+     * 修改菜单
+     *
+     * @param menuDto 菜单 DTO
+     * @return 是否成功
+     */
     @Override
-    public boolean updateMenu(com.bml.module.system.dto.SysMenuDTO menuDto) {
-        SysMenu menu = com.bml.module.system.converter.MenuConverter.INSTANCE.toEntity(menuDto);
+    public boolean updateMenu(SysMenuDTO menuDto) {
+        SysMenu menu = MenuConverter.INSTANCE.toEntity(menuDto);
         return this.updateById(menu);
     }
 
+    // ======================== 私有方法 ========================
+
     /**
-     * 根据父节点的ID获取所有子节点
+     * 构建树形结构
+     * <p>
+     * 从 menus 列表中，找出所有 parentId 等于 rootId 的节点作为根节点，
+     * 递归构建完整的树形结构。使用 {@link Objects#equals} 进行 Long 比较，
+     * 避免包装类 {@code ==} 比较在超出 -128~127 缓存范围时失效。
+     * </p>
+     *
+     * @param menus  菜单平铺列表
+     * @param rootId 根节点父ID（通常为 0）
+     * @return 树形结构列表
      */
-    public List<SysMenu> getChildPerms(List<SysMenu> list, long parentId) {
+    private List<SysMenu> buildTree(List<SysMenu> menus, Long rootId) {
         List<SysMenu> returnList = new ArrayList<>();
-        for (Iterator<SysMenu> iterator = list.iterator(); iterator.hasNext();) {
-            SysMenu t = iterator.next();
-            // 一、根据传入的某个父节点ID,遍历该父节点的所有子节点
-            if (t.getParentId() == parentId) {
-                recursionFn(list, t);
-                returnList.add(t);
+        for (SysMenu menu : menus) {
+            if (Objects.equals(menu.getParentId(), rootId)) {
+                buildChildren(menus, menu);
+                returnList.add(menu);
             }
         }
         return returnList;
     }
 
     /**
-     * 递归列表
+     * 递归构建子节点
+     *
+     * @param list   菜单平铺列表
+     * @param parent 父节点
      */
-    private void recursionFn(List<SysMenu> list, SysMenu t) {
-        // 得到子节点列表
-        List<SysMenu> childList = getChildList(list, t);
-        t.setChildren(childList);
-        for (SysMenu tChild : childList) {
-            if (hasChild(list, tChild)) {
-                recursionFn(list, tChild);
+    private void buildChildren(List<SysMenu> list, SysMenu parent) {
+        List<SysMenu> children = list.stream()
+                .filter(m -> Objects.equals(m.getParentId(), parent.getId()))
+                .collect(Collectors.toList());
+        parent.setChildren(children);
+        for (SysMenu child : children) {
+            if (hasChildren(list, child)) {
+                buildChildren(list, child);
             }
         }
     }
 
     /**
-     * 得到子节点列表
+     * 判断节点是否有子节点
+     *
+     * @param list 菜单平铺列表
+     * @param menu 当前节点
+     * @return 是否有子节点
      */
-    private List<SysMenu> getChildList(List<SysMenu> list, SysMenu t) {
-        List<SysMenu> tlist = new ArrayList<>();
-        Iterator<SysMenu> it = list.iterator();
-        while (it.hasNext()) {
-            SysMenu n = it.next();
-            if (n.getParentId().longValue() == t.getId().longValue()) {
-                tlist.add(n);
-            }
-        }
-        return tlist;
-    }
-
-    /**
-     * 判断是否有子节点
-     */
-    private boolean hasChild(List<SysMenu> list, SysMenu t) {
-        return getChildList(list, t).size() > 0;
+    private boolean hasChildren(List<SysMenu> list, SysMenu menu) {
+        return list.stream().anyMatch(m -> Objects.equals(m.getParentId(), menu.getId()));
     }
 }

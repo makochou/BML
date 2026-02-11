@@ -22,13 +22,13 @@ public class ApiInfoServiceImpl extends BaseServiceImpl<ApiInfoMapper, ApiInfo> 
 
     @Override
     public List<ApiInfoVO> selectApiList(ApiInfoDTO dto) {
+        // @TableLogic 自动追加 deleted=0 条件，无需手动添加
         List<ApiInfo> list = this.lambdaQuery()
                 .eq(dto.getGroupId() != null, ApiInfo::getGroupId, dto.getGroupId())
                 .like(StrUtil.isNotBlank(dto.getName()), ApiInfo::getName, dto.getName())
                 .like(StrUtil.isNotBlank(dto.getPath()), ApiInfo::getPath, dto.getPath())
                 .eq(StrUtil.isNotBlank(dto.getMethod()), ApiInfo::getMethod, dto.getMethod())
                 .eq(dto.getStatus() != null, ApiInfo::getStatus, dto.getStatus())
-                .eq(ApiInfo::getDeleted, 0)
                 .orderByDesc(ApiInfo::getCreateTime)
                 .list();
         return ApiInfoConverter.INSTANCE.toVOList(list);

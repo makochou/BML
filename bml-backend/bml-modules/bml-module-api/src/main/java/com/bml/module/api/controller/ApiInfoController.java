@@ -56,8 +56,4 @@ public class ApiInfoController extends BaseController {
     public Result<Void> remove(@PathVariable Long apiId) {
         return toAjax(apiInfoService.removeById(apiId));
     }
-    
-    protected Result<Void> toAjax(boolean result) {
-        return result ? success() : fail("操作失败");
-    }
 }

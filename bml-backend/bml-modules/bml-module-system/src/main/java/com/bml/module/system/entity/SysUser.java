@@ -2,6 +2,7 @@ package com.bml.module.system.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.bml.core.base.entity.BaseEntity;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -10,6 +11,13 @@ import java.time.LocalDateTime;
 
 /**
  * 用户信息表
+ * <p>
+ * 对应数据库表 {@code sys_user}，继承 {@link BaseEntity} 获得通用审计字段。
+ * </p>
+ * <p>
+ * <b>状态约定：</b> status 字段值 1 表示正常，0 表示停用。
+ * 参见 {@link com.bml.core.common.constant.GlobalConstants#STATUS_NORMAL}。
+ * </p>
  *
  * @author BML Team
  */
@@ -22,7 +30,14 @@ public class SysUser extends BaseEntity {
     @Schema(description = "用户名")
     private String username;
 
-    @Schema(description = "密码")
+    /**
+     * 密码（BCrypt 加密存储）
+     * <p>
+     * 使用 {@code @JsonIgnore} 确保序列化时不暴露密码哈希到前端。
+     * </p>
+     */
+    @Schema(description = "密码", hidden = true)
+    @JsonIgnore
     private String password;
 
     @Schema(description = "姓名")
@@ -57,6 +72,8 @@ public class SysUser extends BaseEntity {
 
     @Schema(description = "最后登录时间")
     private LocalDateTime loginDate;
-    
+
+    @Schema(description = "备注")
+    private String remark;
 
 }

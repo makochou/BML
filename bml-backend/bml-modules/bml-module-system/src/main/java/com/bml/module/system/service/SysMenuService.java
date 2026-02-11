@@ -1,6 +1,7 @@
 package com.bml.module.system.service;
 
 import com.bml.core.base.service.BaseService;
+import com.bml.module.system.dto.SysMenuDTO;
 import com.bml.module.system.entity.SysMenu;
 
 import java.util.List;
@@ -16,7 +17,7 @@ public interface SysMenuService extends BaseService<SysMenu> {
     /**
      * 根据用户ID查询菜单列表 (用于管理)
      */
-    java.util.List<SysMenu> selectMenuList(com.bml.module.system.dto.SysMenuDTO menu, Long userId);
+    List<SysMenu> selectMenuList(SysMenuDTO menu, Long userId);
 
     /**
      * 根据用户ID查询菜单权限
@@ -36,15 +37,15 @@ public interface SysMenuService extends BaseService<SysMenu> {
     /**
      * 校验菜单名称是否唯一
      */
-    boolean checkMenuNameUnique(com.bml.module.system.dto.SysMenuDTO menu);
+    boolean checkMenuNameUnique(SysMenuDTO menu);
 
     /**
      * 新增菜单
      */
-    boolean insertMenu(com.bml.module.system.dto.SysMenuDTO menuDto);
+    boolean insertMenu(SysMenuDTO menuDto);
 
     /**
      * 修改菜单
      */
-    boolean updateMenu(com.bml.module.system.dto.SysMenuDTO menuDto);
+    boolean updateMenu(SysMenuDTO menuDto);
 }

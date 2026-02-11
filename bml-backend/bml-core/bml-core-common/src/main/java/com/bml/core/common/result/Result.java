@@ -43,6 +43,12 @@ public class Result<T> implements Serializable {
 
     /**
      * 链路追踪ID
+     * <p>
+     * 从 SLF4J MDC 中获取。需要配合 TraceId 过滤器/拦截器使用，
+     * 在请求进入时通过 {@code MDC.put(GlobalConstants.TRACE_ID, uuid)} 设置。
+     * 当前项目尚未添加该过滤器，因此 traceId 始终为 null（不会输出到响应中）。
+     * </p>
+     * TODO: 实现 TraceIdFilter，在请求入口处向 MDC 写入 traceId
      */
     private String traceId = MDC.get(GlobalConstants.TRACE_ID);
 

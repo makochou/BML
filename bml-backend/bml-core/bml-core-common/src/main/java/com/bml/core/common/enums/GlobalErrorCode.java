@@ -25,7 +25,19 @@ public enum GlobalErrorCode implements ErrorCode {
     SYSTEM_ERROR(1000, "系统内部错误"),
     LICENSE_INVALID(1001, "License无效或已过期"),
     LICENSE_EXPIRED(1002, "License已过期"),
-    LICENSE_MACHINE_ERROR(1003, "机器码不匹配");
+    LICENSE_MACHINE_ERROR(1003, "机器码不匹配"),
+
+    // 安全模块错误 2000-2999
+    /** 登录已过期（AccessToken过期且Redis会话已失效） */
+    TOKEN_EXPIRED(2001, "登录已过期，请重新登录"),
+    /** 无效的Token（签名错误、格式异常等） */
+    TOKEN_INVALID(2002, "无效的Token"),
+    /** 刷新令牌已过期，必须重新登录 */
+    TOKEN_REFRESH_EXPIRED(2003, "刷新令牌已过期，请重新登录"),
+    /** 账号已被管理员禁用 */
+    ACCOUNT_DISABLED(2004, "账号已被禁用"),
+    /** 账号因多次密码错误已被锁定 */
+    ACCOUNT_LOCKED(2005, "账号已被锁定");
 
     private final int code;
     private final String message;

@@ -43,7 +43,7 @@ public class SysUserDTO implements Serializable {
     @Pattern(regexp = "^1[3-9]\\d{9}$", message = "手机号码格式不正确")
     private String phone;
 
-    @Schema(description = "用户性别（0男 1女 2未知）")
+    @Schema(description = "用户性别 (0:未知 1:男 2:女)")
     private Integer gender;
 
     @Schema(description = "头像地址")
@@ -52,7 +52,7 @@ public class SysUserDTO implements Serializable {
     @Schema(description = "密码 (创建时必填)")
     private String password;
 
-    @Schema(description = "帐号状态（0正常 1停用）")
+    @Schema(description = "状态 (1:正常 0:停用)")
     private Integer status;
 
     @Schema(description = "部门ID")
