@@ -60,6 +60,11 @@
         <bouncycastle.version>1.77</bouncycastle.version>
     </properties>
 
+    <!-- 
+        统一依赖管理 (BOM)
+        所有子模块的依赖版本均在此处锁定，子模块引用时无需指定版本号。
+        这确保了整个项目依赖版本的一致性，避免版本冲突。
+    -->
     <dependencyManagement>
         <dependencies>
             <!-- Spring Boot BOM -->

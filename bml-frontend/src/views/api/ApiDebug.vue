@@ -275,7 +275,9 @@ onMounted(() => {
 
 <style scoped>
 .debug-container {
-    padding: 20px;
+    padding: 16px;
+    height: 100%;
+    overflow-y: auto;
 }
 .param-row {
     display: flex;

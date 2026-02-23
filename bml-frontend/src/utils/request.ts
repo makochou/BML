@@ -9,7 +9,10 @@ const service = axios.create({
 // Request interceptor
 service.interceptors.request.use(
     config => {
-        // TODO: Add token
+        const token = localStorage.getItem('token');
+        if (token) {
+            config.headers['Authorization'] = `Bearer ${token}`;
+        }
         return config;
     },
     error => {
@@ -21,6 +24,12 @@ service.interceptors.request.use(
 service.interceptors.response.use(
     response => {
         const res = response.data;
+        if (res.code === 401) {
+            Message.error('登录失效，请重新登录');
+            localStorage.removeItem('token');
+            window.location.href = '/admin/login';
+            return Promise.reject(new Error('Unauthorized'));
+        }
         if (res.code !== 200) {
             Message.error(res.msg || 'Error');
             return Promise.reject(new Error(res.msg || 'Error'));

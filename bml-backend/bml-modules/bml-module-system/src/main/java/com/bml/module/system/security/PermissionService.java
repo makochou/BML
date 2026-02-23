@@ -37,6 +37,10 @@ public class PermissionService {
         if (loginUser == null || CollectionUtils.isEmpty(loginUser.getPermissions())) {
             return false;
         }
+        // 超级管理员直接放行
+        if (loginUser.getUserId() == 1L) {
+            return true;
+        }
         return hasPermissions(loginUser.getPermissions(), permission);
     }
 
@@ -44,7 +48,7 @@ public class PermissionService {
      * 判断是否包含权限
      *
      * @param permissions 权限列表
-     * @param permission 权限字符串
+     * @param permission  权限字符串
      * @return 用户是否具备某权限
      */
     private boolean hasPermissions(Set<String> permissions, String permission) {

@@ -119,7 +119,8 @@ public class SecurityConfig {
                                         auth.requestMatchers(
                                                         "/auth/login", // 登录
                                                         "/auth/refresh", // 刷新Token
-                                                        "/auth/register" // 注册（预留）
+                                                        "/auth/register", // 注册（预留）
+                                                        "/actuator/health" // 健康检查(无需认证)
                                         ).permitAll();
 
                                         // 仅在配置开启时允许 Swagger 文档访问

@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS sys_org (
     org_code        VARCHAR(50)     NOT NULL COMMENT '组织编码',
     parent_id       BIGINT          DEFAULT 0 COMMENT '上级组织ID',
     ancestors       VARCHAR(500)    DEFAULT '' COMMENT '祖级列表(逗号分隔)',
-    order_num       INT             DEFAULT 0 COMMENT '显示顺序',
+    sort            INT             DEFAULT 0 COMMENT '显示顺序',
     leader          VARCHAR(50)     DEFAULT NULL COMMENT '负责人',
     phone           VARCHAR(20)     DEFAULT NULL COMMENT '联系电话',
     status          TINYINT         DEFAULT 1 COMMENT '状态(1正常 0停用)',
@@ -43,9 +43,10 @@ CREATE TABLE IF NOT EXISTS sys_dept (
     org_id          BIGINT          NOT NULL COMMENT '所属组织ID',
     parent_id       BIGINT          DEFAULT 0 COMMENT '上级部门ID',
     ancestors       VARCHAR(500)    DEFAULT '' COMMENT '祖级列表(逗号分隔)',
-    order_num       INT             DEFAULT 0 COMMENT '显示顺序',
+    sort            INT             DEFAULT 0 COMMENT '显示顺序',
     leader          VARCHAR(50)     DEFAULT NULL COMMENT '负责人',
     phone           VARCHAR(20)     DEFAULT NULL COMMENT '联系电话',
+    email           VARCHAR(100)    DEFAULT NULL COMMENT '邮箱',
     status          TINYINT         DEFAULT 1 COMMENT '状态(1正常 0停用)',
     create_by       BIGINT          DEFAULT NULL COMMENT '创建人',
     create_time     DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -59,6 +60,57 @@ CREATE TABLE IF NOT EXISTS sys_dept (
     KEY idx_parent_id (parent_id)
 ) ENGINE=InnoDB COMMENT='部门表';
 
+-- ... (SysUser is fine) ...
+
+-- 角色表
+CREATE TABLE IF NOT EXISTS sys_role (
+    id              BIGINT          NOT NULL COMMENT '主键ID',
+    role_name       VARCHAR(50)     NOT NULL COMMENT '角色名称',
+    role_code       VARCHAR(50)     NOT NULL COMMENT '角色编码',
+    role_type       TINYINT         DEFAULT 1 COMMENT '角色类型(1普通 2系统)',
+    data_scope      TINYINT         DEFAULT 1 COMMENT '数据权限范围(1全部 2本组织及下级 3仅本组织 4本部门及下级 5仅本部门 6仅本人 7自定义)',
+    sort            INT             DEFAULT 0 COMMENT '显示顺序',
+    status          TINYINT         DEFAULT 1 COMMENT '状态(1正常 0停用)',
+    remark          VARCHAR(500)    DEFAULT NULL COMMENT '备注',
+    create_by       BIGINT          DEFAULT NULL COMMENT '创建人',
+    create_time     DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_by       BIGINT          DEFAULT NULL COMMENT '更新人',
+    update_time     DATETIME        DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    deleted         TINYINT         DEFAULT 0 COMMENT '删除标志(0未删除 1已删除)',
+    version         INT             DEFAULT 1 COMMENT '乐观锁版本',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_role_code (role_code)
+) ENGINE=InnoDB COMMENT='角色表';
+
+-- ... (SysUserRole is fine) ...
+
+-- 菜单表
+CREATE TABLE IF NOT EXISTS sys_menu (
+    id              BIGINT          NOT NULL COMMENT '主键ID',
+    menu_name       VARCHAR(50)     NOT NULL COMMENT '菜单名称',
+    perms           VARCHAR(100)    DEFAULT NULL COMMENT '权限标识',
+    parent_id       BIGINT          DEFAULT 0 COMMENT '上级菜单ID',
+    ancestors       VARCHAR(500)    DEFAULT '' COMMENT '祖级列表',
+    menu_type       CHAR(1)         NOT NULL COMMENT '菜单类型(M目录 C菜单 B按钮)',
+    path            VARCHAR(255)    DEFAULT NULL COMMENT '路由地址',
+    component       VARCHAR(255)    DEFAULT NULL COMMENT '组件路径',
+    query_params    VARCHAR(255)    DEFAULT NULL COMMENT '路由参数',
+    icon            VARCHAR(100)    DEFAULT NULL COMMENT '菜单图标',
+    sort            INT             DEFAULT 0 COMMENT '显示顺序',
+    is_frame        TINYINT         DEFAULT 0 COMMENT '是否外链(0否 1是)',
+    is_cache        TINYINT         DEFAULT 1 COMMENT '是否缓存(1是 0否)',
+    visible         TINYINT         DEFAULT 1 COMMENT '是否显示(1是 0否)',
+    status          TINYINT         DEFAULT 1 COMMENT '状态(1正常 0停用)',
+    remark          VARCHAR(500)    DEFAULT NULL COMMENT '备注',
+    create_by       BIGINT          DEFAULT NULL COMMENT '创建人',
+    create_time     DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_by       BIGINT          DEFAULT NULL COMMENT '更新人',
+    update_time     DATETIME        DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    deleted         TINYINT         DEFAULT 0 COMMENT '删除标志(0未删除 1已删除)',
+    PRIMARY KEY (id),
+    KEY idx_parent_id (parent_id)
+) ENGINE=InnoDB COMMENT='菜单表';
+
 -- =============================================================================
 -- Part 2: 用户与角色
 -- =============================================================================
@@ -68,6 +120,7 @@ CREATE TABLE IF NOT EXISTS sys_user (
     id              BIGINT          NOT NULL COMMENT '主键ID',
     username        VARCHAR(50)     NOT NULL COMMENT '用户名',
     password        VARCHAR(100)    NOT NULL COMMENT '密码(BCrypt)',
+    real_name       VARCHAR(50)     DEFAULT NULL COMMENT '姓名',
     nickname        VARCHAR(50)     DEFAULT NULL COMMENT '昵称',
     email           VARCHAR(100)    DEFAULT NULL COMMENT '邮箱',
     phone           VARCHAR(20)     DEFAULT NULL COMMENT '手机号',
@@ -77,7 +130,7 @@ CREATE TABLE IF NOT EXISTS sys_user (
     dept_id         BIGINT          DEFAULT NULL COMMENT '所属部门ID',
     status          TINYINT         DEFAULT 1 COMMENT '状态(1正常 0禁用 2锁定)',
     login_ip        VARCHAR(50)     DEFAULT NULL COMMENT '最后登录IP',
-    login_time      DATETIME        DEFAULT NULL COMMENT '最后登录时间',
+    login_date      DATETIME        DEFAULT NULL COMMENT '最后登录时间',
     pwd_update_time DATETIME        DEFAULT NULL COMMENT '密码修改时间',
     pwd_error_count INT             DEFAULT 0 COMMENT '密码错误次数',
     lock_time       DATETIME        DEFAULT NULL COMMENT '锁定时间',
@@ -102,7 +155,7 @@ CREATE TABLE IF NOT EXISTS sys_role (
     role_code       VARCHAR(50)     NOT NULL COMMENT '角色编码',
     role_type       TINYINT         DEFAULT 1 COMMENT '角色类型(1普通 2系统)',
     data_scope      TINYINT         DEFAULT 1 COMMENT '数据权限范围(1全部 2本组织及下级 3仅本组织 4本部门及下级 5仅本部门 6仅本人 7自定义)',
-    order_num       INT             DEFAULT 0 COMMENT '显示顺序',
+    sort            INT             DEFAULT 0 COMMENT '显示顺序',
     status          TINYINT         DEFAULT 1 COMMENT '状态(1正常 0停用)',
     remark          VARCHAR(500)    DEFAULT NULL COMMENT '备注',
     create_by       BIGINT          DEFAULT NULL COMMENT '创建人',
@@ -131,7 +184,7 @@ CREATE TABLE IF NOT EXISTS sys_user_role (
 CREATE TABLE IF NOT EXISTS sys_menu (
     id              BIGINT          NOT NULL COMMENT '主键ID',
     menu_name       VARCHAR(50)     NOT NULL COMMENT '菜单名称',
-    menu_code       VARCHAR(100)    NOT NULL COMMENT '菜单编码(权限标识)',
+    perms           VARCHAR(100)    DEFAULT NULL COMMENT '权限标识',
     parent_id       BIGINT          DEFAULT 0 COMMENT '上级菜单ID',
     ancestors       VARCHAR(500)    DEFAULT '' COMMENT '祖级列表',
     menu_type       CHAR(1)         NOT NULL COMMENT '菜单类型(M目录 C菜单 B按钮)',
@@ -139,10 +192,10 @@ CREATE TABLE IF NOT EXISTS sys_menu (
     component       VARCHAR(255)    DEFAULT NULL COMMENT '组件路径',
     query_params    VARCHAR(255)    DEFAULT NULL COMMENT '路由参数',
     icon            VARCHAR(100)    DEFAULT NULL COMMENT '菜单图标',
-    order_num       INT             DEFAULT 0 COMMENT '显示顺序',
+    sort            INT             DEFAULT 0 COMMENT '显示顺序',
     is_frame        TINYINT         DEFAULT 0 COMMENT '是否外链(0否 1是)',
     is_cache        TINYINT         DEFAULT 1 COMMENT '是否缓存(1是 0否)',
-    is_visible      TINYINT         DEFAULT 1 COMMENT '是否显示(1是 0否)',
+    visible         TINYINT         DEFAULT 1 COMMENT '是否显示(1是 0否)',
     status          TINYINT         DEFAULT 1 COMMENT '状态(1正常 0停用)',
     remark          VARCHAR(500)    DEFAULT NULL COMMENT '备注',
     create_by       BIGINT          DEFAULT NULL COMMENT '创建人',
@@ -151,7 +204,6 @@ CREATE TABLE IF NOT EXISTS sys_menu (
     update_time     DATETIME        DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     deleted         TINYINT         DEFAULT 0 COMMENT '删除标志(0未删除 1已删除)',
     PRIMARY KEY (id),
-    UNIQUE KEY uk_menu_code (menu_code),
     KEY idx_parent_id (parent_id)
 ) ENGINE=InnoDB COMMENT='菜单表';
 
@@ -399,11 +451,11 @@ CREATE TABLE IF NOT EXISTS sys_login_log (
 -- =============================================================================
 
 -- 初始化组织
-INSERT INTO sys_org (id, org_name, org_code, parent_id, ancestors, order_num, status) VALUES
+INSERT INTO sys_org (id, org_name, org_code, parent_id, ancestors, sort, status) VALUES
 (1, 'BML集团总部', 'BML', 0, '0', 1, 1);
 
 -- 初始化部门
-INSERT INTO sys_dept (id, dept_name, dept_code, org_id, parent_id, ancestors, order_num, status) VALUES
+INSERT INTO sys_dept (id, dept_name, dept_code, org_id, parent_id, ancestors, sort, status) VALUES
 (1, '技术部', 'TECH', 1, 0, '0', 1, 1),
 (2, '产品部', 'PRODUCT', 1, 0, '0', 2, 1),
 (3, '运营部', 'OPERATION', 1, 0, '0', 3, 1);
@@ -413,7 +465,7 @@ INSERT INTO sys_user (id, username, password, nickname, email, org_id, dept_id, 
 (1, 'admin', '$2a$10$7JB720yubVSZvUI0rEqK/.VqGOZTH.ulu33dHOiBE8ByOhJIrdAu2', '超级管理员', 'admin@bml.com', 1, 1, 1);
 
 -- 初始化角色
-INSERT INTO sys_role (id, role_name, role_code, role_type, data_scope, order_num, status, remark) VALUES
+INSERT INTO sys_role (id, role_name, role_code, role_type, data_scope, sort, status, remark) VALUES
 (1, '超级管理员', 'SUPER_ADMIN', 2, 1, 1, 1, '拥有全部权限'),
 (2, '系统管理员', 'SYS_ADMIN', 2, 2, 2, 1, '系统管理权限'),
 (3, '普通用户', 'USER', 1, 6, 3, 1, '普通用户权限');
@@ -423,7 +475,7 @@ INSERT INTO sys_user_role (user_id, role_id) VALUES
 (1, 1);
 
 -- 初始化菜单
-INSERT INTO sys_menu (id, menu_name, menu_code, parent_id, menu_type, path, component, icon, order_num, status) VALUES
+INSERT INTO sys_menu (id, menu_name, perms, parent_id, menu_type, path, component, icon, sort, status) VALUES
 -- 一级目录
 (1, '系统管理', 'system', 0, 'M', '/system', NULL, 'setting', 1, 1),
 (2, '系统监控', 'monitor', 0, 'M', '/monitor', NULL, 'monitor', 2, 1),

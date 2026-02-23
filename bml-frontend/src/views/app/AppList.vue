@@ -10,15 +10,15 @@
 
       <a-table :data="appList" :loading="loading" :pagination="false">
         <template #columns>
-          <a-table-column title="应用名称" data-index="name" />
-          <a-table-column title="AppKey (应用ID)" data-index="appId">
+          <a-table-column title="应用名称" data-index="accountName" />
+          <a-table-column title="AppKey (应用ID)" data-index="accessKey">
              <template #cell="{ record }">
-                <a-typography-text copyable>{{ record.appId }}</a-typography-text>
+                <a-typography-text copyable>{{ record.accessKey }}</a-typography-text>
              </template>
           </a-table-column>
-          <a-table-column title="AppSecret (密钥)" data-index="appSecret">
+          <a-table-column title="AppSecret (密钥)" data-index="secretKey">
              <template #cell="{ record }">
-                <a-typography-text v-if="record.showSecret" copyable>{{ record.appSecret }}</a-typography-text>
+                <a-typography-text v-if="record.showSecret" copyable>{{ record.secretKey }}</a-typography-text>
                 <span v-else>******</span>
                 <a-button type="text" size="mini" @click="record.showSecret = !record.showSecret">
                     {{ record.showSecret ? '隐藏' : '显示' }}
@@ -76,7 +76,7 @@ const form = reactive({ name: '', remark: '' });
 const fetchList = async () => {
     loading.value = true;
     try {
-        const { data } = await request.get('/api/app/list');
+        const { data } = await request.get('/api/account/list');
         appList.value = data.map((item: any) => ({ ...item, showSecret: false }));
     } finally {
         loading.value = false;
@@ -94,20 +94,20 @@ const handleCreate = async () => {
         Message.warning('请输入应用名称');
         return false;
     }
-    await request.post('/api/app', form);
+    await request.post('/api/account/add', { accountName: form.name, remark: form.remark });
     Message.success('创建成功');
     visible.value = false;
     fetchList();
 };
 
 const handleReset = async (record: any) => {
-    await request.put(`/api/app/${record.id}/reset`);
+    await request.put(`/api/account/${record.id}/reset`);
     Message.success('密钥重置成功');
     fetchList();
 };
 
 const handleDelete = async (record: any) => {
-    await request.delete(`/api/app/${record.id}`);
+    await request.delete(`/api/account/remove/${record.id}`);
     Message.success('删除成功');
     fetchList();
 };
@@ -117,6 +117,10 @@ onMounted(fetchList);
 
 <style scoped>
 .app-container {
-    padding: 20px;
+    padding: 16px;
+}
+.general-card {
+    border-radius: 4px;
+    border: none;
 }
 </style>

@@ -1,14 +1,14 @@
 package com.bml.module.api.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.bml.module.api.entity.ApiGroup;
+import com.bml.module.api.entity.SysApiAccount;
 import org.apache.ibatis.annotations.Mapper;
 
 /**
- * API分组 Mapper
+ * API账号Mapper接口
  *
  * @author BML Team
  */
 @Mapper
-public interface ApiGroupMapper extends BaseMapper<ApiGroup> {
+public interface SysApiAccountMapper extends BaseMapper<SysApiAccount> {
 }

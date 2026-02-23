@@ -1,6 +1,9 @@
 <template>
   <div class="api-container">
-    <a-card class="general-card" title="API 接口管理">
+    <a-card class="general-card" :bordered="false">
+      <template #title>
+        <span class="card-title">API 接口管理</span>
+      </template>
       <template #extra>
         <a-space>
           <a-button type="primary" status="success" @click="handleSync" :loading="syncLoading">
@@ -10,37 +13,40 @@
         </a-space>
       </template>
       
-      <a-layout style="height: 70vh;">
-        <a-layout-sider :width="280" style="padding-right: 16px; border-right: 1px solid var(--color-border-2);">
-            <a-input-search placeholder="搜索分组..." v-model="groupSearch" style="margin-bottom: 12px;"/>
-            <a-tree
-                :data="groupData"
-                :field-names="{ key: 'id', title: 'name', children: 'children' }"
-                block-node
-                @select="onGroupSelect"
-            />
-        </a-layout-sider>
+      <div class="layout-box">
+        <div class="left-sider">
+            <a-input-search placeholder="搜索分组..." v-model="groupSearch" class="search-input"/>
+            <div class="tree-wrapper">
+                <a-tree
+                    :data="groupData"
+                    :field-names="{ key: 'id', title: 'name', children: 'children' }"
+                    block-node
+                    @select="onGroupSelect"
+                    class="custom-tree"
+                />
+            </div>
+        </div>
         
-        <a-layout-content style="padding-left: 16px;">
-             <a-table :data="apiList" :pagination="false" :loading="loading">
+        <div class="right-content">
+             <a-table :data="apiList" :pagination="false" :loading="loading" :bordered="{wrapper: true, cell: true}">
                 <template #columns>
                     <a-table-column title="接口名称" data-index="name" />
-                    <a-table-column title="方法" data-index="method">
+                    <a-table-column title="方法" data-index="method" :width="100">
                         <template #cell="{ record }">
                             <a-tag :color="getMethodColor(record.method)">{{ record.method }}</a-tag>
                         </template>
                     </a-table-column>
                     <a-table-column title="路径" data-index="path" />
                     <a-table-column title="控制器" data-index="controller" />
-                    <a-table-column title="操作">
+                    <a-table-column title="操作" :width="100" align="center">
                         <template #cell="{ record }">
                             <a-button type="text" size="small" @click="toDebug(record)">调试</a-button>
                         </template>
                     </a-table-column>
                 </template>
              </a-table>
-        </a-layout-content>
-      </a-layout>
+        </div>
+      </div>
     </a-card>
   </div>
 </template>
@@ -121,6 +127,63 @@ onMounted(() => {
 
 <style scoped>
 .api-container {
-    padding: 20px;
+    padding: 16px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.general-card {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+.general-card :deep(.arco-card-body) {
+    flex: 1;
+    padding: 16px;
+    overflow: hidden;
+}
+
+.card-title {
+    font-size: 16px;
+    font-weight: 500;
+}
+
+.layout-box {
+    display: flex;
+    height: 100%;
+    border: 1px solid var(--color-border-2);
+    border-radius: 4px;
+}
+
+.left-sider {
+    width: 260px;
+    border-right: 1px solid var(--color-border-2);
+    display: flex;
+    flex-direction: column;
+    background: var(--color-fill-1);
+}
+
+.search-input {
+    padding: 12px;
+    border-bottom: 1px solid var(--color-border-2);
+}
+
+.tree-wrapper {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+}
+
+.right-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    background: #fff;
+}
+
+:deep(.arco-tree-node-selected .arco-tree-node-title) {
+    color: rgb(var(--primary-6));
+    font-weight: 500;
 }
 </style>

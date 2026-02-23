@@ -19,6 +19,7 @@ public enum GlobalErrorCode implements ErrorCode {
     FORBIDDEN(403, "无权访问"),
     NOT_FOUND(404, "资源不存在"),
     METHOD_NOT_ALLOWED(405, "请求方法不允许"),
+    UNSUPPORTED_MEDIA_TYPE(415, "不支持的媒体类型"),
     INTERNAL_SERVER_ERROR(500, "系统繁忙，请稍后重试"),
 
     // 系统级错误 1000-1999

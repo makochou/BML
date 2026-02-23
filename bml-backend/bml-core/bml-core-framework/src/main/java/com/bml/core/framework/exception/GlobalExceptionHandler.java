@@ -12,6 +12,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 /**
  * 全局异常处理器
@@ -31,6 +32,8 @@ import org.springframework.web.servlet.NoHandlerFoundException;
  * </ol>
  *
  * @author BML Team
+ * @see Result 统一响应结构
+ * @see GlobalErrorCode 全局错误码
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -127,6 +130,54 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(NoHandlerFoundException.class)
     public Result<Void> handleNoHandlerFoundException(NoHandlerFoundException e) {
         log.warn("404异常: {}", e.getRequestURL());
+        return Result.fail(GlobalErrorCode.NOT_FOUND);
+    }
+
+    /**
+     * 405 方法不支持异常处理
+     * <p>
+     * 当请求方法与接口定义不匹配时触发（如用 GET 访问 POST 接口）。
+     * </p>
+     *
+     * @param e 方法不支持异常
+     * @return 统一错误响应（405）
+     */
+    @ExceptionHandler(org.springframework.web.HttpRequestMethodNotSupportedException.class)
+    public Result<Void> handleHttpRequestMethodNotSupportedException(
+            org.springframework.web.HttpRequestMethodNotSupportedException e) {
+        log.warn("不支持当前请求方法: {}", e.getMethod());
+        return Result.fail(GlobalErrorCode.METHOD_NOT_ALLOWED);
+    }
+
+    /**
+     * 415 不支持的媒体类型异常处理
+     * <p>
+     * 当请求 Content-Type 与接口定义不匹配时触发（如 POST 接口需要 application/json 但传了 text/plain）。
+     * </p>
+     *
+     * @param e 媒体类型异常
+     * @return 统一错误响应（415）
+     */
+    @ExceptionHandler(org.springframework.web.HttpMediaTypeNotSupportedException.class)
+    public Result<Void> handleHttpMediaTypeNotSupportedException(
+            org.springframework.web.HttpMediaTypeNotSupportedException e) {
+        log.warn("不支持当前媒体类型: {}", e.getContentType());
+        return Result.fail(GlobalErrorCode.UNSUPPORTED_MEDIA_TYPE);
+    }
+
+    /**
+     * 404 静态资源不存在异常处理
+     * <p>
+     * Spring Boot 3.2+ 引入，当请求的静态资源不存在时触发。
+     * 通常发生在 Controller 无法匹配且静态资源也无法匹配时。
+     * </p>
+     *
+     * @param e 404 异常
+     * @return 统一错误响应（404）
+     */
+    @ExceptionHandler(NoResourceFoundException.class)
+    public Result<Void> handleNoResourceFoundException(NoResourceFoundException e) {
+        log.warn("404资源不存在: {} /{}", e.getHttpMethod(), e.getResourcePath());
         return Result.fail(GlobalErrorCode.NOT_FOUND);
     }
 
