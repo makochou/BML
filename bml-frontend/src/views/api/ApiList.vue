@@ -127,7 +127,7 @@ onMounted(() => {
 
 <style scoped>
 .api-container {
-    padding: 16px;
+    padding: 0px 8px 8px 8px; /* Remove top padding completely, reduce side/bottom padding */
     height: 100%;
     display: flex;
     flex-direction: column;

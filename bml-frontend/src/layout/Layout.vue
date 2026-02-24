@@ -401,12 +401,12 @@ const handleLogout = async () => {
    Header Styles V4 - Future Minimalist ("Glass Dock")
    ================================================================= */
 .layout-demo :deep(.arco-layout-header) {
-  height: 72px; /* Breathing room */
+  height: 48px; /* Extremely compact to push content up */
   background: transparent; /* Totally clear */
   border-bottom: none;
   display: flex;
-  align-items: center;
-  padding: 0 32px; /* Increased padding */
+  align-items: flex-start; /* Align items to the top instead of center */
+  padding: 4px 24px 0 32px; /* Reduced top padding from 12px to 4px */
   justify-content: space-between;
   z-index: 99;
 }
@@ -417,6 +417,7 @@ const handleLogout = async () => {
     align-items: center;
     position: relative;
     padding-left: 12px;
+    margin-top: 4px; /* Reduced from 12px to push the title further up */
 }
 .title-decoration {
     position: absolute;
@@ -461,6 +462,10 @@ const handleLogout = async () => {
         0 12px 32px rgba(0, 0, 0, 0.05),
         inset 0 0 0 1px rgba(255, 255, 255, 0.6);
     transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    /* Push to top right */
+    position: absolute;
+    top: 8px;
+    right: 12px;
 }
 
 .glass-dock:hover {
@@ -532,8 +537,8 @@ const handleLogout = async () => {
 .layout-demo :deep(.arco-layout-content) {
   background: transparent;
   padding: 0;
-  height: calc(100vh - 72px); /* Correct calculation for taller header */
-  overflow: hidden;
+  height: calc(100vh - 48px); /* Correct calculation for taller header */
+  overflow: hidden; /* Hide outer scrollbar to allow inner content to manage it */
   display: flex;
   flex-direction: column;
 }
@@ -542,6 +547,7 @@ const handleLogout = async () => {
 .tags-view-wrapper {
   flex-shrink: 0;
   height: 44px;
+  margin-top: -6px; /* Pull it up aggressively to close the gap */
   z-index: 98;
 }
 
@@ -552,6 +558,7 @@ const handleLogout = async () => {
   position: relative;
   display: flex;
   flex-direction: column;
+  padding: 0; /* Clear default padding if any */
 }
 
 /* Transition */
