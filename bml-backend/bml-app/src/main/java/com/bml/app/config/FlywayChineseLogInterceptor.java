@@ -34,10 +34,16 @@ public class FlywayChineseLogInterceptor implements Callback {
                 System.out.println("\u001B[32m[数据库初始化] \t已比对当前表结构，已经是最新版本，跳过更新。\u001B[0m");
                 break;
             case BEFORE_EACH_MIGRATE:
-                System.out.println("\u001B[33m  └─> 发现新的 SQL 表结构变更，正在自动执行建表脚本...\u001B[0m");
+                String script = (context != null && context.getMigrationInfo() != null)
+                        ? context.getMigrationInfo().getScript()
+                        : "未知脚本";
+                System.out.println("\u001B[33m  └─> 发现新的 SQL 表结构变更，正在执行脚本: " + script + " ...\u001B[0m");
                 break;
             case AFTER_EACH_MIGRATE:
-                System.out.println("\u001B[32m      更新成功！\u001B[0m");
+                String doneScript = (context != null && context.getMigrationInfo() != null)
+                        ? context.getMigrationInfo().getScript()
+                        : "未知脚本";
+                System.out.println("\u001B[32m      [" + doneScript + "] 更新成功！\u001B[0m");
                 break;
             default:
                 break;

@@ -20,7 +20,7 @@ import java.util.List;
  *
  * @author BML Team
  */
-@Mapper
+@Mapper(unmappedTargetPolicy = org.mapstruct.ReportingPolicy.IGNORE)
 public interface RoleConverter {
 
     /** 转换器实例 */

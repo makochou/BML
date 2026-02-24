@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration scan="true" scanPeriod="60 seconds">
+
+    <!-- 属性配置 -->
+    <!-- BML 根目录，将日志文件输出到项目根目录的 logs 文件夹下 -->
+    <property name="LOG_HOME" value="./logs"/>
+    <property name="APP_NAME" value="bml-backend"/>
+
+    <!-- 日志输出格式与 Spring Boot 默认风格保持一致并增强 -->
+    <!-- %d{yyyy-MM-dd HH:mm:ss.SSS} - 日期
+         %5p - 日志级别
+         ${PID:- } - 进程PID
+         分隔符
+         [%15.15t] - 线程名
+         %-40.40logger{39} - 发出日志的类名
+         : %m%n - 日志消息和换行符 -->
+    <!-- 控制台彩色输出 -->
+    <property name="CONSOLE_LOG_PATTERN"
+              value="%clr(%d{yyyy-MM-dd HH:mm:ss.SSS}){faint} %clr(%5p) %clr(${PID:- }){magenta} %clr(---){faint} %clr([%15.15t]){faint} %clr(%-40.40logger{39}){cyan} %clr(:){faint} %m%n${LOG_EXCEPTION_CONVERSION_WORD:-%wEx}"/>
+    <!-- 文件无色输出 -->
+    <property name="FILE_LOG_PATTERN"
+              value="%d{yyyy-MM-dd HH:mm:ss.SSS} %5p ${PID:- } --- [%15.15t] %-40.40logger{39} : %m%n${LOG_EXCEPTION_CONVERSION_WORD:-%wEx}"/>
+
+    <!-- 引入 Spring Boot 默认的颜色转换器 -->
+    <conversionRule conversionWord="clr" converterClass="org.springframework.boot.logging.logback.ColorConverter" />
+    <conversionRule conversionWord="wEx" converterClass="org.springframework.boot.logging.logback.ExtendedWhitespaceThrowableProxyConverter" />
+
+    <!-- 1. 控制台输出 (Console) -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>${CONSOLE_LOG_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!-- 2. 全部日志文件输出 (Info 级别及以上) -->
+    <appender name="FILE_ALL" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_HOME}/${APP_NAME}.log</file>
+        <encoder>
+            <pattern>${FILE_LOG_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <!-- 每天滚动生成一个文件 -->
+            <fileNamePattern>${LOG_HOME}/archive/${APP_NAME}-%d{yyyy-MM-dd}.log</fileNamePattern>
+            <!-- 保留最近 30 天的历史日志 -->
+            <maxHistory>30</maxHistory>
+            <!-- 历史日志最大占用的磁盘空间 -->
+            <totalSizeCap>2GB</totalSizeCap>
+        </rollingPolicy>
+    </appender>
+
+    <!-- 3. 错误日志文件专门输出 (Error 级别) -->
+    <appender name="FILE_ERROR" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_HOME}/${APP_NAME}-error.log</file>
+        <!-- 级别过滤器，只保留 ERROR 级别的日志 -->
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>ERROR</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+        <encoder>
+            <pattern>${FILE_LOG_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>${LOG_HOME}/archive/${APP_NAME}-error-%d{yyyy-MM-dd}.log</fileNamePattern>
+            <maxHistory>30</maxHistory>
+        </rollingPolicy>
+    </appender>
+
+    <!-- 开发环境：控制台输出 -->
+    <springProfile name="dev | default">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="FILE_ALL"/>
+            <appender-ref ref="FILE_ERROR"/>
+        </root>
+        <!-- 可以在开发环境将某些核心模块调为 DEBUG -->
+        <logger name="com.bml" level="DEBUG"/>
+    </springProfile>
+
+    <!-- 测试/生产环境：文件输出为主 -->
+    <springProfile name="test | prod">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="FILE_ALL"/>
+            <appender-ref ref="FILE_ERROR"/>
+        </root>
+        <!-- 避免 MyBatis-Plus 和 SQL 过度打印 -->
+        <logger name="org.mybatis" level="INFO"/>
+    </springProfile>
+
+</configuration>
