@@ -11,6 +11,10 @@ export default defineConfig({
         target: 'http://localhost:8080',
         changeOrigin: true,
         // rewrite: (path) => path.replace(/^\/api/, '') // 后端context-path已是/api，无需重写
+      },
+      '/actuator': {
+        target: 'http://localhost:8080',
+        changeOrigin: true
       }
     }
   }

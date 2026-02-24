@@ -98,8 +98,8 @@ const onGroupSelect = (keys: Array<any>) => {
 const handleSync = async () => {
     syncLoading.value = true;
     try {
-        const { msg } = await request.post('/api/app/sync');
-        Message.success(msg);
+        await request.post('/api/app/sync');
+        Message.success('同步成功');
         fetchGroups(); // 刷新
     } finally {
         syncLoading.value = false;

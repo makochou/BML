@@ -225,12 +225,6 @@ const handleSend = async () => {
         // 如果不是，则加 Token (暂不支持Token调试，仅支持签名演示)。
         // 假设用户只调试 /open/api 相关接口。
         
-        const url = `/api${currentApi.value.path}`; // 前端 /api 代理 -> 后端 /api...
-        // 修正：如果后端接口本身就是 /open/api/...
-        
-        // 临时逻辑：如果path不含open，提示用户这不是开放接口。
-        // 或者我们强制加头，发给后端看后端怎么处理。
-        
         // 这里的请求是发给前端 Proxy 的 (/api/...) 
         const realUrl = `/api${currentApi.value.path}`; 
 

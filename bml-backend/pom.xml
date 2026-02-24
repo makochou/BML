@@ -58,6 +58,9 @@
         <!-- Security -->
         <jjwt.version>0.12.5</jjwt.version>
         <bouncycastle.version>1.77</bouncycastle.version>
+
+        <!-- Monitor -->
+        <oshi.version>6.4.13</oshi.version>
     </properties>
 
     <!-- 
@@ -188,6 +191,13 @@
                 <groupId>org.bouncycastle</groupId>
                 <artifactId>bcprov-jdk18on</artifactId>
                 <version>${bouncycastle.version}</version>
+            </dependency>
+
+            <!-- OSHI -->
+            <dependency>
+                <groupId>com.github.oshi</groupId>
+                <artifactId>oshi-core</artifactId>
+                <version>${oshi.version}</version>
             </dependency>
 
             <!-- Internal Modules -->

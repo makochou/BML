@@ -19,6 +19,12 @@
             <version>${project.version}</version>
         </dependency>
 
+        <!-- OSHI Server Monitor Probe -->
+        <dependency>
+            <groupId>com.github.oshi</groupId>
+            <artifactId>oshi-core</artifactId>
+        </dependency>
+
         <!-- MapStruct -->
         <dependency>
             <groupId>org.mapstruct</groupId>
