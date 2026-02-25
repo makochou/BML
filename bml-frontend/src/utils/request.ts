@@ -37,7 +37,16 @@ service.interceptors.response.use(
         return res;
     },
     error => {
-        Message.error(error.message || 'Request Error');
+        if (error.response && error.response.status === 401) {
+            Message.error('登录失效，请重新登录');
+            localStorage.removeItem('token');
+            // If the current route is not login, redirect to login
+            if (window.location.pathname !== '/admin/login') {
+                window.location.href = '/admin/login';
+            }
+        } else {
+            Message.error(error.message || 'Request Error');
+        }
         return Promise.reject(error);
     }
 );

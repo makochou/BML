@@ -214,7 +214,7 @@ export const useNotificationStore = defineStore('notification', {
                     const idx = this.alerts.findIndex((a) => a.id === id);
                     if (idx !== -1) {
                         // 如果是未读告警，同步减少未读数
-                        if (this.alerts[idx].readStatus === 0 && this.unreadCount > 0) {
+                        if (this.alerts[idx] && this.alerts[idx].readStatus === 0 && this.unreadCount > 0) {
                             this.unreadCount--;
                         }
                         this.alerts.splice(idx, 1);

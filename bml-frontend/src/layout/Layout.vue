@@ -160,13 +160,14 @@
 
     <!-- 通知中心右侧抽屉（与 ThemeSettings 同级） -->
     <a-drawer
-      :width="840"
+      class="ultra-premium-drawer notify-drawer"
+      :width="380"
       :visible="notificationStore.drawerVisible"
       unmount-on-close
       :footer="false"
+      :header="false"
       @cancel="notificationStore.closeDrawer()"
     >
-      <template #title>通知中心</template>
       <NotificationPanel />
     </a-drawer>
 

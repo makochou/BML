@@ -66,13 +66,17 @@
        <div class="grid-center">
             <div class="tech-card center-panel">
                 <div class="center-head">
-                    <div style="display: flex; align-items: center; gap: 12px;">
-                       <h3>核心物理算力洞察 (Computing Power)</h3>
-                       <div class="load-badge" v-if="serverInfo?.cpu && serverInfo.cpu.load1 != null">
-                          Load: <span>{{ serverInfo.cpu.load1 }}</span> | <span>{{ serverInfo.cpu.load5 }}</span> | <span>{{ serverInfo.cpu.load15 }}</span>
-                       </div>
+                    <div style="display: flex; flex-direction: column; gap: 8px; width: 100%;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                           <h3>核心物理算力洞察 (Computing Power)</h3>
+                           <div class="load-badge" v-if="serverInfo?.cpu && serverInfo.cpu.load1 != null">
+                              Load: <span>{{ serverInfo.cpu.load1 }}</span> | <span>{{ serverInfo.cpu.load5 }}</span> | <span>{{ serverInfo.cpu.load15 }}</span>
+                           </div>
+                        </div>
+                        <div>
+                            <span class="refresh-tag">3s Refresh</span>
+                        </div>
                     </div>
-                    <span class="refresh-tag">3s Refresh</span>
                 </div>
                 
                 <div class="gauge-area">
@@ -322,6 +326,7 @@ onUnmounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 10px;
   margin-bottom: 24px;
   padding-bottom: 12px;
   border-bottom: 1px solid rgba(0,0,0,0.05);
@@ -342,6 +347,7 @@ onUnmounted(() => {
   color: transparent;
   font-weight: 600;
   letter-spacing: 0.5px;
+  white-space: nowrap;
 }
 
 /* 雷达圆点 */
@@ -361,7 +367,9 @@ onUnmounted(() => {
 
 .header-right {
   display: flex;
-  gap: 12px;
+  gap: 8px; /* 减小间距 */
+  justify-content: flex-end;
+  overflow: hidden; /* 防止溢出破坏布局 */
 }
 .info-pill {
   background: #fff;
@@ -372,10 +380,12 @@ onUnmounted(() => {
   box-shadow: 0 2px 8px rgba(0,0,0,0.04);
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px; /* 减小图标与文字间距 */
   color: #4e5969;
   white-space: nowrap;
-  flex-shrink: 0;
+  flex-shrink: 1; /* 允许在极端情况下收缩 */
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .info-pill span {
   color: #165dff;
@@ -481,8 +491,8 @@ onUnmounted(() => {
   justify-content: space-between;
   align-items: center;
 }
-.center-head h3 { margin: 0; color: #1d2129; font-size: 18px; font-weight: 600; }
-.refresh-tag { background: rgba(0,180,42,0.1); color: #00b42a; padding: 2px 8px; border-radius: 4px; font-size: 12px; border: 1px solid rgba(0,180,42,0.2); font-weight: 500; }
+.center-head h3 { margin: 0; color: #1d2129; font-size: 18px; font-weight: 600; white-space: nowrap; }
+.refresh-tag { background: rgba(0,180,42,0.1); color: #00b42a; padding: 2px 8px; border-radius: 4px; font-size: 12px; border: 1px solid rgba(0,180,42,0.2); font-weight: 500; white-space: nowrap; }
 
 .gauge-area {
   display: flex;
@@ -564,20 +574,19 @@ onUnmounted(() => {
 .loading-state { text-align: center; color: #86909c; padding: 40px 0; font-size: 14px; }
 
 /* 算力与网络负载 */
-.load-badge { background: rgba(22,93,255,0.06); border: 1px solid rgba(22,93,255,0.2); padding: 4px 10px; border-radius: 6px; font-size: 13px; color: #4e5969; font-weight: 500;}
+.load-badge { background: rgba(22,93,255,0.06); border: 1px solid rgba(22,93,255,0.2); padding: 4px 10px; border-radius: 6px; font-size: 13px; color: #4e5969; font-weight: 500; white-space: nowrap; }
 .load-badge span { color: #165dff; font-family: 'Courier New', monospace; font-weight: bold; }
 .hw-metric { font-family: 'Courier New', monospace; font-weight: bold; min-width: 60px; display: inline-block;}
 
 /* 修改后的内存清理操作栏 - 更精致无边框感 */
 .gc-action-bar {
-    flex: 1; /* 让本身自适应拉伸填充剩余的垂直空间 */
     display: flex;
     justify-content: space-between;
     align-items: center;
     background: #f4f5f9;
     border-radius: 8px;
-    padding: 20px 24px;
-    margin: 5px 16px 16px 16px;
+    padding: 12px 20px; /* 减小上下 padding 从而减小高度 */
+    margin: auto 16px; /* 使用 auto 实现垂直居中 */
     border-left: 4px solid #165dff;
     transition: all 0.3s ease;
 }
