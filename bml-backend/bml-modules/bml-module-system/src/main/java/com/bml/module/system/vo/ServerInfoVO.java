@@ -39,6 +39,11 @@ public class ServerInfoVO {
         private double wait; // 当前等待率
         private double free; // 当前空闲率
         private String cpuModel; // CPU型号名称
+
+        // 增量指标：系统负载 (1, 5, 15 分钟)
+        private double load1;
+        private double load5;
+        private double load15;
     }
 
     @Data
@@ -71,6 +76,10 @@ public class ServerInfoVO {
         private String osName; // 操作系统
         private String osArch; // 系统架构
         private String userDir; // 项目运行路径
+
+        // 增量指标：系统启动与运行时间
+        private String bootTime; // 系统启动时间
+        private String upTime; // 系统运行时长
     }
 
     @Data
@@ -82,6 +91,10 @@ public class ServerInfoVO {
         private String free; // 剩余大小
         private String used; // 已经使用量
         private double usage; // 对应的使用率 (%)
+
+        // 增量指标：磁盘 IO 速率
+        private String readSpeed; // 读取速度
+        private String writeSpeed; // 写入速度
     }
 
     @Data
@@ -90,5 +103,9 @@ public class ServerInfoVO {
         private String txSpeed; // 当前上行网速（如: 100 KB/s）
         private String totalRxBytes;// 总接收流量
         private String totalTxBytes;// 总发送流量
+
+        // 增量指标：网络连接状态 (考虑到效率与跨平台兼容性，OSHI获取全量连接较慢，提供概览支持)
+        private int tcpConnections; // TCP连接数
+        private int udpConnections; // UDP连接数
     }
 }

@@ -3,6 +3,8 @@ package com.bml.core.framework.config;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+import org.springframework.web.servlet.HandlerInterceptor;
+import org.springframework.beans.factory.annotation.Autowired;
 
 /**
  * Web MVC 配置
@@ -77,12 +79,22 @@ public class WebMvcConfig implements WebMvcConfigurer {
     @jakarta.annotation.Resource
     private com.bml.core.framework.interceptor.OpenApiInterceptor openApiInterceptor;
 
+    @Autowired(required = false)
+    private HandlerInterceptor activeUserInterceptor;
+
     @Override
     public void addInterceptors(org.springframework.web.servlet.config.annotation.InterceptorRegistry registry) {
         // 开放平台接口签名认证：/open/api/**
         registry.addInterceptor(openApiInterceptor)
                 .addPathPatterns("/open/api/**")
                 .excludePathPatterns("/open/api/test/**"); // 排除测试接口
+
+        // 注入在线活跃访客监听拦截器 (模块层实现)
+        if (activeUserInterceptor != null) {
+            registry.addInterceptor(activeUserInterceptor)
+                    .addPathPatterns("/**")
+                    .excludePathPatterns("/login", "/captchaImage", "/**/*.html", "/**/*.js", "/**/*.css");
+        }
     }
 
     /**

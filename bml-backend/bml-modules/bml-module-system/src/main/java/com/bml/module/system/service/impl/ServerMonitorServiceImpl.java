@@ -2,6 +2,7 @@ package com.bml.module.system.service.impl;
 
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.util.NumberUtil;
+import com.bml.module.system.security.monitor.ActiveUserTracker;
 import com.bml.module.system.service.ServerMonitorService;
 import com.bml.module.system.vo.ServerInfoVO;
 import org.springframework.stereotype.Service;
@@ -31,6 +32,9 @@ public class ServerMonitorServiceImpl implements ServerMonitorService {
     // CPU 与 网速 等待捕获时间用于计算负载浮动值
     private static final int OSHI_WAIT_SECOND = 1000;
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private ActiveUserTracker activeUserTracker;
+
     @Override
     public ServerInfoVO getServerInfo() {
         ServerInfoVO serverInfo = new ServerInfoVO();
@@ -40,7 +44,7 @@ public class ServerMonitorServiceImpl implements ServerMonitorService {
         HardwareAbstractionLayer hal = si.getHardware();
         OperatingSystem os = si.getOperatingSystem();
 
-        // 获取前置数据：CPU Ticks & Network Bytes
+        // 获取前置数据：CPU Ticks, Network Bytes, Disk Bytes
         CentralProcessor processor = hal.getProcessor();
         long[] prevTicks = processor.getSystemCpuLoadTicks();
 
@@ -53,18 +57,31 @@ public class ServerMonitorServiceImpl implements ServerMonitorService {
             prevTxBytes += net.getBytesSent();
         }
 
+        // 记录磁盘初始状态用于计算 I/O
+        long prevDiskReadBytes = 0;
+        long prevDiskWriteBytes = 0;
+
+        // 由于部分OS的FileStore可能拿不到具体的读写字节数，此处通过收集全部可用指标聚合
+        // 但是 OSFileStore 本身不提供实时的 byte 读写，需要从 HWDiskStore 中获取
+        List<oshi.hardware.HWDiskStore> diskStores = hal.getDiskStores();
+        for (oshi.hardware.HWDiskStore ds : diskStores) {
+            ds.updateAttributes();
+            prevDiskReadBytes += ds.getReadBytes();
+            prevDiskWriteBytes += ds.getWriteBytes();
+        }
+
         // 统一休眠等待 1 秒钟，计算增量差值
         Util.sleep(OSHI_WAIT_SECOND);
 
         // 获取后置数据并执行计算
         serverInfo.setCpu(getCpuInfo(processor, prevTicks));
-        serverInfo.setNet(getNetInfo(networkIFs, prevRxBytes, prevTxBytes));
+        serverInfo.setNet(getNetInfo(networkIFs, prevRxBytes, prevTxBytes, os));
 
-        // 获取其他无须强依赖等待时长的静态参数
+        // 获取其他静态或状态型参数
         serverInfo.setMem(getMemInfo(hal.getMemory()));
         serverInfo.setJvm(getJvmInfo());
         serverInfo.setSys(getSysInfo(os));
-        serverInfo.setDisks(getDiskInfo(os));
+        serverInfo.setDisks(getDiskInfo(os, hal, prevDiskReadBytes, prevDiskWriteBytes));
 
         return serverInfo;
     }
@@ -100,10 +117,17 @@ public class ServerMonitorServiceImpl implements ServerMonitorService {
         cpu.setWait(NumberUtil.round(iowait * 100.0 / totalCpu, 2).doubleValue());
         cpu.setFree(NumberUtil.round(idle * 100.0 / totalCpu, 2).doubleValue());
 
+        // 获取系统负载 (Windows 通常返回负数)
+        double[] loadAverage = processor.getSystemLoadAverage(3);
+        cpu.setLoad1(loadAverage[0] < 0 ? 0.0 : NumberUtil.round(loadAverage[0], 2).doubleValue());
+        cpu.setLoad5(loadAverage[1] < 0 ? 0.0 : NumberUtil.round(loadAverage[1], 2).doubleValue());
+        cpu.setLoad15(loadAverage[2] < 0 ? 0.0 : NumberUtil.round(loadAverage[2], 2).doubleValue());
+
         return cpu;
     }
 
-    private ServerInfoVO.NetInfo getNetInfo(List<NetworkIF> networkIFs, long prevRxBytes, long prevTxBytes) {
+    private ServerInfoVO.NetInfo getNetInfo(List<NetworkIF> networkIFs, long prevRxBytes, long prevTxBytes,
+            OperatingSystem os) {
         ServerInfoVO.NetInfo net = new ServerInfoVO.NetInfo();
         long currentRxBytes = 0;
         long currentTxBytes = 0;
@@ -121,6 +145,20 @@ public class ServerMonitorServiceImpl implements ServerMonitorService {
         net.setTxSpeed(formatTrafficSpeed(txSpeedBytes));
         net.setTotalRxBytes(formatTrafficSize(currentRxBytes));
         net.setTotalTxBytes(formatTrafficSize(currentTxBytes));
+
+        // 【大屏改造核心】：获取真实的、基于应用层的在线活跃访客数
+        // 代替原本杂乱的 OSHI OS 级别全部 TCP socket
+        try {
+            int activeUsers = activeUserTracker != null ? activeUserTracker.getActiveUserCount() : 0;
+            net.setTcpConnections(activeUsers);
+
+            oshi.software.os.InternetProtocolStats ipStats = os.getInternetProtocolStats();
+            long udpConns = ipStats.getUDPv4Stats().getDatagramsReceived();
+            net.setUdpConnections(udpConns > 0 ? -1 : 0); // UDP 无状态，无准确连接数，主要看流量
+        } catch (Exception e) {
+            net.setTcpConnections(0);
+            net.setUdpConnections(0);
+        }
 
         return net;
     }
@@ -198,14 +236,35 @@ public class ServerMonitorServiceImpl implements ServerMonitorService {
         sys.setOsArch(props.getProperty("os.arch"));
         sys.setUserDir(props.getProperty("user.dir"));
 
+        // 计算系统启动时间与运行时长
+        long bootTimeMillis = os.getSystemBootTime() * 1000L;
+        sys.setBootTime(DateUtil.formatDateTime(DateUtil.date(bootTimeMillis)));
+        sys.setUpTime(DateUtil.formatBetween(DateUtil.date(bootTimeMillis), DateUtil.date()));
+
         return sys;
     }
 
-    private List<ServerInfoVO.DiskInfo> getDiskInfo(OperatingSystem os) {
+    private List<ServerInfoVO.DiskInfo> getDiskInfo(OperatingSystem os, HardwareAbstractionLayer hal,
+            long prevDiskReadBytes, long prevDiskWriteBytes) {
         List<ServerInfoVO.DiskInfo> list = new LinkedList<>();
+
+        // 计算全局IO速度（多磁盘合并均摊处理简化前端展示，如果需要每个盘符具体速度需要映射关联对应 DiskStore 和 FileStore）
+        long currentDiskReadBytes = 0;
+        long currentDiskWriteBytes = 0;
+        List<oshi.hardware.HWDiskStore> diskStores = hal.getDiskStores();
+        for (oshi.hardware.HWDiskStore ds : diskStores) {
+            ds.updateAttributes();
+            currentDiskReadBytes += ds.getReadBytes();
+            currentDiskWriteBytes += ds.getWriteBytes();
+        }
+
+        long globalReadSpeed = Math.max(currentDiskReadBytes - prevDiskReadBytes, 0);
+        long globalWriteSpeed = Math.max(currentDiskWriteBytes - prevDiskWriteBytes, 0);
+
         FileSystem fileSystem = os.getFileSystem();
         List<OSFileStore> fsArray = fileSystem.getFileStores();
-        for (OSFileStore fs : fsArray) {
+        for (int i = 0; i < fsArray.size(); i++) {
+            OSFileStore fs = fsArray.get(i);
             long free = fs.getUsableSpace();
             long total = fs.getTotalSpace();
             long used = total - free;
@@ -218,6 +277,16 @@ public class ServerMonitorServiceImpl implements ServerMonitorService {
             disk.setFree(formatDiskSize(free));
             disk.setUsed(formatDiskSize(used));
             disk.setUsage(total == 0 ? 0 : NumberUtil.round(used * 100.0 / total, 2).doubleValue());
+
+            // 将整体IO速率挂载到主系统盘展示上 (通常是索引0)，其他盘符默认留空或平摊，以避免整体显示冗余
+            if (i == 0) {
+                disk.setReadSpeed(formatTrafficSpeed(globalReadSpeed));
+                disk.setWriteSpeed(formatTrafficSpeed(globalWriteSpeed));
+            } else {
+                disk.setReadSpeed("-");
+                disk.setWriteSpeed("-");
+            }
+
             list.add(disk);
         }
         return list;

@@ -12,9 +12,10 @@
        <div class="header-right">
           <div class="info-pill" v-if="serverInfo?.net">
              <icon-swap style="margin-right: 4px; color: #165dff"/>
-             <span style="color: #86909c">下行:</span> <span class="text-green" style="font-weight:bold; min-width: 65px">{{ serverInfo.net.rxSpeed }}</span>
-             <span style="color: #86909c; margin-left: 8px">上行:</span> <span class="hardware-text" style="font-weight:bold; min-width: 65px">{{ serverInfo.net.txSpeed }}</span>
-             <span style="color: #86909c; margin-left: 8px">总计(收起/发送):</span> <span style="font-family: monospace; font-weight: 500; color: #1d2129">{{ serverInfo.net.totalRxBytes }} / {{ serverInfo.net.totalTxBytes }}</span>
+             <span style="color: #86909c">↓</span> <span class="text-green hw-metric">{{ serverInfo.net.rxSpeed }}</span>
+             <span style="color: #86909c; margin-left: 8px">↑</span> <span class="hardware-text hw-metric">{{ serverInfo.net.txSpeed }}</span>
+             <span style="color: #86909c; margin-left: 8px" title="Total(Rx/Tx)">总计(收/发):</span> <span class="hw-metric" style="color: #1d2129">{{ serverInfo.net.totalRxBytes }} / {{ serverInfo.net.totalTxBytes }}</span>
+             <span style="color: #86909c; margin-left: 8px" title="Real-time Active Visitors">访客:</span> <span class="text-green hw-metric">{{ serverInfo.net.tcpConnections != null ? serverInfo.net.tcpConnections : '-' }}</span>
           </div>
           <div class="info-pill" v-else><icon-loading /> 网络嗅探中...</div>
           <div class="info-pill"><icon-desktop/> 探测节点 (内/外): 
@@ -31,13 +32,15 @@
        <!-- 左侧栏：系统与虚拟机详情 -->
        <div class="grid-left">
            <!-- 宿主机信息卡片 -->
-           <div class="tech-card glass-panel left-card">
+           <div class="tech-card glass-panel left-card" style="flex: 1.1">
                <div class="card-accent" style="background: linear-gradient(135deg, #165dff, #00b8d4);"></div>
                <div class="card-title"><icon-computer/> 宿主机运行环境</div>
                <div class="info-list" v-if="serverInfo?.sys">
                    <div class="info-row"><span class="label">服务器名称</span> <span class="value hardware-text">{{ serverInfo.sys.computerName }}</span></div>
                    <div class="info-row"><span class="label">操作系统</span> <span class="value">{{ serverInfo.sys.osName }}</span></div>
                    <div class="info-row"><span class="label">系统架构</span> <span class="value">{{ serverInfo.sys.osArch }}</span></div>
+                   <div class="info-row"><span class="label">系统启动时间</span> <span class="value">{{ serverInfo.sys.bootTime || '-' }}</span></div>
+                   <div class="info-row"><span class="label">不间断运行</span> <span class="value text-green">{{ serverInfo.sys.upTime || '-' }}</span></div>
                    <div class="info-row"><span class="label">项目根路径</span> <span class="value code-text">{{ serverInfo.sys.userDir }}</span></div>
                </div>
                <div class="loading-state" v-else><icon-loading /> 载入中...</div>
@@ -63,7 +66,12 @@
        <div class="grid-center">
             <div class="tech-card center-panel">
                 <div class="center-head">
-                    <h3>核心物理算力洞察 (Computing Power)</h3>
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                       <h3>核心物理算力洞察 (Computing Power)</h3>
+                       <div class="load-badge" v-if="serverInfo?.cpu && serverInfo.cpu.load1 != null">
+                          Load: <span>{{ serverInfo.cpu.load1 }}</span> | <span>{{ serverInfo.cpu.load5 }}</span> | <span>{{ serverInfo.cpu.load15 }}</span>
+                       </div>
+                    </div>
                     <span class="refresh-tag">3s Refresh</span>
                 </div>
                 
@@ -80,6 +88,21 @@
                         <v-chart class="gauge-chart" :option="jvmOption" autoresize />
                         <div class="gauge-title">JVM 内存占用</div>
                     </div>
+                </div>
+
+                <!-- 无缝衔接的内存清理操作栏 -->
+                <div class="gc-action-bar">
+                    <div class="gc-desc">
+                        <div class="gc-icon-bg"><icon-thunderbolt /></div>
+                        <div>
+                           <span class="gc-title">智能内存回收 (GC)</span>
+                           <span class="gc-subtitle">平滑释放过期对象，无损业务运行。</span>
+                        </div>
+                    </div>
+                    <a-button class="tech-gc-btn" type="primary" size="small" shape="round" :loading="gcLoading" @click="handleGcClean">
+                        <template #icon><icon-delete /></template>
+                        一键清理
+                    </a-button>
                 </div>
 
                 <div class="cpu-detail-bars" v-if="serverInfo?.cpu">
@@ -124,8 +147,8 @@
                        </div>
                        
                        <div class="disk-foot">
-                           <span>已用: {{ disk.used }}</span>
-                           <span>配额: {{ disk.total }}</span>
+                           <span>已用: {{ disk.used }} / {{ disk.total }}</span>
+                           <span class="disk-io" v-if="disk.readSpeed && disk.readSpeed !== '-'"><icon-swap/> R: {{ disk.readSpeed }} | W: {{ disk.writeSpeed }}</span>
                        </div>
                    </div>
                </div>
@@ -139,7 +162,8 @@
 
 <script lang="ts" setup>
 import { ref, onMounted, onUnmounted } from 'vue';
-import { IconWifi, IconDesktop, IconComputer, IconLayers, IconStorage, IconLoading, IconSwap } from '@arco-design/web-vue/es/icon';
+import { Message } from '@arco-design/web-vue';
+import { IconDesktop, IconComputer, IconLayers, IconStorage, IconLoading, IconSwap, IconDelete, IconThunderbolt } from '@arco-design/web-vue/es/icon';
 import request from '../../utils/request';
 import { use } from 'echarts/core';
 import { GaugeChart } from 'echarts/charts';
@@ -167,20 +191,20 @@ const createTechGauge = (name: string, color: string): ECOption => ({
     min: 0,
     max: 100,
     splitNumber: 10,
-    radius: '100%',
-    center: ['50%', '75%'],
+    radius: '110%',
+    center: ['50%', '68%'],
     axisLine: {
       lineStyle: {
-        width: 14,
+        width: 12,
         color: [[1, 'rgba(255,255,255,0.05)']]
       }
     },
     progress: {
       show: true,
-      width: 14,
+      width: 12,
       itemStyle: {
         color: color,
-        shadowBlur: 10,
+        shadowBlur: 8,
         shadowColor: color
       }
     },
@@ -190,8 +214,8 @@ const createTechGauge = (name: string, color: string): ECOption => ({
     axisLabel: { show: false },
     detail: {
       valueAnimation: true,
-      offsetCenter: [0, '5%'],
-      fontSize: 24,
+      offsetCenter: [0, '-5%'],
+      fontSize: 22,
       fontWeight: 'bold',
       fontFamily: 'Courier New',
       formatter: '{value}%',
@@ -215,7 +239,7 @@ const fetchMonitorData = async () => {
         const res: any = await request.get('/system/monitor/server');
         if (res.code === 200) {
             serverInfo.value = res.data;
-            console.log('最新的服务器硬件与网速指标 ->', serverInfo.value);
+            // console.log('最新的服务器硬件与网速指标 ->', serverInfo.value);
             
             // 同步 Echarts 表盘动态值
             if (serverInfo.value.cpu) {
@@ -233,6 +257,26 @@ const fetchMonitorData = async () => {
         }
     } catch (e) {
         console.error('获取监控探针数据异常', e);
+    }
+};
+
+const gcLoading = ref(false);
+const handleGcClean = async () => {
+    try {
+        gcLoading.value = true;
+        const res: any = await request.post('/system/monitor/gc');
+        if (res.code === 200) {
+            Message.success(res.msg || '清理指令发送成功，由于释放内存需要时间，请留意后续变动。');
+            setTimeout(() => {
+                fetchMonitorData();
+            }, 500); // 略微延迟0.5s强制刷新一次抓取最新数据 
+        } else {
+            Message.error(res.msg || '清理指令发送失败');
+        }
+    } catch (error) {
+        Message.error('触发垃圾回收失败');
+    } finally {
+        setTimeout(() => { gcLoading.value = false; }, 1000); // 防止连续快速点击
     }
 };
 
@@ -331,6 +375,7 @@ onUnmounted(() => {
   gap: 6px;
   color: #4e5969;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 .info-pill span {
   color: #165dff;
@@ -441,38 +486,39 @@ onUnmounted(() => {
 
 .gauge-area {
   display: flex;
-  justify-content: space-between;
-  margin-top: -10px;
+  justify-content: center;
+  gap: 6%;
+  margin-top: 15px;
   margin-bottom: 10px;
 }
 .gauge-wrapper {
-  width: 32%;
+  width: 25%;
+  position: relative;
   display: flex;
-  flex-direction: column;
-  align-items: center;
+  justify-content: center;
 }
 .gauge-chart {
   width: 100%;
-  height: 200px;
+  aspect-ratio: 5 / 4;
 }
 .gauge-title {
+  position: absolute;
+  bottom: 0px;
   font-size: 13px;
   color: #4e5969;
   font-weight: 600;
-  letter-spacing: 0.5px;
-  margin-top: -25px;
-  margin-bottom: 10px;
+  letter-spacing: 0;
 }
 
-/* 算力槽 (亮色适配) */
+/* 算力槽改版：去除虚线框，改用浅灰色卡片沉浸感 */
 .cpu-detail-bars {
-  background: rgba(22, 93, 255, 0.03);
+  background: #f7f8fa;
   border-radius: 8px;
-  padding: 12px 16px;
+  padding: 16px 20px;
+  margin: 0 16px 16px 16px;
   margin-top: auto;
-  border: 1px dashed rgba(22, 93, 255, 0.2);
 }
-.model-name { font-size: 13px; color: #4e5969; margin-bottom: 12px; font-family: 'Courier New', monospace; font-weight: 500;}
+.model-name { font-size: 13px; color: #1d2129; margin-bottom: 14px; font-family: 'Courier New', monospace; font-weight: bold;}
 .bar-item { margin-bottom: 10px; }
 .bar-item:last-child { margin-bottom: 0; }
 .bar-labels { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 6px; color: #1d2129; font-weight: 500;}
@@ -513,8 +559,64 @@ onUnmounted(() => {
 .text-red { color: #f53f3f; }
 
 .disk-foot { display: flex; justify-content: space-between; font-size: 12px; color: #86909c; font-weight: 500; }
+.disk-foot .disk-io { color: #165dff; display: flex; align-items: center; gap: 4px; font-family: 'Courier New', monospace; font-weight: bold; }
 
 .loading-state { text-align: center; color: #86909c; padding: 40px 0; font-size: 14px; }
+
+/* 算力与网络负载 */
+.load-badge { background: rgba(22,93,255,0.06); border: 1px solid rgba(22,93,255,0.2); padding: 4px 10px; border-radius: 6px; font-size: 13px; color: #4e5969; font-weight: 500;}
+.load-badge span { color: #165dff; font-family: 'Courier New', monospace; font-weight: bold; }
+.hw-metric { font-family: 'Courier New', monospace; font-weight: bold; min-width: 60px; display: inline-block;}
+
+/* 修改后的内存清理操作栏 - 更精致无边框感 */
+.gc-action-bar {
+    flex: 1; /* 让本身自适应拉伸填充剩余的垂直空间 */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #f4f5f9;
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin: 5px 16px 16px 16px;
+    border-left: 4px solid #165dff;
+    transition: all 0.3s ease;
+}
+.gc-action-bar:hover {
+    box-shadow: 0 4px 12px rgba(22, 93, 255, 0.08);
+}
+.gc-desc {
+    display: flex;
+    align-items: center;
+}
+.gc-icon-bg {
+    background: rgba(22,93,255, 0.1);
+    color: #165dff;
+    width: 36px; height: 36px;
+    border-radius: 8px;
+    display: flex; justify-content: center; align-items: center;
+    margin-right: 16px;
+    font-size: 20px;
+}
+.gc-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: #1d2129;
+    margin-right: 12px;
+    display: block;
+    margin-bottom: 4px;
+}
+.gc-subtitle {
+    font-size: 13px;
+    color: #86909c;
+    display: block;
+}
+.tech-gc-btn {
+    font-weight: bold;
+    box-shadow: 0 2px 8px rgba(22, 93, 255, 0.15);
+}
+.tech-gc-btn:hover {
+    box-shadow: 0 4px 12px rgba(22, 93, 255, 0.3);
+}
 
 /* 响应式调整以防压扁 */
 @media screen and (max-width: 1400px) {

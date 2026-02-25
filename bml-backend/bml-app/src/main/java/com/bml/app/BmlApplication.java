@@ -7,6 +7,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.core.env.Environment;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 import java.io.PrintStream;
 import java.util.Properties;
@@ -14,9 +15,15 @@ import java.util.Properties;
 /**
  * BML Backend 启动类
  *
+ * <p>
+ * 启用 {@code @EnableScheduling} 以激活所有 {@code @Scheduled} 定时任务，
+ * 如 {@link com.bml.module.system.task.ServerAlertJob} 的服务器资源巡检。
+ * </p>
+ *
  * @author BML Team
  */
 @SpringBootApplication
+@EnableScheduling
 @ComponentScan(basePackages = { "com.bml" })
 @MapperScan("com.bml.**.mapper")
 public class BmlApplication {

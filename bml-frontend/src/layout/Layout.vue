@@ -99,11 +99,11 @@
                 
                 <div class="dock-divider"></div>
 
-                <!-- 消息 -->
-                <div class="dock-item">
-                     <a-badge count="9" dot :offset="[4, -4]">
+                <!-- 消息通知 -->
+                <div class="dock-item" @click="notificationStore.openDrawer()">
+                    <a-badge :count="notificationStore.unreadCount" :max-count="99" dot :offset="[4, -4]">
                         <icon-notification />
-                     </a-badge>
+                    </a-badge>
                 </div>
 
 
@@ -157,23 +157,41 @@
       </a-layout-content>
     </a-layout>
     <ThemeSettings />
+
+    <!-- 通知中心右侧抽屉（与 ThemeSettings 同级） -->
+    <a-drawer
+      :width="840"
+      :visible="notificationStore.drawerVisible"
+      unmount-on-close
+      :footer="false"
+      @cancel="notificationStore.closeDrawer()"
+    >
+      <template #title>通知中心</template>
+      <NotificationPanel />
+    </a-drawer>
+
+    <!-- 右下角告警弹窗（Teleport 到 body，不影响布局） -->
+    <AlertToast />
   </a-layout>
 </template>
 
 <script lang="ts" setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { Message } from '@arco-design/web-vue';
-import { 
-    IconList, IconBug, IconApps, IconExport, IconDashboard, 
-    IconLeft, IconRight, IconNotification, IconFullscreen, IconFullscreenExit, IconUser, IconDown, 
-    IconSettings, IconSearch 
+import {
+    IconList, IconBug, IconApps, IconExport, IconDashboard,
+    IconLeft, IconRight, IconNotification, IconFullscreen, IconFullscreenExit, IconUser, IconDown,
+    IconSettings, IconSearch
 } from '@arco-design/web-vue/es/icon';
 import request from '../utils/request';
 import TagsView from '../components/TagsView.vue';
 import ThemeSettings from '../components/ThemeSettings.vue';
+import NotificationPanel from '../components/NotificationPanel.vue';
+import AlertToast from '../components/AlertToast.vue';
 import { useTagsViewStore } from '../store/tagsView';
 import { useAppStore } from '../store/app';
+import { useNotificationStore } from '../store/notification';
 
 const router = useRouter();
 const route = useRoute();
@@ -182,6 +200,7 @@ const isFullscreen = ref(false);
 
 const tagsViewStore = useTagsViewStore();
 const appStore = useAppStore();
+const notificationStore = useNotificationStore();
 const cachedViews = computed(() => tagsViewStore.cachedViews);
 
 const currentRouteName = computed(() => route.name as string);
@@ -219,11 +238,28 @@ const handleLogout = async () => {
     // 忽略登出失败
   } finally {
     localStorage.removeItem('token');
+    notificationStore.stopPolling(); // 退出时停止通知轮询
     tagsViewStore.delAllViews();
     Message.success('已退出登录');
     router.push('/admin/login');
   }
 };
+
+/**
+ * 生命周期：启动通知轮询
+ * 登录后进入 Layout 时自动开始每 30 秒轮询告警
+ */
+onMounted(() => {
+    notificationStore.startPolling();
+});
+
+/**
+ * 生命周期：停止通知轮询
+ * 离开 Layout（如刷新页面）时清理定时器
+ */
+onUnmounted(() => {
+    notificationStore.stopPolling();
+});
 </script>
 
 <style scoped>

@@ -7,6 +7,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 // import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -32,5 +33,12 @@ public class SysServerMonitorController {
     @GetMapping("/server")
     public Result<ServerInfoVO> getServerInfo() {
         return Result.ok(serverMonitorService.getServerInfo());
+    }
+
+    @Operation(summary = "强制发送JVM垃圾回收指令(GC)，尝试释放内存")
+    @PostMapping("/gc")
+    public Result<String> cleanJvmMemory() {
+        System.gc(); // Suggests to the JVM that it expend effort toward recycling unused objects
+        return Result.ok("JVM 垃圾回收 (GC) 指令已发送，物理内存正尝试释放...");
     }
 }
