@@ -319,6 +319,7 @@ export const useNotificationStore = defineStore('notification', {
          */
         async selectDate(date: string) {
             this.selectedDate = date;
+            this.selectedAlert = null; // 切换日期时，清空右侧详情板
             this.panelStep = 'list';
             await this.fetchAlertsByDate(date);
         },

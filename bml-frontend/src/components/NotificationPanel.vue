@@ -25,10 +25,6 @@
               <button class="h-btn-text" @click="handleMarkAllRead" :disabled="store.unreadCount === 0">
                  <icon-check-circle /> 全部已读
               </button>
-              <div class="h-btn-divider"></div>
-              <button class="h-btn-text danger" @click="handleClearAll">
-                 <icon-delete /> 清空历史
-              </button>
             </div>
             
             <div class="h-close" @click="store.closeDrawer()">
@@ -49,23 +45,23 @@
                 v-model="pickedDate" 
                 :panel="true" 
                 :modes="['month']"
-                @change="handleDateSelect" 
+                @panel-change="handlePanelChange"
              >
-                 <template #header="{ year, month }">
+                 <template #header>
                    <a-month-picker 
-                     :model-value="`${year.value || year}-${String(month.value || month).padStart(2, '0')}`" 
+                     :model-value="`${currentPanelDate.getFullYear()}-${String(currentPanelDate.getMonth() + 1).padStart(2, '0')}`" 
                      @change="handleMonthPickerChange" 
                      :allow-clear="false" 
                      position="bl"
                    >
                       <div class="calendar-title h-month-trigger">
-                         {{ year.value || year }}年{{ month.value || month }}月
+                         {{ currentPanelDate.getFullYear() }}年{{ currentPanelDate.getMonth() + 1 }}月
                          <icon-down class="h-trigger-arrow" />
                       </div>
                    </a-month-picker>
                 </template>
                 <template #default="{ year, month, date }">
-                    <div class="arco-calendar-date h-custom-date">
+                    <div class="arco-calendar-date h-custom-date" @click.stop="handleDateSelectFromSlot(year, month, date)">
                        <div class="arco-calendar-date-value">{{ date }}</div>
                        <div class="h-cell-indicator">
                           <!-- month from arco slot is already 1-indexed (1=Jan, 2=Feb) -->
@@ -85,7 +81,7 @@
         <!-- ================= Column 2: 告警瀑布流 (条件显示或空状态) ================= -->
         <div class="h-col h-col-list">
           <div class="h-col-header" v-if="store.selectedDate">
-            <h3 class="col-title">{{ store.selectedDate }} 的系统告警</h3>
+            <!-- 已移除冗余的日期标题 -->
             <!-- 添加过滤按钮组 -->
             <div class="list-filters">
                 <a-radio-group v-model="listFilter" type="button" size="small">
@@ -225,6 +221,14 @@ const calendarKey = ref(0);
 // 日期选择器的双向绑定变量
 const pickedDate = ref(new Date());
 
+// 当前日历正在展示的面板月份标点
+const currentPanelDate = ref(new Date());
+
+// 面板切换事件（点击左右箭头触发）
+const handlePanelChange = (date: Date) => {
+    currentPanelDate.value = date;
+};
+
 // 列表过滤变量：'all' | 'unread' | 'read'
 const listFilter = ref('all');
 
@@ -247,23 +251,31 @@ const hasAlertForDate = (year: number, month: number, date: number) => {
     return store.alertDates.includes(dateStr);
 };
 
-// 处理日期选择器被选中的回调
-const handleDateSelect = async (date: any) => {
-    if (!date) {
-        store.selectedDate = null;
-        store.dateAlerts = [];
-        store.selectedAlert = null;
-        return;
+// 手动处理来自自定义插槽的日期点击（Arco calendar 在使用自定义 default 插槽时会丢失 click 事件）
+const handleDateSelectFromSlot = async (year: number, month: number, date: number) => {
+    const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(date).padStart(2, '0')}`;
+    
+    // 更新日历 v-model 用于高亮
+    pickedDate.value = new Date(dateStr + 'T00:00:00');
+    
+    // 更新 store 数据
+    if (store.selectedDate !== dateStr) {
+        await store.selectDate(dateStr);
     }
-    // Arco Calendar component triggers with date object or string based on configuration
-    const dateObj = new Date(date);
-    const year = dateObj.getFullYear();
-    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-    const day = String(dateObj.getDate()).padStart(2, '0');
+};
+
+// 监听 pickedDate（日历内部 v-model，如上/下月切换由于 arco 内置按钮不走 slot 触发）
+watch(() => pickedDate.value, async (newDate) => {
+    if (!newDate) return;
+    const year = newDate.getFullYear();
+    const month = String(newDate.getMonth() + 1).padStart(2, '0');
+    const day = String(newDate.getDate()).padStart(2, '0');
     const dateString = `${year}-${month}-${day}`;
     
-    await store.selectDate(dateString);
-};
+    if (store.selectedDate !== dateString) {
+        await store.selectDate(dateString);
+    }
+});
 
 // 处理由月份快速选择器触发的更改
 const handleMonthPickerChange = async (date: any) => {
@@ -278,6 +290,7 @@ const handleMonthPickerChange = async (date: any) => {
     
     // 更新外部绑定的 pickedDate
     pickedDate.value = new Date(dateString);
+    currentPanelDate.value = new Date(dateString);
     await store.selectDate(dateString);
     
     // 由于 arco-calendar 不会自动根据外部 v-model 修改内置的视图月份，我们通过更改 key 强制其重载到选中月份
@@ -287,9 +300,20 @@ const handleMonthPickerChange = async (date: any) => {
 // 监听 selectedDate，以便同步选择器回显（当点击列表而不是使用选择器时）
 watch(() => store.selectedDate, (newVal) => {
     if (newVal) {
-        pickedDate.value = new Date(newVal);
+        const currentPicked = pickedDate.value;
+        const year = currentPicked.getFullYear();
+        const month = String(currentPicked.getMonth() + 1).padStart(2, '0');
+        const day = String(currentPicked.getDate()).padStart(2, '0');
+        const currentStr = `${year}-${month}-${day}`;
+        
+        // 只有当 store 中的选中日期与当前日历日期的字符串不相同时，才重新复制和刷新，防止因 v-model 与 selectedDate 的相互触发引起 reactivity loop 和重绘失败
+        if (currentStr !== newVal) {
+            pickedDate.value = new Date(newVal + 'T00:00:00');
+            calendarKey.value++; // 强制日历组件刷新以高亮新日期
+        }
     } else {
         pickedDate.value = new Date();
+        calendarKey.value++;
     }
 });
 
@@ -319,18 +343,6 @@ const handleMarkAllRead = async () => {
     if (store.unreadCount === 0) return;
     await store.markAllAsRead();
     Message.success('系统：所有告警已被标记为已处理');
-};
-
-// 清空历史
-const handleClearAll = () => {
-    if (store.alerts.length === 0 && store.alertDates.length === 0) return;
-    store.alerts.forEach((a: any) => store.deleteAlert(a.id));
-    Message.success('系统指令：已请求清空历史消息');
-    store.alertDates = [];
-    store.dateAlerts = [];
-    store.selectedDate = null;
-    store.selectedAlert = null;
-    pickedDate.value = new Date();
 };
 </script>
 
@@ -444,12 +456,16 @@ const handleClearAll = () => {
 .h-calendar-wrapper { padding: 8px 12px; border-bottom: 1px dashed rgba(0,0,0,0.04); }
 .h-calendar-wrapper :deep(.arco-calendar-panel) { padding: 4px 0; }
 .h-calendar-wrapper :deep(.arco-calendar-month-cell) { padding: 2px 0; }
-.h-calendar-wrapper :deep(.arco-calendar-date) { height: auto; width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: transparent !important; }
-.h-calendar-wrapper :deep(.arco-calendar-date-value) { height: 24px; width: 24px; line-height: 24px; font-size: 11px; font-family: 'Inter', sans-serif; display: flex; align-items: center; justify-content: center; }
+.h-calendar-wrapper :deep(.arco-calendar-date) { height: 42px; width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding-top: 6px; background: transparent !important; margin: 0;}
+.h-calendar-wrapper :deep(.arco-calendar-date-value) { height: 24px; min-height: 24px; width: 24px; line-height: 24px; font-size: 11px; font-family: 'Inter', sans-serif; display: flex; align-items: center; justify-content: center; margin: 0; }
 
 /* 自定义日期指示器圆点 */
-.h-custom-date { gap: 2px; }
-.h-cell-indicator { height: 6px; display: flex; align-items: center; justify-content: center; }
+.h-custom-date { 
+    gap: 4px; 
+    height: 100%; 
+    justify-content: flex-start; /* 将点放在数字下面更自然一点 */
+}
+.h-cell-indicator { height: 6px; width: 100%; display: flex; align-items: center; justify-content: center; }
 .mini-dim { transform: scale(0.6); opacity: 0.3; animation: none !important; box-shadow: none !important;}
 
 /* 自定义日历头部与按钮样式 */
@@ -484,6 +500,35 @@ const handleClearAll = () => {
 /* 隐藏日历右侧默认的 月/年 切换按钮，因为小面板下不需要切换 */
 .h-calendar-wrapper :deep(.arco-calendar-header-right) { display: none; }
 
+/* 自定义星期栏头：Arco Vue 源码不支持 slot 修改表头文字，直接用 CSS 首字母隐藏 (font-size:0 隐藏整个字，::first-letter 无法剔除第一个)
+   这里利用 text-indent 将“周”字挤出可见区域，或者通过 visibility: hidden 组合 
+*/
+.h-calendar-wrapper :deep(.arco-calendar-week-list .arco-calendar-week-list-item) { 
+    font-size: 0; /* 隐藏原始文字 */
+    color: transparent;
+    display: flex; align-items: center; justify-content: center;
+}
+/* 利用伪元素提取第二个字，默认 arco design calendar 从周日开始 */
+.h-calendar-wrapper :deep(.arco-calendar-week-list .arco-calendar-week-list-item:nth-child(1))::after { content: "日"; font-size: 11px; font-weight: 700; color: #86909c; }
+.h-calendar-wrapper :deep(.arco-calendar-week-list .arco-calendar-week-list-item:nth-child(2))::after { content: "一"; font-size: 11px; font-weight: 700; color: #86909c; }
+.h-calendar-wrapper :deep(.arco-calendar-week-list .arco-calendar-week-list-item:nth-child(3))::after { content: "二"; font-size: 11px; font-weight: 700; color: #86909c; }
+.h-calendar-wrapper :deep(.arco-calendar-week-list .arco-calendar-week-list-item:nth-child(4))::after { content: "三"; font-size: 11px; font-weight: 700; color: #86909c; }
+.h-calendar-wrapper :deep(.arco-calendar-week-list .arco-calendar-week-list-item:nth-child(5))::after { content: "四"; font-size: 11px; font-weight: 700; color: #86909c; }
+.h-calendar-wrapper :deep(.arco-calendar-week-list .arco-calendar-week-list-item:nth-child(6))::after { content: "五"; font-size: 11px; font-weight: 700; color: #86909c; }
+.h-calendar-wrapper :deep(.arco-calendar-week-list .arco-calendar-week-list-item:nth-child(7))::after { content: "六"; font-size: 11px; font-weight: 700; color: #86909c; }
+
+/* 隐藏当天日期下方的蓝色小圆点（今日指示器） */
+.h-calendar-wrapper :deep(.arco-calendar-cell-today::after),
+.h-calendar-wrapper :deep(.arco-calendar-date-circle::after) { display: none !important; }
+
+/* 为今天的日期数字增加浅浅的特殊背景底色标识 */
+.h-calendar-wrapper :deep(.arco-calendar-cell-today .arco-calendar-date-value) {
+    background: rgba(22, 93, 255, 0.08); /* 极淡的品牌蓝背景 */
+    color: #165dff;
+    font-weight: 800;
+    border-radius: 6px;
+}
+
 .h-date-legend { display: flex; gap: 12px; padding: 12px 20px; font-size: 11px; font-weight: 500; color: #86909c; }
 .legend-item { display: flex; align-items: center; gap: 6px; }
 .h-dot { width: 6px; height: 6px; border-radius: 50%; opacity: 0.8; }
@@ -491,8 +536,9 @@ const handleClearAll = () => {
 .h-dot.error { background: #f53f3f; box-shadow: 0 0 6px rgba(245,63,63,0.5); }
 
 /* ================= Column 2：列表视图瀑布流 ================= */
-.h-col-header { padding: 16px 20px 10px; border-bottom: 1px dashed rgba(0,0,0,0.04); margin-bottom: 10px; display: flex; flex-direction: column; gap: 8px;}
-.col-title { font-size: 14px; font-weight: 800; color: #111; margin: 0; font-family: 'Inter', monospace; }
+.h-col-header { padding: 12px 20px 8px; border-bottom: 1px dashed rgba(0,0,0,0.04); margin-bottom: 8px; display: flex; flex-direction: column; gap: 8px;}
+/* 隐藏无用的列标题，但保留 CSS 以防万一他日复用 */
+.col-title { display: none; margin: 0; font-family: 'Inter', monospace; }
 
 .list-filters { display: flex; }
 .list-filters :deep(.arco-radio-group) { background: #f4f5f7; border-radius: 6px; padding: 2px;}
