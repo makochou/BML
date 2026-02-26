@@ -1,7 +1,7 @@
 <template>
   <div class="h-notification-panel">
     
-    <!-- 幻彩高能头部 -->
+    <!-- 幻彩高能头部 / 动态导航栏 -->
     <div class="h-header h-notify-header">
       <div class="h-glow-orb orb-1"></div>
       <div class="h-glow-orb orb-2"></div>
@@ -9,113 +9,196 @@
       <div class="h-header-inner">
          <div class="h-brand">
             <div class="h-icon-wrapper bell-wiggle">
-               <a-badge :count="store.unreadCount" :max-count="99" dot :offset="[-2, 2]">
-                 <icon-notification />
-               </a-badge>
+               <icon-notification />
+               <a-badge :count="store.unreadCount" :max-count="99" dot :offset="[-2, 2]" />
             </div>
+            
             <div class="h-title-group">
-               <h2 class="h-title">系统告警</h2>
-               <p class="h-sub">NOTIFICATIONS</p>
+               <h2 class="h-title">系统告警看板</h2>
+               <p class="h-sub">NOTIFICATIONS CENTER</p>
             </div>
          </div>
          
-         <div class="h-close" @click="store.closeDrawer()">
-            <icon-close />
+         <div class="h-header-right-group">
+            <!-- 快捷操作区 移入顶部 Header -->
+            <div class="h-header-actions">
+              <button class="h-btn-text" @click="handleMarkAllRead" :disabled="store.unreadCount === 0">
+                 <icon-check-circle /> 全部已读
+              </button>
+              <div class="h-btn-divider"></div>
+              <button class="h-btn-text danger" @click="handleClearAll">
+                 <icon-delete /> 清空历史
+              </button>
+            </div>
+            
+            <div class="h-close" @click="store.closeDrawer()">
+               <icon-close />
+            </div>
          </div>
       </div>
-
-      <!-- 快捷操作区 -->
-      <div class="h-header-actions">
-        <button class="h-btn-text" @click="handleMarkAllRead" :disabled="store.unreadCount === 0">
-           <icon-check-circle /> 全部已读
-        </button>
-        <div class="h-btn-divider"></div>
-        <button class="h-btn-text danger" @click="handleClearAll">
-           <icon-delete /> 清空历史
-        </button>
-      </div>
     </div>
 
-    <!-- 苹果式胶囊悬浮导航 -->
-    <div class="h-sticky-nav">
-      <div class="h-capsule-bg">
-        <div class="h-capsule-slider" :style="sliderStyle"></div>
+    <!-- 3列弹性容器 -->
+    <div class="h-columns">
         
-        <div class="h-capsule-btn" :class="{ 'is-active': activeTab === 'all' }" @click="activeTab = 'all'">
-           <span class="btn-text">全部记录</span>
-           <span class="btn-badge" v-if="allCount > 0">{{ allCount > 99 ? '99+' : allCount }}</span>
-        </div>
-        
-        <div class="h-capsule-btn" :class="{ 'is-active': activeTab === 'unread' }" @click="activeTab = 'unread'">
-           <span class="btn-text">待处理</span>
-           <span class="btn-badge is-urgent" v-if="store.unreadCount > 0">{{ store.unreadCount }}</span>
-        </div>
-      </div>
-    </div>
+        <!-- ================= Column 1: 日历与日期聚合 ================= -->
+        <div class="h-col h-col-dates">
+          <div class="h-calendar-wrapper">
+             <a-calendar 
+                :key="calendarKey"
+                v-model="pickedDate" 
+                :panel="true" 
+                :modes="['month']"
+                @change="handleDateSelect" 
+             >
+                 <template #header="{ year, month }">
+                   <a-month-picker 
+                     :model-value="`${year.value || year}-${String(month.value || month).padStart(2, '0')}`" 
+                     @change="handleMonthPickerChange" 
+                     :allow-clear="false" 
+                     position="bl"
+                   >
+                      <div class="calendar-title h-month-trigger">
+                         {{ year.value || year }}年{{ month.value || month }}月
+                         <icon-down class="h-trigger-arrow" />
+                      </div>
+                   </a-month-picker>
+                </template>
+                <template #default="{ year, month, date }">
+                    <div class="arco-calendar-date h-custom-date">
+                       <div class="arco-calendar-date-value">{{ date }}</div>
+                       <div class="h-cell-indicator">
+                          <!-- month from arco slot is already 1-indexed (1=Jan, 2=Feb) -->
+                          <div v-if="hasAlertForDate(year, month, date)" class="h-dot error"></div>
+                       </div>
+                    </div>
+                </template>
+             </a-calendar>
+          </div>
 
-    <!-- 列表瀑布流 -->
-    <div class="h-scrollable">
-      <transition-group name="h-stagger" tag="div" class="h-list" v-if="filteredAlerts.length > 0">
-        
-        <div 
-          v-for="alert in filteredAlerts" 
-          :key="alert.id"
-          class="h-n-card"
-          :class="[`is-${alert.alertLevel}`, { 'is-read': alert.readStatus === 1 }]"
-        >
-          <!-- 侧边霓虹背光条 -->
-          <div class="h-neon-bar"></div>
-          
-          <div class="h-n-content">
-            <div class="h-n-row">
-               <div class="h-tag-combo">
-                 <div class="h-level-icon">
-                    <component :is="getIconForLevel(alert.alertLevel)" />
-                 </div>
-                 <span class="h-tag-text">{{ alert.alertType }}</span>
-               </div>
-               <span class="h-time">{{ formatTime(alert.createTime) }}</span>
-            </div>
-            
-            <h3 class="h-n-title">{{ alert.alertTitle }}</h3>
-            <p class="h-n-desc">{{ alert.alertContent }}</p>
-            
-            <div class="h-n-footer">
-               <div class="h-status-indicator">
-                 <div class="h-dot" v-if="alert.readStatus === 0"></div>
-                 <span>{{ alert.readStatus === 0 ? 'URGENT' : 'RESOLVED' }}</span>
-               </div>
-               
-               <div class="h-n-actions">
-                  <div class="h-action-icon check" v-if="alert.readStatus === 0" @click.stop="store.markAsRead(alert.id)" v-tooltip="'标为已读'">
-                    <icon-check />
-                  </div>
-                  <div class="h-action-icon delete" @click.stop="store.deleteAlert(alert.id)" v-tooltip="'彻底删除'">
-                    <icon-close />
-                  </div>
-               </div>
-            </div>
+          <div class="h-date-legend">
+              <div class="legend-item"><span class="h-dot error"></span> 存在系统告警</div>
           </div>
         </div>
 
-      </transition-group>
 
-      <!-- 绝对绝美的骨架/艺术插画空状态 -->
-      <div class="h-empty-art" v-else>
-         <div class="h-art-container">
-            <div class="h-art-ring r1"></div>
-            <div class="h-art-ring r2"></div>
-            <div class="h-art-ring r3"></div>
-            <div class="h-art-center">
-               <icon-check-circle-fill class="art-icon check-art" v-if="activeTab === 'unread'" />
-               <icon-message class="art-icon box-art" v-else />
+        <!-- ================= Column 2: 告警瀑布流 (条件显示或空状态) ================= -->
+        <div class="h-col h-col-list">
+          <div class="h-col-header" v-if="store.selectedDate">
+            <h3 class="col-title">{{ store.selectedDate }} 的系统告警</h3>
+            <!-- 添加过滤按钮组 -->
+            <div class="list-filters">
+                <a-radio-group v-model="listFilter" type="button" size="small">
+                    <a-radio value="all">全部</a-radio>
+                    <a-radio value="unread">未读</a-radio>
+                    <a-radio value="read">已读</a-radio>
+                </a-radio-group>
             </div>
-         </div>
-         <h4 class="h-empty-title">{{ activeTab === 'unread' ? 'All Caught Up' : 'No Notifications' }}</h4>
-         <p class="h-empty-desc">
-            {{ activeTab === 'unread' ? '太棒了！所有需要您立即关注的系统风险和告警都已被妥善处理。' : '目前风平浪静，系统处于最佳运行状态。有任何异常我们会第一时间通知您。' }}
-         </p>
-      </div>
+          </div>
+          
+          <div class="h-scrollable no-top-pad" v-if="store.selectedDate">
+            <transition-group name="h-stagger" tag="div" class="h-list" v-if="filteredDateAlerts.length > 0">
+              <div 
+                v-for="alert in filteredDateAlerts" 
+                :key="alert.id"
+                class="h-n-card compact"
+                :class="[`is-${alert.alertLevel}`, { 'is-read': alert.readStatus === 1 }, { 'is-selected': store.selectedAlert?.id === alert.id }]"
+                @click="store.selectAlert(alert)"
+              >
+                <div class="h-neon-bar"></div>
+                
+                <div class="h-n-content">
+                  <div class="h-n-row">
+                     <div class="h-tag-combo">
+                       <!-- 隐藏类型字眼，只留图标缩小体积 -->
+                       <div class="h-level-icon"><component :is="getIconForLevel(alert.alertLevel)" /></div>
+                       <!-- 标题同行显示 -->
+                       <h3 class="h-n-title">{{ alert.alertTitle }}</h3>
+                     </div>
+                     <span class="h-time">{{ formatTime(alert.createTime) }}</span>
+                  </div>
+                  
+                  <div class="h-card-bottom">
+                     <!-- 隐藏长串内容 <p class="h-n-desc">{{ alert.alertContent }}</p> -->
+                      <span class="h-tag-text">{{ alert.alertType }}</span>
+                     <div class="h-card-badge">
+                        <div class="h-dot" v-if="alert.readStatus === 0"></div>
+                        <span>{{ alert.readStatus === 0 ? 'URGENT' : 'RESOLVED' }}</span>
+                     </div>
+                  </div>
+                </div>
+              </div>
+            </transition-group>
+            
+            <div class="h-list-footer" v-if="filteredDateAlerts.length > 0">
+               共 {{ filteredDateAlerts.length }} 条告警记录
+            </div>
+            
+            <div class="h-empty-art min-padding" v-else>
+               <p class="h-empty-desc">{{ store.dateAlerts.length > 0 ? '没有符合当前过滤条件的记录。' : '该日期下没有系统告警记录。' }}</p>
+            </div>
+          </div>
+
+          <!-- 未选中日期提示 -->
+          <div class="h-col-placeholder" v-else>
+              <icon-desktop />
+              <p>请在左侧选择日期以查看对应的告警列表</p>
+          </div>
+        </div>
+
+
+        <!-- ================= Column 3: 告警详情 (条件显示) ================= -->
+        <div class="h-col h-col-detail">
+          <div class="h-scrollable detail-scroll-area" v-if="store.selectedAlert">
+              <!-- 详情卡片主区块 -->
+              <div class="h-detail-box" :class="`is-${store.selectedAlert.alertLevel}`">
+                 <div class="h-detail-box-bg"></div>
+                 
+                 <div class="h-detail-header-block">
+                    <div class="h-d-icon">
+                       <component :is="getIconForLevel(store.selectedAlert.alertLevel)" />
+                    </div>
+                    <h2 class="h-d-title">{{ store.selectedAlert.alertTitle }}</h2>
+                 </div>
+
+                 <!-- 核心元数据面板 -->
+                 <div class="h-d-meta-panel">
+                    <div class="d-meta-item">
+                       <span class="m-label">记录 ID</span>
+                       <span class="m-value id-text">#{{ store.selectedAlert.id }}</span>
+                    </div>
+                    <div class="d-meta-item">
+                       <span class="m-label">类型</span>
+                       <div class="h-tag-combo"><span class="h-tag-text">{{ store.selectedAlert.alertType }}</span></div>
+                    </div>
+                    <div class="d-meta-item">
+                       <span class="m-label">时间</span>
+                       <span class="m-value time-val"><icon-clock-circle /> {{ store.selectedAlert.createTime }}</span>
+                    </div>
+                    <div class="d-meta-item">
+                       <span class="m-label">状态</span>
+                       <span class="m-value status-val resolved">
+                          <icon-check-circle-fill /> {{ store.selectedAlert.readStatus === 1 ? 'RESOLVED' : 'UNREAD' }}
+                       </span>
+                    </div>
+                 </div>
+
+                 <div class="h-d-divider"></div>
+
+                 <!-- 详情正文 -->
+                 <div class="h-d-content-block">
+                    <h4 class="content-title">告警详情内容</h4>
+                    <div class="content-body">{{ store.selectedAlert.alertContent }}</div>
+                 </div>
+              </div>
+          </div>
+
+          <!-- 未选中特定告警提示 -->
+          <div class="h-col-placeholder" v-else>
+             <icon-file />
+             <p>请在中间列表选择告警以审查详细信息</p>
+          </div>
+        </div>
 
     </div>
 
@@ -123,42 +206,94 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, computed, watch, onMounted } from 'vue';
+import { ref, watch, computed, onMounted } from 'vue';
 import { useNotificationStore } from '../store/notification';
 import { 
   IconInfoCircleFill, IconExclamationCircleFill, 
   IconCloseCircleFill, IconNotification, IconClose,
   IconCheckCircle, IconCheckCircleFill, IconDelete,
-  IconCheck, IconMessage
+  IconClockCircle, IconDown,
+  IconDesktop, IconFile
 } from '@arco-design/web-vue/es/icon';
 import { Message } from '@arco-design/web-vue';
 
 const store = useNotificationStore();
 
-const activeTab = ref<'all' | 'unread'>('all');
-const sliderStyle = ref({ transform: 'translateX(2px)', width: 'calc(50% - 4px)' });
+// 用于强制重绘日历的 key
+const calendarKey = ref(0);
 
-const allCount = computed(() => store.alerts.length);
+// 日期选择器的双向绑定变量
+const pickedDate = ref(new Date());
 
-const filteredAlerts = computed(() => {
-    if (activeTab.value === 'unread') {
-        return store.alerts.filter(a => a.readStatus === 0);
-    }
-    return store.alerts;
-});
-
-watch(activeTab, (val) => {
-    if (val === 'all') {
-        sliderStyle.value = { transform: 'translateX(2px)', width: 'calc(50% - 4px)' };
-    } else {
-        sliderStyle.value = { transform: 'translateX(calc(100% + 2px))', width: 'calc(50% - 4px)' };
-    }
-}, { immediate: true });
+// 列表过滤变量：'all' | 'unread' | 'read'
+const listFilter = ref('all');
 
 onMounted(() => {
-    if(store.alerts.length === 0) store.fetchAlerts();
+    store.fetchAlertDates();
+    store.fetchUnreadCount();
 });
 
+// 计算属性：根据过滤条件返回告警列表
+const filteredDateAlerts = computed(() => {
+    if (listFilter.value === 'all') return store.dateAlerts;
+    if (listFilter.value === 'unread') return store.dateAlerts.filter(a => a.readStatus === 0);
+    if (listFilter.value === 'read') return store.dateAlerts.filter(a => a.readStatus === 1);
+    return store.dateAlerts;
+});
+
+// 判断日期是否有告警
+const hasAlertForDate = (year: number, month: number, date: number) => {
+    const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(date).padStart(2, '0')}`;
+    return store.alertDates.includes(dateStr);
+};
+
+// 处理日期选择器被选中的回调
+const handleDateSelect = async (date: any) => {
+    if (!date) {
+        store.selectedDate = null;
+        store.dateAlerts = [];
+        store.selectedAlert = null;
+        return;
+    }
+    // Arco Calendar component triggers with date object or string based on configuration
+    const dateObj = new Date(date);
+    const year = dateObj.getFullYear();
+    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const day = String(dateObj.getDate()).padStart(2, '0');
+    const dateString = `${year}-${month}-${day}`;
+    
+    await store.selectDate(dateString);
+};
+
+// 处理由月份快速选择器触发的更改
+const handleMonthPickerChange = async (date: any) => {
+    if (!date) return;
+    
+    // date 通常等于 'YYYY-MM'
+    const dateObj = new Date(date);
+    const year = dateObj.getFullYear();
+    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+    // 默认跳转到该月的第一天
+    const dateString = `${year}-${month}-01`;
+    
+    // 更新外部绑定的 pickedDate
+    pickedDate.value = new Date(dateString);
+    await store.selectDate(dateString);
+    
+    // 由于 arco-calendar 不会自动根据外部 v-model 修改内置的视图月份，我们通过更改 key 强制其重载到选中月份
+    calendarKey.value++;
+};
+
+// 监听 selectedDate，以便同步选择器回显（当点击列表而不是使用选择器时）
+watch(() => store.selectedDate, (newVal) => {
+    if (newVal) {
+        pickedDate.value = new Date(newVal);
+    } else {
+        pickedDate.value = new Date();
+    }
+});
+
+// 工具：时间格式化
 const formatTime = (timeStr: string) => {
     const d = new Date(timeStr);
     const today = new Date();
@@ -168,6 +303,7 @@ const formatTime = (timeStr: string) => {
     return `${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${d.getMinutes().toString().padStart(2, '0')}`;
 };
 
+// 工具：获取各级别图标
 const getIconForLevel = (level: string) => {
     switch(level) {
         case 'info': return IconInfoCircleFill;
@@ -178,16 +314,23 @@ const getIconForLevel = (level: string) => {
     }
 };
 
+// 一键全部已读
 const handleMarkAllRead = async () => {
     if (store.unreadCount === 0) return;
     await store.markAllAsRead();
     Message.success('系统：所有告警已被标记为已处理');
 };
 
+// 清空历史
 const handleClearAll = () => {
-    if (store.alerts.length === 0) return;
+    if (store.alerts.length === 0 && store.alertDates.length === 0) return;
     store.alerts.forEach((a: any) => store.deleteAlert(a.id));
-    Message.success('系统：历史告警记录已清空');
+    Message.success('系统指令：已请求清空历史消息');
+    store.alertDates = [];
+    store.dateAlerts = [];
+    store.selectedDate = null;
+    store.selectedAlert = null;
+    pickedDate.value = new Date();
 };
 </script>
 
@@ -197,32 +340,62 @@ const handleClearAll = () => {
     display: flex; flex-direction: column; height: 100%;
     background: #fdfdfd; 
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    overflow: hidden;
 }
+
+/* 3列弹性容器设定 */
+.h-columns {
+    flex: 1; display: flex; flex-direction: row; overflow: hidden;
+    background: #f4f5f7; /* 背景稍微暗一点作为分界线 */
+}
+
+.h-col {
+    display: flex; flex-direction: column; overflow: hidden;
+    background: #fdfdfd; 
+}
+/* 列宽度分配 */
+.h-col-dates { width: 260px; flex-shrink: 0; border-right: 1px solid rgba(0,0,0,0.04); }
+.h-col-list { width: 300px; flex-shrink: 0; border-right: 1px solid rgba(0,0,0,0.04); background: #fdfdfd;}
+.h-col-detail { flex: 1; min-width: 300px; background: #f8f9fb; }
+
+/* 缺省状态提示 */
+.h-col-placeholder {
+    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    color: #c9cdd4; font-size: 64px; text-align: center; padding: 32px;
+}
+.h-col-placeholder p { font-size: 15px; font-weight: 500; margin-top: 16px; color: #86909c; }
+
+
+/* ================= 极简高级动画 ================= */
+.h-stagger-enter-active, .h-stagger-leave-active { transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.h-stagger-enter-from { opacity: 0; transform: translateY(20px) scale(0.98); }
+.h-stagger-leave-to { opacity: 0; transform: translateX(100%); }
 
 /* ================= 幻彩高能头部 ================= */
 .h-header {
-    position: relative; overflow: hidden; padding: 40px 32px 16px;
+    position: relative; overflow: hidden; padding: 20px 24px 12px;
     border-bottom: 1px solid rgba(0,0,0,0.03);
     background: #fdfdfd; flex-shrink: 0;
 }
+
 .h-notify-header .orb-1 {
-    position: absolute; top: -60px; right: 0; width: 160px; height: 160px;
-    background: rgba(22, 93, 255, 0.12); border-radius: 50%; filter: blur(40px); z-index: 0;
+    position: absolute; top: -100px; right: 20%; width: 240px; height: 240px;
+    background: rgba(22, 93, 255, 0.08); border-radius: 50%; filter: blur(60px); z-index: 0; pointer-events: none;
 }
 .h-notify-header .orb-2 {
-    position: absolute; bottom: 0; left: -40px; width: 120px; height: 120px;
-    background: rgba(0, 180, 42, 0.08); border-radius: 50%; filter: blur(30px); z-index: 0;
+    position: absolute; bottom: -80px; left: 10%; width: 180px; height: 180px;
+    background: rgba(0, 180, 42, 0.06); border-radius: 50%; filter: blur(50px); z-index: 0; pointer-events: none;
 }
 
-.h-header-inner { position: relative; z-index: 1; display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
+.h-header-inner { position: relative; z-index: 1; display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0px; }
 .h-brand { display: flex; align-items: center; gap: 16px; }
 
 .h-icon-wrapper {
-    width: 48px; height: 48px; border-radius: 16px;
+    width: 44px; height: 44px; border-radius: 14px;
     background: linear-gradient(135deg, #ffffff 0%, #f4f5f7 100%);
     box-shadow: 0 12px 24px rgba(22,93,255,0.1), inset 0 2px 4px rgba(255,255,255,0.8), inset 0 -2px 4px rgba(0,0,0,0.02);
     display: flex; align-items: center; justify-content: center;
-    font-size: 24px; color: #165dff;
+    font-size: 24px; color: #165dff; position: relative; transition: all 0.3s;
 }
 .bell-wiggle { transform-origin: top center; animation: bell-swing 8s cubic-bezier(0.34, 1.56, 0.64, 1) infinite; }
 @keyframes bell-swing {
@@ -234,8 +407,11 @@ const handleClearAll = () => {
     100% { transform: rotate(0); }
 }
 
-.h-title { margin: 0; font-size: 24px; font-weight: 800; color: #111; letter-spacing: 0.5px; line-height: 1.2; }
-.h-sub { display: inline-block; margin: 4px 0 0 0; font-size: 11px; font-weight: 800; color: #86909c; letter-spacing: 1.5px; background: rgba(0,0,0,0.04); padding: 2px 8px; border-radius: 20px;}
+.h-title { margin: 0; font-size: 20px; font-weight: 800; color: #111; letter-spacing: 0.5px; line-height: 1.2; }
+.h-sub { display: inline-block; margin: 4px 0 0 0; font-size: 10px; font-weight: 800; color: #86909c; letter-spacing: 1px; background: rgba(0,0,0,0.04); padding: 2px 8px; border-radius: 20px;}
+
+/* 右侧操作区组合 */
+.h-header-right-group { display: flex; align-items: center; gap: 24px; }
 
 .h-close {
     width: 36px; height: 36px; border-radius: 50%;
@@ -254,162 +430,241 @@ const handleClearAll = () => {
     display: flex; align-items: center; gap: 6px; cursor: pointer; transition: all 0.2s;
 }
 .h-btn-text:hover { color: #165dff; }
+.h-btn-text:disabled { opacity: 0.5; cursor: not-allowed; color: #86909c!important; }
 .h-btn-text.danger:hover { color: #f53f3f; }
-.h-btn-text:disabled { color: #c9cdd4; cursor: not-allowed; }
-.h-btn-divider { width: 1px; height: 12px; background: rgba(0,0,0,0.08); }
+
+.h-btn-divider { width: 1px; height: 14px; background: rgba(0,0,0,0.06); }
 
 
-/* ================= 苹果式悬浮导航 ================= */
-.h-sticky-nav {
-    padding: 16px 32px 8px; background: #fdfdfd; position: sticky; top: 0; z-index: 10;
+/* ================= 滚动区域与基础间隔 ================= */
+.h-scrollable { flex: 1; overflow-y: auto; padding: 12px 20px 24px; display: flex; flex-direction: column; }
+.no-top-pad { padding-top: 0px; }
+
+/* ================= Column 1：月历看板 ================= */
+.h-calendar-wrapper { padding: 8px 12px; border-bottom: 1px dashed rgba(0,0,0,0.04); }
+.h-calendar-wrapper :deep(.arco-calendar-panel) { padding: 4px 0; }
+.h-calendar-wrapper :deep(.arco-calendar-month-cell) { padding: 2px 0; }
+.h-calendar-wrapper :deep(.arco-calendar-date) { height: auto; width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: transparent !important; }
+.h-calendar-wrapper :deep(.arco-calendar-date-value) { height: 24px; width: 24px; line-height: 24px; font-size: 11px; font-family: 'Inter', sans-serif; display: flex; align-items: center; justify-content: center; }
+
+/* 自定义日期指示器圆点 */
+.h-custom-date { gap: 2px; }
+.h-cell-indicator { height: 6px; display: flex; align-items: center; justify-content: center; }
+.mini-dim { transform: scale(0.6); opacity: 0.3; animation: none !important; box-shadow: none !important;}
+
+/* 自定义日历头部与按钮样式 */
+.h-month-trigger { 
+    display: inline-flex; align-items: center; gap: 4px; 
+    font-size: 14px; font-weight: 800; color: #111; font-family: 'Inter', monospace; 
+    padding: 2px 8px; border-radius: 6px; cursor: pointer; transition: background 0.2s;
 }
-.h-capsule-bg {
-    position: relative; background: rgba(0,0,0,0.04); border-radius: 12px;
-    padding: 3px; display: flex; align-items: center;
-    box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
-}
-.h-capsule-slider {
-    position: absolute; top: 3px; bottom: 3px; left: 0;
-    background: #fff; border-radius: 10px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.06), inset 0 0 0 1px rgba(0,0,0,0.02);
-    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), width 0.4s;
-    z-index: 1;
-}
-.h-capsule-btn {
-    flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px;
-    padding: 10px 0; position: relative; z-index: 2; cursor: pointer;
-    font-size: 14px; font-weight: 600; color: #86909c; transition: color 0.3s;
-}
-.h-capsule-btn.is-active { color: #111; }
-.btn-badge {
-    background: rgba(0,0,0,0.08); color: #4e5969; padding: 2px 8px;
-    border-radius: 12px; font-size: 12px; font-weight: 700;
-}
-.h-capsule-btn.is-active .btn-badge { background: #f2f3f5; color: #111; }
-.h-capsule-btn.is-active .btn-badge.is-urgent { background: #f53f3f; color: #fff; box-shadow: 0 4px 8px rgba(245,63,63,0.3); }
+.h-month-trigger:hover { background: rgba(0,0,0,0.04); }
+.h-trigger-arrow { font-size: 12px; color: #86909c; }
 
+/* 覆盖默认的“今天”按钮外观和文字 */
+.h-calendar-wrapper :deep(.arco-calendar-header-left .arco-btn) {
+    font-size: 0; /* 隐藏原本的“今天”两字 */
+    padding: 2px 10px;
+    height: 26px;
+    border-radius: 6px;
+    background: rgba(22,93,255,0.1);
+    color: #165dff;
+    transition: all 0.2s;
+}
+.h-calendar-wrapper :deep(.arco-calendar-header-left .arco-btn:hover) {
+    background: #165dff;
+    color: #fff;
+}
+.h-calendar-wrapper :deep(.arco-calendar-header-left .arco-btn::after) {
+    content: '今';
+    font-size: 13px;
+    font-weight: 700;
+}
 
-/* ================= 超感瀑布流列表 ================= */
-.h-scrollable { flex: 1; overflow-y: auto; padding: 16px 32px 32px; display: flex; flex-direction: column; }
-.h-list { display: flex; flex-direction: column; gap: 16px; }
+/* 隐藏日历右侧默认的 月/年 切换按钮，因为小面板下不需要切换 */
+.h-calendar-wrapper :deep(.arco-calendar-header-right) { display: none; }
 
-/* 动画队列 */
-.h-stagger-enter-active, .h-stagger-leave-active { transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1); }
-.h-stagger-enter-from { opacity: 0; transform: translateY(30px) scale(0.95); }
-.h-stagger-leave-to { opacity: 0; transform: translateX(100%) scale(0.95); }
+.h-date-legend { display: flex; gap: 12px; padding: 12px 20px; font-size: 11px; font-weight: 500; color: #86909c; }
+.legend-item { display: flex; align-items: center; gap: 6px; }
+.h-dot { width: 6px; height: 6px; border-radius: 50%; opacity: 0.8; }
+.h-dot.info { background: #165dff; }
+.h-dot.error { background: #f53f3f; box-shadow: 0 0 6px rgba(245,63,63,0.5); }
 
-/* 卡片本体 */
+/* ================= Column 2：列表视图瀑布流 ================= */
+.h-col-header { padding: 16px 20px 10px; border-bottom: 1px dashed rgba(0,0,0,0.04); margin-bottom: 10px; display: flex; flex-direction: column; gap: 8px;}
+.col-title { font-size: 14px; font-weight: 800; color: #111; margin: 0; font-family: 'Inter', monospace; }
+
+.list-filters { display: flex; }
+.list-filters :deep(.arco-radio-group) { background: #f4f5f7; border-radius: 6px; padding: 2px;}
+.list-filters :deep(.arco-radio-button) { background: transparent; border: none; font-size: 11px; font-weight: 600; color: #4e5969; padding: 0 10px; height: 22px; line-height: 22px;}
+.list-filters :deep(.arco-radio-button-checked) { background: #fff; color: #165dff; box-shadow: 0 2px 6px rgba(0,0,0,0.05); border-radius: 4px;}
+
+.h-list { display: flex; flex-direction: column; gap: 8px; padding-bottom: 12px; }
+.h-list-footer { text-align: center; padding: 12px 0; font-size: 11px; color: #86909c; font-weight: 600; border-top: 1px dashed rgba(0,0,0,0.04); }
+
 .h-n-card {
-    position: relative; background: #fff; border-radius: 20px;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.03), inset 0 0 0 1px rgba(0,0,0,0.03);
-    padding: 20px; padding-left: 24px; overflow: hidden;
-    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-    display: flex; flex-direction: column; cursor: pointer;
-    background-image: radial-gradient(circle at top right, rgba(255,255,255,0.8), transparent 40%);
+    position: relative; background: #fff; border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.02), inset 0 0 0 1px rgba(0,0,0,0.04);
+    overflow: hidden; cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
-.h-n-card:hover { transform: translateY(-4px) scale(1.02); box-shadow: 0 16px 40px rgba(0,0,0,0.08), inset 0 0 0 1px rgba(0,0,0,0.04); z-index: 2; }
+.h-n-card.compact { padding: 6px 10px; }
+.h-n-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.06), inset 0 0 0 1px rgba(0,0,0,0.06); }
+.h-n-card.is-selected { background: #f4f7ff; box-shadow: 0 4px 16px rgba(22,93,255,0.1), inset 0 0 0 1px rgba(22,93,255,0.3); transform: translateX(4px); }
 
-/* 霓虹背光指示条 */
 .h-neon-bar { position: absolute; left: 0; top: 0; bottom: 0; width: 4px; transition: all 0.3s; }
-.h-n-card.is-info .h-neon-bar { background: #165dff; box-shadow: 2px 0 12px rgba(22,93,255,0.5); }
-.h-n-card.is-warning .h-neon-bar { background: #ff7d00; box-shadow: 2px 0 12px rgba(255,125,0,0.5); }
-.h-n-card.is-error .h-neon-bar, .h-n-card.is-critical .h-neon-bar { background: #f53f3f; box-shadow: 2px 0 12px rgba(245,63,63,0.5); }
+.h-n-card.is-info .h-neon-bar { background: #165dff; }
+.h-n-card.is-warning .h-neon-bar { background: #ff7d00; }
+.h-n-card.is-error .h-neon-bar, .h-n-card.is-critical .h-neon-bar { background: #f53f3f; }
 
-/* 卡片内容排版 */
-.h-n-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-.h-tag-combo { display: flex; align-items: center; gap: 8px; }
-.h-level-icon { font-size: 16px; }
+.h-n-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.h-tag-combo { display: flex; align-items: center; gap: 6px; }
+.h-level-icon { font-size: 12px; display: flex;}
 .is-info .h-level-icon { color: #165dff; }
 .is-warning .h-level-icon { color: #ff7d00; }
 .is-error .h-level-icon, .is-critical .h-level-icon { color: #f53f3f; }
 
-.h-tag-text { font-size: 13px; font-weight: 800; color: #4e5969; letter-spacing: 0.5px; text-transform: uppercase; background: rgba(0,0,0,0.04); padding: 2px 8px; border-radius: 8px;}
-.h-time { font-size: 12px; font-weight: 600; color: #86909c; }
+.h-tag-text { font-size: 10px; font-weight: 700; color: #86909c; letter-spacing: 0.5px; text-transform: uppercase;}
 
-.h-n-title { margin: 0 0 6px 0; font-size: 16px; font-weight: 800; color: #111; line-height: 1.4; letter-spacing: 0.2px;}
-.h-n-desc { margin: 0; font-size: 14px; color: #4e5969; line-height: 1.6; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.h-time { font-size: 10px; font-weight: 600; color: #c9cdd4; }
 
-/* 卡片尾部与动作 */
-.h-n-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding-top: 16px; border-top: 1px dashed rgba(0,0,0,0.06); }
-.h-status-indicator { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 800; letter-spacing: 0.5px; }
-.h-dot { width: 8px; height: 8px; border-radius: 50%; background: #f53f3f; box-shadow: 0 0 12px rgba(245,63,63,0.8); animation: h-pulse 2s infinite; }
-@keyframes h-pulse { 0% { box-shadow: 0 0 0 0 rgba(245,63,63,0.4); } 70% { box-shadow: 0 0 0 6px rgba(245,63,63,0); } 100% { box-shadow: 0 0 0 0 rgba(245,63,63,0); } }
+.h-n-title { margin: 0; font-size: 13px; font-weight: 800; color: #111; line-height: 1.4; letter-spacing: 0.2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px;}
+.h-card-bottom { display: flex; align-items: center; justify-content: space-between; margin-top: 4px; }
 
-.is-info .h-status-indicator { color: #165dff; } .is-warning .h-status-indicator { color: #ff7d00; } .is-error .h-status-indicator, .is-critical .h-status-indicator { color: #f53f3f; }
+/* 列表卡片右下角徽章 */
+.h-card-badge { display: flex; align-items: center; gap: 6px; font-size: 10px; font-weight: 800; letter-spacing: 0.5px; justify-content: flex-end; width: 100%; border-top: 1px dashed rgba(0,0,0,0.05); padding-top: 10px; }
+.h-dot { width: 6px; height: 6px; border-radius: 50%; background: #f53f3f; box-shadow: 0 0 8px rgba(245,63,63,0.8); animation: h-pulse 2s infinite; }
+@keyframes h-pulse { 0% { box-shadow: 0 0 0 0 rgba(245,63,63,0.4); } 70% { box-shadow: 0 0 0 4px rgba(245,63,63,0); } 100% { box-shadow: 0 0 0 0 rgba(245,63,63,0); } }
 
-.h-n-actions { display: flex; gap: 8px; opacity: 0; transform: translateY(10px); transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
-.h-n-card:hover .h-n-actions { opacity: 1; transform: translateY(0); }
-.h-action-icon {
-    width: 32px; height: 32px; border-radius: 10px; background: rgba(0,0,0,0.03);
-    display: flex; align-items: center; justify-content: center; font-size: 16px; color: #4e5969;
-    transition: all 0.2s;
+.is-info .h-card-badge { color: #165dff; } .is-warning .h-card-badge { color: #ff7d00; } .is-error .h-card-badge, .is-critical .h-card-badge { color: #f53f3f; }
+
+/* 已读半透明形态 */
+.h-n-card.is-read:not(.is-selected) { opacity: 0.6; filter: grayscale(50%); box-shadow: 0 2px 8px rgba(0,0,0,0.02), inset 0 0 0 1px rgba(0,0,0,0.02); }
+.h-n-card.is-read:hover { opacity: 0.95; filter: grayscale(0%); }
+.h-n-card.is-read .h-card-badge { color: #86909c; }
+
+
+/* ================= Column 3：详情页设计 ================= */
+.h-detail-box {
+    position: relative; background: #fff; border-radius: 16px; padding: 20px 20px;
+    box-shadow: 0 16px 40px rgba(0,0,0,0.04), inset 0 0 0 1px rgba(0,0,0,0.03);
+    overflow: hidden;
 }
-.h-action-icon:hover { transform: scale(1.1); }
-.h-action-icon.check:hover { background: #165dff; color: #fff; box-shadow: 0 4px 12px rgba(22,93,255,0.3); }
-.h-action-icon.delete:hover { background: #f53f3f; color: #fff; box-shadow: 0 4px 12px rgba(245,63,63,0.3); }
 
-/* 已读状态极简风化 */
-.h-n-card.is-read { opacity: 0.5; filter: grayscale(80%); box-shadow: 0 4px 12px rgba(0,0,0,0.02), inset 0 0 0 1px rgba(0,0,0,0.02); }
-.h-n-card.is-read:hover { opacity: 0.9; filter: grayscale(0%); box-shadow: 0 8px 24px rgba(0,0,0,0.06); }
-.h-n-card.is-read .h-status-indicator { color: #86909c; }
+.h-detail-box-bg {
+    position: absolute; top: 0; left: 0; right: 0; height: 180px;
+    background: linear-gradient(180deg, rgba(22,93,255,0.06) 0%, rgba(255,255,255,0) 100%);
+    z-index: 0; pointer-events: none; opacity: 0.8;
+}
+.is-warning .h-detail-box-bg { background: linear-gradient(180deg, rgba(255,125,0,0.08) 0%, rgba(255,255,255,0) 100%); }
+.is-error .h-detail-box-bg, .is-critical .h-detail-box-bg { background: linear-gradient(180deg, rgba(245,63,63,0.08) 0%, rgba(255,255,255,0) 100%); }
+
+.h-detail-header-block { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: flex-start; margin-bottom: 20px; }
+.h-d-icon { 
+    font-size: 24px; margin-bottom: 12px; 
+    width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.05);
+}
+.is-info .h-d-icon { color: #165dff; background: rgba(22,93,255,0.1); }
+.is-warning .h-d-icon { color: #ff7d00; background: rgba(255,125,0,0.1); }
+.is-error .h-d-icon, .is-critical .h-d-icon { color: #f53f3f; background: rgba(245,63,63,0.1); }
+
+.h-d-title { margin: 0; font-size: 16px; font-weight: 800; color: #111; line-height: 1.4; font-family: 'Inter', sans-serif;}
+
+/* 元数据表格面板 */
+.h-d-meta-panel {
+    position: relative; z-index: 1;
+    background: #fdfdfd; border-radius: 12px; padding: 16px;
+    display: flex; flex-direction: column; gap: 12px;
+    border: 1px solid rgba(0,0,0,0.04);
+}
+.d-meta-item { display: flex; align-items: center; justify-content: space-between; }
+.m-label { font-size: 12px; font-weight: 700; color: #86909c; }
+.m-value { font-size: 12px; font-weight: 600; color: #1D2129; display: flex; align-items: center; gap: 6px; }
+.id-text { font-family: monospace; background: rgba(0,0,0,0.04); padding: 2px 6px; border-radius: 4px;}
+.time-val, .status-val { font-family: 'Inter', monospace; }
+.status-val.resolved { color: #00b42a; font-weight: 800;}
+
+.h-d-divider { height: 1px; background: rgba(0,0,0,0.04); margin: 20px 0; border: none; }
+
+/* 详情富文本展示区 */
+.h-d-content-block { position: relative; z-index: 1; margin-bottom: 20px; }
+.content-title { margin: 0 0 8px 0; font-size: 13px; font-weight: 800; color: #111; }
+.content-body {
+    font-size: 13px; line-height: 1.6; color: #4e5969;
+    padding: 16px; border-radius: 10px; background: #fafafa;
+    border: 1px solid rgba(0,0,0,0.03); 
+    white-space: pre-wrap; word-break: break-all;
+}
 
 
 /* ================= 艺术中心级别空状态 ================= */
 .h-empty-art {
     display: flex; flex-direction: column; align-items: center; justify-content: center;
-    flex: 1; min-height: 400px;
+    padding: 32px 0; opacity: 0.6;
 }
+.min-padding { padding: 64px 0; }
 .h-art-container {
-    position: relative; width: 160px; height: 160px; display: flex; align-items: center; justify-content: center;
-    margin-bottom: 32px;
+    position: relative; width: 64px; height: 64px; display: flex; align-items: center; justify-content: center;
+    margin-bottom: 16px;
 }
 .h-art-ring { position: absolute; border-radius: 50%; top: 50%; left: 50%; transform: translate(-50%, -50%); border: 1px solid rgba(22, 93, 255, 0.1); }
-.r1 { width: 160px; height: 160px; animation: wave 4s infinite linear; }
-.r2 { width: 110px; height: 110px; animation: wave 4s infinite linear 1.3s; }
-.r3 { width: 60px; height: 60px; animation: wave 4s infinite linear 2.6s; }
-@keyframes wave { 0% { width: 60px; height: 60px; opacity: 1; border-color: rgba(22,93,255,0.4); border-width: 2px;} 100% { width: 220px; height: 220px; opacity: 0; border-width: 1px;} }
-
+.r1 { width: 80px; height: 80px; animation: wave 4s infinite linear; }
+.r2 { width: 60px; height: 60px; animation: wave 4s infinite linear 1.3s; }
 .h-art-center {
-    position: relative; z-index: 2; width: 80px; height: 80px; border-radius: 24px;
-    background: linear-gradient(135deg, #ffffff 0%, #f4f5f7 100%);
-    box-shadow: 0 20px 40px rgba(22,93,255,0.15), inset 0 2px 4px rgba(255,255,255,0.8);
+    position: relative; z-index: 2; width: 40px; height: 40px; border-radius: 12px;
+    background: #fff; box-shadow: 0 8px 16px rgba(22,93,255,0.1), inset 0 2px 4px rgba(255,255,255,0.8);
     display: flex; align-items: center; justify-content: center;
 }
-.art-icon { font-size: 40px; }
-.check-art { color: #00b42a; filter: drop-shadow(0 4px 8px rgba(0,180,42,0.3)); }
-.box-art { color: #165dff; filter: drop-shadow(0 4px 8px rgba(22,93,255,0.3)); }
+.art-icon { font-size: 20px; color: #00b42a;}
 
-.h-empty-title { font-size: 20px; font-weight: 800; color: #111; margin: 0 0 12px 0; font-family: 'Inter', sans-serif; letter-spacing: -0.5px;}
-.h-empty-desc { font-size: 14px; color: #86909c; text-align: center; max-width: 280px; line-height: 1.6; margin: 0; }
+.h-empty-desc { font-size: 13px; color: #86909c; text-align: center; margin: 0; }
 
 
-/* ================= 极致暗黑模式 ================= */
+/* ================= 极致暗黑模式支持 ================= */
 :global(body[arco-theme='dark']) .h-notification-panel { background: #18181A; }
+:global(body[arco-theme='dark']) .h-columns { background: #131314; }
+:global(body[arco-theme='dark']) .h-col { background: #18181A; border-color: rgba(255,255,255,0.03); }
+:global(body[arco-theme='dark']) .h-col-detail { background: #18181A; border-left: 1px solid rgba(255,255,255,0.04); }
+:global(body[arco-theme='dark']) .h-col-header { border-color: rgba(255,255,255,0.04); }
+
 :global(body[arco-theme='dark']) .h-header { background: #18181A; border-bottom-color: rgba(255,255,255,0.05); }
-:global(body[arco-theme='dark']) .h-notify-header .orb-1 { background: rgba(22,93,255,0.15); }
-:global(body[arco-theme='dark']) .h-icon-wrapper { background: #2A2A2C; box-shadow: 0 12px 24px rgba(0,0,0,0.5), inset 0 2px 4px rgba(255,255,255,0.05); }
-:global(body[arco-theme='dark']) .h-title { color: #E5E6EB; }
-:global(body[arco-theme='dark']) .h-sub { background: rgba(255,255,255,0.05); }
+:global(body[arco-theme='dark']) .h-title, :global(body[arco-theme='dark']) .col-title, :global(body[arco-theme='dark']) .h-d-title, :global(body[arco-theme='dark']) .content-title { color: #E5E6EB; }
+:global(body[arco-theme='dark']) .h-sub { background: rgba(255,255,255,0.05); color: #86909c;}
 :global(body[arco-theme='dark']) .h-close { color: #C9CDD4; background: rgba(255,255,255,0.05); }
-:global(body[arco-theme='dark']) .h-close:hover { background: #f53f3f; color: #fff; box-shadow: 0 8px 16px rgba(245,63,63,0.3); }
+:global(body[arco-theme='dark']) .h-close:hover { background: #f53f3f; color: #fff; }
+:global(body[arco-theme='dark']) .h-section-title { color: #86909C; }
 
-:global(body[arco-theme='dark']) .h-sticky-nav { background: #18181A; }
-:global(body[arco-theme='dark']) .h-capsule-bg { background: rgba(255,255,255,0.05); box-shadow: inset 0 2px 4px rgba(0,0,0,0.2); }
-:global(body[arco-theme='dark']) .h-capsule-slider { background: #2A2A2C; box-shadow: 0 4px 12px rgba(0,0,0,0.4), inset 0 0 0 1px rgba(255,255,255,0.05); }
-:global(body[arco-theme='dark']) .h-capsule-btn { color: #86909c; }
-:global(body[arco-theme='dark']) .h-capsule-btn.is-active { color: #E5E6EB; }
-:global(body[arco-theme='dark']) .btn-badge { background: rgba(255,255,255,0.1); color: #C9CDD4; }
-:global(body[arco-theme='dark']) .h-capsule-btn.is-active .btn-badge { background: rgba(255,255,255,0.2); color: #fff; }
+/* Date Picker/Calendar Dark Mode */
+:global(body[arco-theme='dark']) .h-calendar-wrapper :deep(.arco-calendar-panel) { background: #18181A; }
+:global(body[arco-theme='dark']) .h-calendar-wrapper :deep(.arco-calendar-date) { color: #86909c; }
+:global(body[arco-theme='dark']) .h-calendar-wrapper :deep(.arco-calendar-date:hover) { background: #2A2A2C; color: #E5E6EB; }
+:global(body[arco-theme='dark']) .h-calendar-wrapper :deep(.arco-calendar-date-selected) { background: #165dff; color: #fff; }
 
-:global(body[arco-theme='dark']) .h-n-card { background: #2A2A2C; box-shadow: 0 8px 24px rgba(0,0,0,0.4), inset 0 0 0 1px rgba(255,255,255,0.05); background-image: none; }
-:global(body[arco-theme='dark']) .h-n-card:hover { box-shadow: 0 16px 40px rgba(0,0,0,0.6), inset 0 0 0 1px rgba(255,255,255,0.1); background: #333336; }
+:global(body[arco-theme='dark']) .calendar-title { color: #E5E6EB; }
+:global(body[arco-theme='dark']) .h-month-trigger:hover { background: rgba(255,255,255,0.08); }
+:global(body[arco-theme='dark']) .h-trigger-arrow { color: #86909c; }
+:global(body[arco-theme='dark']) .h-calendar-wrapper :deep(.arco-calendar-header-left .arco-btn) { background: rgba(22,93,255,0.2); }
+:global(body[arco-theme='dark']) .h-calendar-wrapper :deep(.arco-calendar-header-left .arco-btn:hover) { background: #165dff; }
+
+/* Filter Tabs Dark */
+:global(body[arco-theme='dark']) .list-filters :deep(.arco-radio-group) { background: #2A2A2C; }
+:global(body[arco-theme='dark']) .list-filters :deep(.arco-radio-button) { color: #86909c; }
+:global(body[arco-theme='dark']) .list-filters :deep(.arco-radio-button-checked) { background: #333336; color: #165dff; box-shadow: 0 2px 4px rgba(0,0,0,0.4);}
+
+/* Waterfall List */
+:global(body[arco-theme='dark']) .h-n-card { background: #2A2A2C; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.05); background-image: none; }
+:global(body[arco-theme='dark']) .h-n-card:hover { background: #333336; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.1); }
+:global(body[arco-theme='dark']) .h-n-card.is-selected { background: #283042; box-shadow: inset 0 0 0 1px rgba(22,93,255,0.4); }
 :global(body[arco-theme='dark']) .h-n-title { color: #E5E6EB; }
-:global(body[arco-theme='dark']) .h-n-desc { color: #86909c; }
-:global(body[arco-theme='dark']) .h-tag-text { background: rgba(255,255,255,0.05); color: #C9CDD4; }
-:global(body[arco-theme='dark']) .h-n-footer { border-top-color: rgba(255,255,255,0.05); }
-:global(body[arco-theme='dark']) .h-action-icon { background: rgba(255,255,255,0.05); color: #C9CDD4; }
-:global(body[arco-theme='dark']) .h-action-icon:hover { color: #fff; }
+:global(body[arco-theme='dark']) .h-tag-text { color: #86909c; }
 
-:global(body[arco-theme='dark']) .h-art-center { background: #2A2A2C; box-shadow: 0 20px 40px rgba(0,0,0,0.4), inset 0 2px 4px rgba(255,255,255,0.05); }
-:global(body[arco-theme='dark']) .h-empty-title { color: #E5E6EB; }
+/* Detail */
+:global(body[arco-theme='dark']) .h-detail-box { background: #2A2A2C; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.05); }
+:global(body[arco-theme='dark']) .h-d-meta-panel { background: rgba(255,255,255,0.02); border-color: rgba(255,255,255,0.03); }
+:global(body[arco-theme='dark']) .m-value { color: #E5E6EB; }
+:global(body[arco-theme='dark']) .id-text { background: rgba(255,255,255,0.05); }
+:global(body[arco-theme='dark']) .content-body { background: rgba(255,255,255,0.02); border-color: rgba(255,255,255,0.03); color: #86909c;}
+
+:global(body[arco-theme='dark']) .h-col-placeholder { color: #3A3A3C; }
 </style>

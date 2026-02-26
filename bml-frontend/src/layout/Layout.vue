@@ -161,7 +161,7 @@
     <!-- 通知中心右侧抽屉（与 ThemeSettings 同级） -->
     <a-drawer
       class="ultra-premium-drawer notify-drawer"
-      :width="380"
+      :width="860"
       :visible="notificationStore.drawerVisible"
       unmount-on-close
       :footer="false"

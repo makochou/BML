@@ -145,6 +145,14 @@ export const useNotificationStore = defineStore('notification', {
                             // 避免重复（防御性编程）
                             if (!this.alerts.find((a) => a.id === alert.id)) {
                                 this.alerts.unshift(alert);
+
+                                // 解析日期部分并同步更新 alertDates 数组以便日历实时出现红点
+                                if (alert.createTime) {
+                                    const datePart = alert.createTime.split(' ')[0]; // "yyyy-MM-dd"
+                                    if (datePart && !this.alertDates.includes(datePart)) {
+                                        this.alertDates.push(datePart);
+                                    }
+                                }
                             }
                             // 只有未读的新告警才触发 Toast
                             if (alert.readStatus === 0) {
@@ -366,6 +374,14 @@ export const useNotificationStore = defineStore('notification', {
             this.drawerVisible = true;
             this.fetchAlertDates();
             this.fetchUnreadCount();
+
+            // 默认选中当天的日期
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            const todayStr = `${year}-${month}-${day}`;
+            this.selectDate(todayStr);
         },
 
         /**
