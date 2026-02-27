@@ -16,26 +16,31 @@
         <dependency>
             <groupId>com.bml</groupId>
             <artifactId>bml-core-framework</artifactId>
-            <version>${project.version}</version>
         </dependency>
 
-        <!-- OSHI Server Monitor Probe -->
+        <!-- OSHI 服务监控采集 -->
         <dependency>
             <groupId>com.github.oshi</groupId>
             <artifactId>oshi-core</artifactId>
         </dependency>
 
-        <!-- MapStruct -->
+        <!-- MapStruct 对象映射 -->
         <dependency>
             <groupId>org.mapstruct</groupId>
             <artifactId>mapstruct</artifactId>
         </dependency>
 
-        <!-- Lombok -->
+        <!-- Lombok，仅在编译期参与 -->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <optional>true</optional>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 

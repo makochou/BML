@@ -1,88 +1,105 @@
-# BML Backend Project
+# BML Backend
 
-BML (Business Management L...) 是一个基于 **Spring Boot 3.2 + MyBatis-Plus + Vue 3** 的前后端分离后台管理系统。
+## 项目概览
 
-## 🛠️ 技术栈
+`bml-backend` 是当前 BML 项目的后端主仓库，基于 `Spring Boot 3 + MyBatis-Plus + MariaDB + Redis` 构建，当前已经落地的核心能力包括：
 
-- **Core**: Spring Boot 3.2.3, Java 21
-- **Database**: MariaDB 10.6+ / MySQL 8.0+
-- **ORM**: MyBatis-Plus 3.5.3 + ShardingSphere 5.4.1
-- **Cache**: Redis 6+ (Redisson 3.27.0)
-- **Security**: Spring Security 6 + JJWT 0.12.5 (Stateless)
-- **Tooling**: MapStruct, Hutool, Guava, Lombok
-- **API Docs**: SpringDoc OpenApi 3 (Swagger 3)
+- 认证中心：用户名密码登录、`accessToken + refreshToken`、Redis 会话管理
+- 系统管理：用户、角色、菜单、部门、监控告警
+- OpenAPI 安全链路：签名校验、`nonce` 防重放、接口级授权
+- 工程基线：Flyway 迁移、统一响应、统一异常、父 POM 版本治理
 
-## 📋 环境准备
+## 环境要求
 
-在启动项目之前，请确保您的开发环境满足以下要求：
+- JDK 21
+- Maven 3.9+
+- MariaDB 10.6+
+- Redis 6+
 
-- **JDK**: OpenJDK 21+
-- **Maven**: 3.8+
-- **Database**: MariaDB 10.6+ 或 MySQL 8.0+ (创建数据库 `bml_system`)
-- **Redis**: 6.0+ (默认端口 6379, 无密码或自行配置)
-- **IDE**: IntelliJ IDEA (推荐)
+## 配置方式
 
-## 🚀 快速开始
+后端当前只保留一份配置文件：
 
-### 1. 克隆与导入
+- `bml-app/src/main/resources/application.yml`
+
+环境差异全部通过环境变量覆盖，不再拆分 `application-local.yml` 或 `application-prod.yml`。敏感配置不允许直接提交到仓库，请优先参考：
+
 ```bash
-git clone <repository-url>
+copy .env.example .env
 ```
-使用 IntelliJ IDEA 打开项目根目录 (`bml-backend`)，等待 Maven 依赖下载完成。
 
-### 2. 数据库配置
-1. 创建数据库：
-   ```sql
-   CREATE DATABASE IF NOT EXISTS `bml_system` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
-   ```
-2. 修改配置 (Optional)：
-   打开 `bml-app/src/main/resources/application-dev.yml`，根据本地环境修改数据库和 Redis 连接信息：
-   ```yaml
-   spring:
-     datasource:
-       url: jdbc:mariadb://localhost:3306/bml_system...
-       username: root
-       password: your_password
-     data:
-       redis:
-         host: localhost
-         password: ""
-   ```
+关键环境变量如下：
 
-### 3. 应用启动
-项目整合了 **Flyway**，应用启动时会自动检测并执行 `src/main/resources/db/migration` 下的 SQL 脚本，完成表结构和初始化数据的创建。
+- `BML_DB_URL`
+- `BML_DB_USERNAME`
+- `BML_DB_PASSWORD`
+- `BML_REDIS_HOST`
+- `BML_REDIS_PORT`
+- `BML_REDIS_PASSWORD`
+- `BML_JWT_SECRET`
+- `BML_OPENAPI_SECRET_ENCRYPTION_KEY`
 
-**启动入口**: `com.bml.app.BmlApplication` (位于 `bml-app` 模块)
+## 本地启动
 
-### 4. 验证运行
-启动成功后，访问 Swagger UI 查看 API 文档：
-- **地址**: [http://localhost:8080/api/swagger-ui/index.html](http://localhost:8080/api/swagger-ui/index.html)
-- **账号**: `admin`
-- **密码**: `admin123`
+1. 创建数据库
 
-### 5. 登录测试
-1. 在 Swagger 中找到 `/auth/login` 接口。
-2. 输入 default credential (`admin` / `admin123`) 获取 Token。
-3. 点击 "Authorize" 按钮，输入 `Bearer <your_token>` 进行认证。
-4. 测试 `/system/user/list` 等受保护接口。
+```sql
+CREATE DATABASE IF NOT EXISTS `bml_system`
+DEFAULT CHARACTER SET utf8mb4
+COLLATE utf8mb4_general_ci;
+```
 
-## 📂 模块说明
+2. 配置数据库与 Redis 环境变量
+3. 启动应用
 
-- **bml-backend** (Root)
-  - `bml-core` (核心基础层)
-    - `bml-core-common`: 通用常量、异常、Result 封装
-    - `bml-core-base`: 基础实体、Controller、Service 抽象
-    - `bml-core-framework`: 全局配置、Security、WebMvc、Jackson、Redis
-  - `bml-modules` (业务模块层)
-    - `bml-module-system`: 系统管理 (用户、角色、菜单、部门)
-    - `bml-module-api`: 业务 API 示例
-  - `bml-app` (启动入口)
+```bash
+mvn -pl bml-app spring-boot:run
+```
 
-## 🤝 贡献与规范
-- 严格遵守 RESTful API 规范。
-- 统一使用 `Result<T>` 响应结构。
-- Service 层接口禁止使用 FQN。
-- 实体与 DTO/VO 转换使用 MapStruct。
+也可以直接运行启动类：
 
----
-**Happy Coding!** 🚀
+- `com.bml.app.BmlApplication`
+
+## 数据迁移
+
+应用启动时会自动执行 Flyway：
+
+- 系统基础表
+- API 账号相关表
+- 告警表
+- 安全收口迁移 `V1.3.0__security_hardening.sql`
+
+如需验证空库启动，请使用：
+
+- `bml-backend/scripts/validate-empty-startup.ps1`
+
+详细说明见 [10-empty-db-validation.md](../docs/10-empty-db-validation.md)。
+
+## 接口说明
+
+- 业务接口根路径：`/api`
+- 管理端口默认：`18080`
+- Actuator 默认仅暴露 `health`、`info`
+
+Swagger 默认关闭，如需在本地临时打开：
+
+```bash
+set BML_SWAGGER_ENABLED=true
+```
+
+访问地址：
+
+- `http://localhost:8080/api/swagger-ui/index.html`
+
+## 当前安全约束
+
+- OpenAPI 签名串固定为 `appKey + timestamp + nonce + method + path + canonicalQuery + bodySha256`
+- `nonce` 通过 Redis 做 5 分钟防重放
+- API Secret 不通过列表接口和详情接口常驻返回
+- `sys_api_*` 是当前唯一保留的 API 数据模型
+
+## 验证命令
+
+```bash
+mvn -q clean test
+```

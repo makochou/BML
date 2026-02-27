@@ -1,5 +1,7 @@
 package com.bml.core.framework.service;
 
+import com.bml.core.framework.service.model.OpenApiAppAuth;
+
 /**
  * OpenAPI 认证服务接口
  * <p>
@@ -16,5 +18,7 @@ public interface OpenApiAuthService {
      * @param appKey 应用ID
      * @return 密钥, 若不存在或停用则返回 null
      */
-    String getAppSecret(String appKey);
+    OpenApiAppAuth getAppAuth(String appKey);
+
+    boolean isApiAuthorized(Long accountId, String path, String method);
 }

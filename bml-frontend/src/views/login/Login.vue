@@ -1,7 +1,5 @@
 <template>
   <div class="login-wrapper">
-
-    
     <div class="login-card">
       <div class="card-left">
         <div class="brand">
@@ -12,7 +10,6 @@
             <p class="brand-slogan">企业级 API 中台管理解决方案</p>
         </div>
         <div class="illustration">
-            <!-- 纯CSS构建的抽象图形 -->
             <div class="circle c1"></div>
             <div class="circle c2"></div>
             <div class="circle c3"></div>
@@ -43,8 +40,6 @@
                     </a-button>
                 </a-form-item>
             </a-form>
-            
-
         </div>
       </div>
     </div>
@@ -61,6 +56,7 @@ import { useRouter } from 'vue-router';
 import { Message } from '@arco-design/web-vue';
 import { IconUser, IconLock, IconThunderbolt, IconArrowRight } from '@arco-design/web-vue/es/icon';
 import request from '../../utils/request';
+import { setAuthTokens } from '../../utils/auth';
 
 const router = useRouter();
 const loading = ref(false);
@@ -69,16 +65,21 @@ const form = reactive({
   password: ''
 });
 
-const handleSubmit = async ({ errors }: any) => {
-  if (errors) return;
-  
+const handleSubmit = async ({ errors }: { errors?: unknown }) => {
+  if (errors) {
+    return;
+  }
+
   loading.value = true;
   try {
-    const { data } = await request.post('/auth/login', { 
-        username: form.username, 
-        password: form.password 
+    const { data } = await request.post('/auth/login', {
+        username: form.username,
+        password: form.password
     });
-    localStorage.setItem('token', data.accessToken);
+    setAuthTokens({
+      accessToken: data.accessToken,
+      refreshToken: data.refreshToken
+    });
     Message.success('登录成功');
     router.push('/admin');
   } finally {
@@ -96,10 +97,6 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/* 
- * 核心布局与背景 
- * 采用深邃的蓝紫色渐变作为基底，叠加动态粒子效果
- */
 .login-wrapper {
   position: fixed;
   top: 0;
@@ -110,10 +107,6 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  /* 
-   * 旗舰级 Mesh Gradient 背景 
-   * 模拟极光与流体效果，替代静态图片
-   */
   background-color: #0f172a;
   background-image: 
     radial-gradient(at 0% 0%, hsla(253,16%,7%,1) 0, transparent 50%), 
@@ -136,10 +129,6 @@ onUnmounted(() => {
     100% { background-position: 0% 50%; }
 }
 
-/* 
- * 登录卡片 
- * 采用 Glassmorphism (毛玻璃) 风格
- */
 .login-card {
   width: 900px;
   height: 550px;
@@ -160,15 +149,14 @@ onUnmounted(() => {
     box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.3);
 }
 
-/* 左侧品牌区域 */
 .card-left {
   flex: 1;
   background: rgba(0, 0, 0, 0.3);
   padding: 60px;
   display: flex;
   flex-direction: column;
-  justify-content: center; /* 垂直居中 */
-  align-items: center;     /* 水平居中 */
+  justify-content: center;
+  align-items: center;
   color: white;
   position: relative;
   overflow: hidden;
@@ -178,7 +166,7 @@ onUnmounted(() => {
     display: flex;
     flex-direction: column;
     align-items: center;
-    z-index: 2; /* 确保文字在圆环上层 */
+    z-index: 2;
 }
 
 .brand-logo {
@@ -207,7 +195,6 @@ onUnmounted(() => {
     white-space: nowrap;
 }
 
-/* 左侧抽象圆环动画 */
 .illustration {
     position: absolute;
     bottom: -50px;
@@ -226,8 +213,6 @@ onUnmounted(() => {
 
 @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
-
-/* 右侧表单区域 */
 .card-right {
   flex: 1;
   background: white;
@@ -255,7 +240,6 @@ onUnmounted(() => {
     font-size: 14px;
 }
 
-/* 输入框样式重置 */
 :deep(.arco-input-wrapper), :deep(.arco-input-password) {
     background-color: #f7fafc;
     border: 1px solid #e2e8f0;
@@ -288,9 +272,6 @@ onUnmounted(() => {
     box-shadow: 0 10px 20px rgba(118, 75, 162, 0.3);
 }
 
-
-
-/* 底部版权 */
 .copyright {
     position: absolute;
     bottom: 20px;

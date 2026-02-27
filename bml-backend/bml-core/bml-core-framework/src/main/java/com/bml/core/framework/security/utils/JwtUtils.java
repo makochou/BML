@@ -47,7 +47,7 @@ public class JwtUtils {
      * 生产环境建议使用环境变量或配置中心管理，切勿硬编码。
      * </p>
      */
-    @Value("${bml.jwt.secret:abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz}")
+    @Value("${bml.jwt.secret}")
     private String secret;
 
     /**

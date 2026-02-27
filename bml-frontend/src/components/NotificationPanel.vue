@@ -207,7 +207,7 @@ import { useNotificationStore } from '../store/notification';
 import { 
   IconInfoCircleFill, IconExclamationCircleFill, 
   IconCloseCircleFill, IconNotification, IconClose,
-  IconCheckCircle, IconCheckCircleFill, IconDelete,
+  IconCheckCircle, IconCheckCircleFill,
   IconClockCircle, IconDown,
   IconDesktop, IconFile
 } from '@arco-design/web-vue/es/icon';

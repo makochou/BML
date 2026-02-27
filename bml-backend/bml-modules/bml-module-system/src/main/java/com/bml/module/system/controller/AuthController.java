@@ -107,8 +107,8 @@ public class AuthController {
      * Content-Type: application/json
      *
      * {
-     *   "username": "admin",
-     *   "password": "admin123"
+     *   "username": "your-admin-user",
+     *   "password": "your-admin-password"
      * }
      * </pre>
      *

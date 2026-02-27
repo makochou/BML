@@ -1,20 +1,19 @@
 package com.bml.module.system.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.media.Schema.RequiredMode;
 import lombok.Data;
 
 /**
- * 登录请求对象
- *
- * @author BML Team
+ * Login request body.
  */
 @Data
-@Schema(description = "登录请求对象")
+@Schema(description = "Login request body")
 public class LoginBody {
 
-    @Schema(description = "用户名", required = true)
+    @Schema(description = "Username", requiredMode = RequiredMode.REQUIRED)
     private String username;
 
-    @Schema(description = "密码", required = true)
+    @Schema(description = "Password", requiredMode = RequiredMode.REQUIRED)
     private String password;
 }

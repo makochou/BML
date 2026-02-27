@@ -1,116 +1,36 @@
-# BML-Backend 项目文档中心
+# BML Docs
 
-> **企业管理系统后端** | Java 21 | Spring Boot 3.2.3 | MariaDB
+本目录只保留当前仓库真实落地、并且能够指导后续开发的文档。若文档与代码冲突，以代码、Flyway 迁移和测试结果为准。
 
----
+## 当前发布范围
 
-## 📚 文档清单
+- 后端采用 `Spring Boot 3 + MyBatis-Plus` 的模块化单体架构
+- 当前已交付模块为 `system` 与 `api`
+- 认证链路采用 `JWT access token + refresh token + Redis 会话`
+- OpenAPI 采用 `appKey + timestamp + nonce + method + path + canonicalQuery + bodySha256` 签名
+- API Secret 只在创建或重置时一次性返回，数据库内加密存储
+- 前端当前开放首页、应用管理页和通知监控能力
 
-| 序号 | 文档 | 说明 |
-|------|------|------|
-| 01 | [需求规格说明书](./01-requirements.md) | 功能需求、非功能需求、技术约束 |
-| 02 | [系统架构设计](./02-system-architecture.md) | 整体架构、模块设计、技术决策 |
-| 03 | [权限系统设计](./03-permission-design.md) | RBAC+ABAC混合模型、四层权限 |
-| 04 | [数据库设计](./04-database-design.md) | ER图、表结构、索引策略 |
-| 05 | [API管理中台设计](./05-api-portal-design.md) | 功能设计、UI规范、技术实现 |
-| 06 | [技术规范](./06-technical-specification.md) | 编码规范、接口规范、错误码 |
-| 07 | [开发阶段计划](./07-development-phases.md) | 6阶段开发计划、里程碑 |
-| 08 | [授权与安全设计](./08-authorization-design.md) | License、JWT、加密方案 |
-| 09 | [依赖版本管理](./09-dependencies.md) | 全部依赖版本清单 |
+## 文档目录
 
----
+| 编号 | 文件 | 说明 |
+| --- | --- | --- |
+| 01 | [01-requirements.md](./01-requirements.md) | 当前交付范围、验收边界与非目标 |
+| 02 | [02-system-architecture.md](./02-system-architecture.md) | 当前系统架构、模块边界与主链路 |
+| 03 | [03-permission-design.md](./03-permission-design.md) | 当前权限模型、权限码规范与边界 |
+| 04 | [04-database-design.md](./04-database-design.md) | 当前数据库模型、核心表与迁移规范 |
+| 05 | [05-api-portal-design.md](./05-api-portal-design.md) | API 账号与 OpenAPI 现状说明 |
+| 06 | [06-technical-specification.md](./06-technical-specification.md) | 开发规范、命名规范、接口约定 |
+| 07 | [07-development-phases.md](./07-development-phases.md) | 当前阶段状态与后续里程碑 |
+| 08 | [08-authorization-design.md](./08-authorization-design.md) | 认证、安全与 OpenAPI 授权设计 |
+| 09 | [09-dependencies.md](./09-dependencies.md) | 后端和前端依赖基线 |
+| 10 | [10-empty-db-validation.md](./10-empty-db-validation.md) | 空库启动验收脚本与使用说明 |
+| 11 | [11-maven-build-governance.md](./11-maven-build-governance.md) | 父 POM、版本治理与插件治理 |
+| 12 | [12-unified-response-exception-spec.md](./12-unified-response-exception-spec.md) | 统一响应、统一异常、统一返回规范 |
+| 13 | [13-encoding-and-comment-guidelines.md](./13-encoding-and-comment-guidelines.md) | 编码规范、中文注释规范与排查指南 |
 
-## 📁 SQL脚本
+## 文档使用原则
 
-| 脚本 | 说明 |
-|------|------|
-| [V1.0.0__init_system_tables.sql](./sql/V1.0.0__init_system_tables.sql) | 系统库初始化脚本 |
-
----
-
-## 🏗️ 项目架构
-
-```
-bml-backend/
-├── bml-core/                    # 核心框架
-│   ├── bml-core-framework/      # 框架代码
-│   ├── bml-core-common/         # 通用工具
-│   └── bml-core-base/           # 基础抽象
-├── bml-modules/                 # 业务模块
-│   └── bml-module-system/       # 系统管理
-├── bml-extensions/              # 扩展插件
-├── bml-customization/           # 客户定制
-├── bml-app/                     # 启动应用
-└── bml-api-portal/              # API管理中台
-```
-
----
-
-## ✨ 核心特性
-
-| 特性 | 说明 |
-|------|------|
-| 🔐 四层权限 | 菜单 → 按钮 → 字段 → 数据 |
-| 📋 License授权 | RSA签名 + 机器绑定 |
-| 🗄️ 分库分表 | ShardingSphere透明分片 |
-| 📝 操作日志 | @OperationLog注解 + 异步写入 |
-| 🔑 JWT认证 | 双Token机制 |
-| 🌐 API中台 | 目录 + 调试 + 账号管理 |
-
----
-
-## 🚀 快速开始
-
-### 环境要求
-
-- JDK 21+
-- Maven 3.9+
-- MariaDB 11+
-- Redis 7+
-- Node.js 20+ (API中台)
-
-### 初始化步骤
-
-```bash
-# 1. 创建数据库
-mysql -u root -p -e "CREATE DATABASE bml_system DEFAULT CHARACTER SET utf8mb4;"
-mysql -u root -p -e "CREATE DATABASE bml_business DEFAULT CHARACTER SET utf8mb4;"
-
-# 2. 执行初始化脚本
-mysql -u root -p bml_system < docs/sql/V1.0.0__init_system_tables.sql
-
-# 3. 配置环境变量
-export BML_DB_HOST=localhost
-export BML_DB_PASSWORD=your_password
-export BML_REDIS_HOST=localhost
-
-# 4. 构建项目
-mvn clean install -DskipTests
-
-# 5. 启动应用
-java -jar bml-app/target/bml-app.jar
-```
-
-### 默认账号
-
-| 用户名 | 密码 | 角色 |
-|--------|------|------|
-| admin | admin123 | 超级管理员 |
-
----
-
-## 📅 开发里程碑
-
-| 里程碑 | 时间 | 交付物 |
-|--------|------|--------|
-| M1 | 第3周 | 基础框架 |
-| M2 | 第7周 | 系统模块 |
-| M3 | 第10周 | API中台 |
-| M4 | 第11周 | 测试完成 |
-| M5 | 第12周 | 正式上线 |
-
----
-
-## 📞 技术支持
-
-如有问题，请联系项目负责人。
+- 设计口径必须服务当前代码，而不是服务历史方案
+- 任何新增功能都要先更新对应规范文档，再进入开发
+- 任何涉及编码、乱码、注释、统一响应的变更，都必须同步更新本目录

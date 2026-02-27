@@ -270,12 +270,12 @@ const handleGcClean = async () => {
         gcLoading.value = true;
         const res: any = await request.post('/system/monitor/gc');
         if (res.code === 200) {
-            Message.success(res.msg || '清理指令发送成功，由于释放内存需要时间，请留意后续变动。');
+            Message.success(res.message || '清理指令发送成功，由于释放内存需要时间，请留意后续变动。');
             setTimeout(() => {
                 fetchMonitorData();
             }, 500); // 略微延迟0.5s强制刷新一次抓取最新数据 
         } else {
-            Message.error(res.msg || '清理指令发送失败');
+            Message.error(res.message || '清理指令发送失败');
         }
     } catch (error) {
         Message.error('触发垃圾回收失败');

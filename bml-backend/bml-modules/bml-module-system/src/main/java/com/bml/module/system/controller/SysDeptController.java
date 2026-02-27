@@ -100,7 +100,7 @@ public class SysDeptController extends BaseController {
     @PostMapping
     public Result<Void> add(@Validated @RequestBody SysDeptDTO dto) {
         if (!deptService.checkDeptNameUnique(dto)) {
-            return Result.fail("新增部门'" + dto.getDeptName() + "'失败，部门名称已存在");
+            return Result.badRequest("新增部门'" + dto.getDeptName() + "'失败，部门名称已存在");
         }
         return toAjax(deptService.insertDept(dto));
     }
@@ -116,7 +116,7 @@ public class SysDeptController extends BaseController {
     @PutMapping
     public Result<Void> edit(@Validated @RequestBody SysDeptDTO dto) {
         if (!deptService.checkDeptNameUnique(dto)) {
-            return Result.fail("修改部门'" + dto.getDeptName() + "'失败，部门名称已存在");
+            return Result.badRequest("修改部门'" + dto.getDeptName() + "'失败，部门名称已存在");
         }
         return toAjax(deptService.updateDept(dto));
     }
@@ -136,7 +136,7 @@ public class SysDeptController extends BaseController {
     public Result<Void> remove(@PathVariable Long deptId) {
         List<SysDept> children = deptService.selectChildrenDeptById(deptId);
         if (children != null && !children.isEmpty()) {
-            return Result.fail("存在下级部门，不允许删除");
+            return Result.badRequest("存在下级部门，不允许删除");
         }
         return toAjax(deptService.removeById(deptId));
     }

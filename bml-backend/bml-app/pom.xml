@@ -16,12 +16,10 @@
         <dependency>
             <groupId>com.bml</groupId>
             <artifactId>bml-module-system</artifactId>
-            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>com.bml</groupId>
             <artifactId>bml-module-api</artifactId>
-            <version>${project.version}</version>
         </dependency>
 
         <dependency>
@@ -47,7 +45,7 @@
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-mysql</artifactId>
         </dependency>
-        
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
@@ -57,17 +55,10 @@
 
     <build>
         <plugins>
+            <!-- 应用模块只声明插件使用意图，版本与默认配置由父 POM 统一管理。 -->
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
-                <version>${spring-boot.version}</version>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>repackage</goal>
-                        </goals>
-                    </execution>
-                </executions>
             </plugin>
         </plugins>
     </build>

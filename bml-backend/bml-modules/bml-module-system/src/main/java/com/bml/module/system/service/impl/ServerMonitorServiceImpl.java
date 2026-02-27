@@ -5,16 +5,20 @@ import cn.hutool.core.util.NumberUtil;
 import com.bml.module.system.security.monitor.ActiveUserTracker;
 import com.bml.module.system.service.ServerMonitorService;
 import com.bml.module.system.vo.ServerInfoVO;
+import jakarta.annotation.PostConstruct;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import oshi.SystemInfo;
 import oshi.hardware.CentralProcessor;
 import oshi.hardware.GlobalMemory;
+import oshi.hardware.HWDiskStore;
 import oshi.hardware.HardwareAbstractionLayer;
 import oshi.hardware.NetworkIF;
 import oshi.software.os.FileSystem;
 import oshi.software.os.OSFileStore;
 import oshi.software.os.OperatingSystem;
-import oshi.util.Util;
 
 import java.lang.management.ManagementFactory;
 import java.net.InetAddress;
@@ -23,139 +27,137 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Properties;
 
-/**
- * 深入底层的高级系统参数提取服务
- */
 @Service
 public class ServerMonitorServiceImpl implements ServerMonitorService {
 
-    // CPU 与 网速 等待捕获时间用于计算负载浮动值
-    private static final int OSHI_WAIT_SECOND = 1000;
+    private static final long DEFAULT_SAMPLE_INTERVAL_MS = 3000L;
+    private static final long PUBLIC_IP_REFRESH_INTERVAL_MS = 60 * 60 * 1000L;
 
-    @org.springframework.beans.factory.annotation.Autowired
+    private final SystemInfo systemInfo = new SystemInfo();
+    private final HardwareAbstractionLayer hardware = systemInfo.getHardware();
+    private final OperatingSystem operatingSystem = systemInfo.getOperatingSystem();
+
+    private volatile ServerInfoVO cachedServerInfo;
+    private volatile long[] previousCpuTicks;
+    private volatile long previousRxBytes;
+    private volatile long previousTxBytes;
+    private volatile long previousDiskReadBytes;
+    private volatile long previousDiskWriteBytes;
+    private volatile long lastSampleTime;
+    private volatile String cachedPublicIp = "未启用";
+    private volatile long lastPublicIpRefreshTime;
+
+    @Autowired
     private ActiveUserTracker activeUserTracker;
+
+    @Value("${bml.monitor.refresh-interval-ms:3000}")
+    private long refreshIntervalMs;
+
+    @Value("${bml.monitor.public-ip-enabled:false}")
+    private boolean publicIpEnabled;
+
+    @Value("${bml.monitor.public-ip-provider-url:http://checkip.amazonaws.com}")
+    private String publicIpProviderUrl;
+
+    @PostConstruct
+    public void initializeSnapshot() {
+        refreshSnapshot();
+    }
+
+    @Scheduled(fixedDelayString = "${bml.monitor.refresh-interval-ms:3000}")
+    public synchronized void refreshSnapshot() {
+        CentralProcessor processor = hardware.getProcessor();
+        List<NetworkIF> networkIFs = hardware.getNetworkIFs();
+        List<HWDiskStore> diskStores = hardware.getDiskStores();
+
+        long currentTime = System.currentTimeMillis();
+        long[] currentCpuTicks = processor.getSystemCpuLoadTicks();
+        long currentRxBytes = sumReceivedBytes(networkIFs);
+        long currentTxBytes = sumSentBytes(networkIFs);
+        long currentDiskReadBytes = sumDiskReadBytes(diskStores);
+        long currentDiskWriteBytes = sumDiskWriteBytes(diskStores);
+
+        ServerInfoVO serverInfo = new ServerInfoVO();
+        serverInfo.setCpu(buildCpuInfo(processor, currentCpuTicks));
+        serverInfo.setNet(buildNetInfo(networkIFs, currentRxBytes, currentTxBytes));
+        serverInfo.setMem(buildMemInfo(hardware.getMemory()));
+        serverInfo.setJvm(buildJvmInfo());
+        serverInfo.setSys(buildSysInfo());
+        serverInfo.setDisks(buildDiskInfo(currentDiskReadBytes, currentDiskWriteBytes));
+
+        previousCpuTicks = currentCpuTicks;
+        previousRxBytes = currentRxBytes;
+        previousTxBytes = currentTxBytes;
+        previousDiskReadBytes = currentDiskReadBytes;
+        previousDiskWriteBytes = currentDiskWriteBytes;
+        lastSampleTime = currentTime;
+        cachedServerInfo = serverInfo;
+    }
 
     @Override
     public ServerInfoVO getServerInfo() {
-        ServerInfoVO serverInfo = new ServerInfoVO();
-
-        // 实例化 OSHI 的顶层查询对象
-        SystemInfo si = new SystemInfo();
-        HardwareAbstractionLayer hal = si.getHardware();
-        OperatingSystem os = si.getOperatingSystem();
-
-        // 获取前置数据：CPU Ticks, Network Bytes, Disk Bytes
-        CentralProcessor processor = hal.getProcessor();
-        long[] prevTicks = processor.getSystemCpuLoadTicks();
-
-        List<NetworkIF> networkIFs = hal.getNetworkIFs();
-        long prevRxBytes = 0;
-        long prevTxBytes = 0;
-        for (NetworkIF net : networkIFs) {
-            net.updateAttributes();
-            prevRxBytes += net.getBytesRecv();
-            prevTxBytes += net.getBytesSent();
+        if (cachedServerInfo == null) {
+            refreshSnapshot();
         }
-
-        // 记录磁盘初始状态用于计算 I/O
-        long prevDiskReadBytes = 0;
-        long prevDiskWriteBytes = 0;
-
-        // 由于部分OS的FileStore可能拿不到具体的读写字节数，此处通过收集全部可用指标聚合
-        // 但是 OSFileStore 本身不提供实时的 byte 读写，需要从 HWDiskStore 中获取
-        List<oshi.hardware.HWDiskStore> diskStores = hal.getDiskStores();
-        for (oshi.hardware.HWDiskStore ds : diskStores) {
-            ds.updateAttributes();
-            prevDiskReadBytes += ds.getReadBytes();
-            prevDiskWriteBytes += ds.getWriteBytes();
-        }
-
-        // 统一休眠等待 1 秒钟，计算增量差值
-        Util.sleep(OSHI_WAIT_SECOND);
-
-        // 获取后置数据并执行计算
-        serverInfo.setCpu(getCpuInfo(processor, prevTicks));
-        serverInfo.setNet(getNetInfo(networkIFs, prevRxBytes, prevTxBytes, os));
-
-        // 获取其他静态或状态型参数
-        serverInfo.setMem(getMemInfo(hal.getMemory()));
-        serverInfo.setJvm(getJvmInfo());
-        serverInfo.setSys(getSysInfo(os));
-        serverInfo.setDisks(getDiskInfo(os, hal, prevDiskReadBytes, prevDiskWriteBytes));
-
-        return serverInfo;
+        return cachedServerInfo;
     }
 
-    private ServerInfoVO.CpuInfo getCpuInfo(CentralProcessor processor, long[] prevTicks) {
+    private ServerInfoVO.CpuInfo buildCpuInfo(CentralProcessor processor, long[] currentTicks) {
         ServerInfoVO.CpuInfo cpu = new ServerInfoVO.CpuInfo();
         cpu.setCpuModel(processor.getProcessorIdentifier().getName());
         cpu.setCpuNum(processor.getLogicalProcessorCount());
 
-        long[] ticks = processor.getSystemCpuLoadTicks();
-
-        long nice = ticks[CentralProcessor.TickType.NICE.getIndex()]
-                - prevTicks[CentralProcessor.TickType.NICE.getIndex()];
-        long irq = ticks[CentralProcessor.TickType.IRQ.getIndex()]
-                - prevTicks[CentralProcessor.TickType.IRQ.getIndex()];
-        long softirq = ticks[CentralProcessor.TickType.SOFTIRQ.getIndex()]
-                - prevTicks[CentralProcessor.TickType.SOFTIRQ.getIndex()];
-        long steal = ticks[CentralProcessor.TickType.STEAL.getIndex()]
-                - prevTicks[CentralProcessor.TickType.STEAL.getIndex()];
-        long cSys = ticks[CentralProcessor.TickType.SYSTEM.getIndex()]
-                - prevTicks[CentralProcessor.TickType.SYSTEM.getIndex()];
-        long user = ticks[CentralProcessor.TickType.USER.getIndex()]
-                - prevTicks[CentralProcessor.TickType.USER.getIndex()];
-        long iowait = ticks[CentralProcessor.TickType.IOWAIT.getIndex()]
-                - prevTicks[CentralProcessor.TickType.IOWAIT.getIndex()];
-        long idle = ticks[CentralProcessor.TickType.IDLE.getIndex()]
-                - prevTicks[CentralProcessor.TickType.IDLE.getIndex()];
-        long totalCpu = Math.max(user + nice + cSys + idle + iowait + irq + softirq + steal, 1);
+        long[] baseTicks = previousCpuTicks == null ? currentTicks : previousCpuTicks;
+        long nice = currentTicks[CentralProcessor.TickType.NICE.getIndex()]
+                - baseTicks[CentralProcessor.TickType.NICE.getIndex()];
+        long irq = currentTicks[CentralProcessor.TickType.IRQ.getIndex()]
+                - baseTicks[CentralProcessor.TickType.IRQ.getIndex()];
+        long softirq = currentTicks[CentralProcessor.TickType.SOFTIRQ.getIndex()]
+                - baseTicks[CentralProcessor.TickType.SOFTIRQ.getIndex()];
+        long steal = currentTicks[CentralProcessor.TickType.STEAL.getIndex()]
+                - baseTicks[CentralProcessor.TickType.STEAL.getIndex()];
+        long system = currentTicks[CentralProcessor.TickType.SYSTEM.getIndex()]
+                - baseTicks[CentralProcessor.TickType.SYSTEM.getIndex()];
+        long user = currentTicks[CentralProcessor.TickType.USER.getIndex()]
+                - baseTicks[CentralProcessor.TickType.USER.getIndex()];
+        long iowait = currentTicks[CentralProcessor.TickType.IOWAIT.getIndex()]
+                - baseTicks[CentralProcessor.TickType.IOWAIT.getIndex()];
+        long idle = currentTicks[CentralProcessor.TickType.IDLE.getIndex()]
+                - baseTicks[CentralProcessor.TickType.IDLE.getIndex()];
+        long totalCpu = Math.max(user + nice + system + idle + iowait + irq + softirq + steal, 1);
 
         cpu.setTotal(totalCpu);
-        cpu.setSys(NumberUtil.round(cSys * 100.0 / totalCpu, 2).doubleValue());
+        cpu.setSys(NumberUtil.round(system * 100.0 / totalCpu, 2).doubleValue());
         cpu.setUsed(NumberUtil.round(user * 100.0 / totalCpu, 2).doubleValue());
         cpu.setWait(NumberUtil.round(iowait * 100.0 / totalCpu, 2).doubleValue());
         cpu.setFree(NumberUtil.round(idle * 100.0 / totalCpu, 2).doubleValue());
 
-        // 获取系统负载 (Windows 通常返回负数)
         double[] loadAverage = processor.getSystemLoadAverage(3);
         cpu.setLoad1(loadAverage[0] < 0 ? 0.0 : NumberUtil.round(loadAverage[0], 2).doubleValue());
         cpu.setLoad5(loadAverage[1] < 0 ? 0.0 : NumberUtil.round(loadAverage[1], 2).doubleValue());
         cpu.setLoad15(loadAverage[2] < 0 ? 0.0 : NumberUtil.round(loadAverage[2], 2).doubleValue());
-
         return cpu;
     }
 
-    private ServerInfoVO.NetInfo getNetInfo(List<NetworkIF> networkIFs, long prevRxBytes, long prevTxBytes,
-            OperatingSystem os) {
+    private ServerInfoVO.NetInfo buildNetInfo(List<NetworkIF> networkIFs, long currentRxBytes, long currentTxBytes) {
         ServerInfoVO.NetInfo net = new ServerInfoVO.NetInfo();
-        long currentRxBytes = 0;
-        long currentTxBytes = 0;
+        double elapsedSeconds = getElapsedSeconds();
 
-        for (NetworkIF nif : networkIFs) {
-            nif.updateAttributes();
-            currentRxBytes += nif.getBytesRecv();
-            currentTxBytes += nif.getBytesSent();
-        }
+        long rxSpeedBytes = previousRxBytes == 0 ? 0 : Math.max(currentRxBytes - previousRxBytes, 0);
+        long txSpeedBytes = previousTxBytes == 0 ? 0 : Math.max(currentTxBytes - previousTxBytes, 0);
 
-        long rxSpeedBytes = Math.max(currentRxBytes - prevRxBytes, 0);
-        long txSpeedBytes = Math.max(currentTxBytes - prevTxBytes, 0);
-
-        net.setRxSpeed(formatTrafficSpeed(rxSpeedBytes));
-        net.setTxSpeed(formatTrafficSpeed(txSpeedBytes));
+        net.setRxSpeed(formatTrafficSpeed((long) (rxSpeedBytes / elapsedSeconds)));
+        net.setTxSpeed(formatTrafficSpeed((long) (txSpeedBytes / elapsedSeconds)));
         net.setTotalRxBytes(formatTrafficSize(currentRxBytes));
         net.setTotalTxBytes(formatTrafficSize(currentTxBytes));
 
-        // 【大屏改造核心】：获取真实的、基于应用层的在线活跃访客数
-        // 代替原本杂乱的 OSHI OS 级别全部 TCP socket
         try {
             int activeUsers = activeUserTracker != null ? activeUserTracker.getActiveUserCount() : 0;
             net.setTcpConnections(activeUsers);
-
-            oshi.software.os.InternetProtocolStats ipStats = os.getInternetProtocolStats();
+            oshi.software.os.InternetProtocolStats ipStats = operatingSystem.getInternetProtocolStats();
             long udpConns = ipStats.getUDPv4Stats().getDatagramsReceived();
-            net.setUdpConnections(udpConns > 0 ? -1 : 0); // UDP 无状态，无准确连接数，主要看流量
-        } catch (Exception e) {
+            net.setUdpConnections(udpConns > 0 ? -1 : 0);
+        } catch (Exception ex) {
             net.setTcpConnections(0);
             net.setUdpConnections(0);
         }
@@ -163,7 +165,7 @@ public class ServerMonitorServiceImpl implements ServerMonitorService {
         return net;
     }
 
-    private ServerInfoVO.MemInfo getMemInfo(GlobalMemory memory) {
+    private ServerInfoVO.MemInfo buildMemInfo(GlobalMemory memory) {
         ServerInfoVO.MemInfo mem = new ServerInfoVO.MemInfo();
         double total = memory.getTotal() / (1024.0 * 1024.0 * 1024.0);
         double available = memory.getAvailable() / (1024.0 * 1024.0 * 1024.0);
@@ -172,19 +174,14 @@ public class ServerMonitorServiceImpl implements ServerMonitorService {
         mem.setTotal(NumberUtil.round(total, 2).doubleValue());
         mem.setUsed(NumberUtil.round(used, 2).doubleValue());
         mem.setFree(NumberUtil.round(available, 2).doubleValue());
-        if (total == 0) {
-            mem.setUsage(0.0);
-        } else {
-            mem.setUsage(NumberUtil.round(used * 100.0 / total, 2).doubleValue());
-        }
+        mem.setUsage(total == 0 ? 0.0 : NumberUtil.round(used * 100.0 / total, 2).doubleValue());
         return mem;
     }
 
-    private ServerInfoVO.JvmInfo getJvmInfo() {
+    private ServerInfoVO.JvmInfo buildJvmInfo() {
         ServerInfoVO.JvmInfo jvm = new ServerInfoVO.JvmInfo();
         Properties props = System.getProperties();
-
-        long time = ManagementFactory.getRuntimeMXBean().getStartTime();
+        long startTime = ManagementFactory.getRuntimeMXBean().getStartTime();
 
         double total = Runtime.getRuntime().totalMemory() / (1024.0 * 1024.0);
         double max = Runtime.getRuntime().maxMemory() / (1024.0 * 1024.0);
@@ -195,76 +192,49 @@ public class ServerMonitorServiceImpl implements ServerMonitorService {
         jvm.setMax(NumberUtil.round(max, 2).doubleValue());
         jvm.setFree(NumberUtil.round(free, 2).doubleValue());
         jvm.setUsed(NumberUtil.round(used, 2).doubleValue());
-        if (total == 0) {
-            jvm.setUsage(0.0);
-        } else {
-            jvm.setUsage(NumberUtil.round(used * 100.0 / total, 2).doubleValue());
-        }
-
+        jvm.setUsage(total == 0 ? 0.0 : NumberUtil.round(used * 100.0 / total, 2).doubleValue());
         jvm.setVersion(props.getProperty("java.version"));
         jvm.setHome(props.getProperty("java.home"));
         jvm.setName(ManagementFactory.getRuntimeMXBean().getVmName());
-        jvm.setStartTime(DateUtil.formatDateTime(DateUtil.date(time)));
-        jvm.setRunTime(DateUtil.formatBetween(DateUtil.date(time), DateUtil.date()));
-
+        jvm.setStartTime(DateUtil.formatDateTime(DateUtil.date(startTime)));
+        jvm.setRunTime(DateUtil.formatBetween(DateUtil.date(startTime), DateUtil.date()));
         return jvm;
     }
 
-    private ServerInfoVO.SysInfo getSysInfo(OperatingSystem os) {
+    private ServerInfoVO.SysInfo buildSysInfo() {
         ServerInfoVO.SysInfo sys = new ServerInfoVO.SysInfo();
         Properties props = System.getProperties();
         try {
-            sys.setComputerName(InetAddress.getLocalHost().getHostName());
-            sys.setComputerIp(InetAddress.getLocalHost().getHostAddress());
-        } catch (UnknownHostException e) {
+            InetAddress localHost = InetAddress.getLocalHost();
+            sys.setComputerName(localHost.getHostName());
+            sys.setComputerIp(localHost.getHostAddress());
+        } catch (UnknownHostException ex) {
             sys.setComputerName("Unknown");
             sys.setComputerIp("127.0.0.1");
         }
 
-        // 尝试捕获公网 IP
-        try {
-            String wanIp = cn.hutool.http.HttpUtil.get("http://checkip.amazonaws.com", 2000);
-            if (wanIp != null) {
-                sys.setComputerWanIp(wanIp.trim());
-            } else {
-                sys.setComputerWanIp("获取失败");
-            }
-        } catch (Exception e) {
-            sys.setComputerWanIp("离线或隔离");
-        }
-        sys.setOsName(os.getFamily() + " " + os.getVersionInfo().getVersion());
+        sys.setComputerWanIp(resolvePublicIp());
+        sys.setOsName(operatingSystem.getFamily() + " " + operatingSystem.getVersionInfo().getVersion());
         sys.setOsArch(props.getProperty("os.arch"));
         sys.setUserDir(props.getProperty("user.dir"));
 
-        // 计算系统启动时间与运行时长
-        long bootTimeMillis = os.getSystemBootTime() * 1000L;
+        long bootTimeMillis = operatingSystem.getSystemBootTime() * 1000L;
         sys.setBootTime(DateUtil.formatDateTime(DateUtil.date(bootTimeMillis)));
         sys.setUpTime(DateUtil.formatBetween(DateUtil.date(bootTimeMillis), DateUtil.date()));
-
         return sys;
     }
 
-    private List<ServerInfoVO.DiskInfo> getDiskInfo(OperatingSystem os, HardwareAbstractionLayer hal,
-            long prevDiskReadBytes, long prevDiskWriteBytes) {
+    private List<ServerInfoVO.DiskInfo> buildDiskInfo(long currentDiskReadBytes, long currentDiskWriteBytes) {
         List<ServerInfoVO.DiskInfo> list = new LinkedList<>();
+        double elapsedSeconds = getElapsedSeconds();
+        long globalReadSpeed = previousDiskReadBytes == 0 ? 0 : Math.max(currentDiskReadBytes - previousDiskReadBytes, 0);
+        long globalWriteSpeed = previousDiskWriteBytes == 0 ? 0
+                : Math.max(currentDiskWriteBytes - previousDiskWriteBytes, 0);
 
-        // 计算全局IO速度（多磁盘合并均摊处理简化前端展示，如果需要每个盘符具体速度需要映射关联对应 DiskStore 和 FileStore）
-        long currentDiskReadBytes = 0;
-        long currentDiskWriteBytes = 0;
-        List<oshi.hardware.HWDiskStore> diskStores = hal.getDiskStores();
-        for (oshi.hardware.HWDiskStore ds : diskStores) {
-            ds.updateAttributes();
-            currentDiskReadBytes += ds.getReadBytes();
-            currentDiskWriteBytes += ds.getWriteBytes();
-        }
-
-        long globalReadSpeed = Math.max(currentDiskReadBytes - prevDiskReadBytes, 0);
-        long globalWriteSpeed = Math.max(currentDiskWriteBytes - prevDiskWriteBytes, 0);
-
-        FileSystem fileSystem = os.getFileSystem();
+        FileSystem fileSystem = operatingSystem.getFileSystem();
         List<OSFileStore> fsArray = fileSystem.getFileStores();
-        for (int i = 0; i < fsArray.size(); i++) {
-            OSFileStore fs = fsArray.get(i);
+        for (int index = 0; index < fsArray.size(); index++) {
+            OSFileStore fs = fsArray.get(index);
             long free = fs.getUsableSpace();
             long total = fs.getTotalSpace();
             long used = total - free;
@@ -278,18 +248,78 @@ public class ServerMonitorServiceImpl implements ServerMonitorService {
             disk.setUsed(formatDiskSize(used));
             disk.setUsage(total == 0 ? 0 : NumberUtil.round(used * 100.0 / total, 2).doubleValue());
 
-            // 将整体IO速率挂载到主系统盘展示上 (通常是索引0)，其他盘符默认留空或平摊，以避免整体显示冗余
-            if (i == 0) {
-                disk.setReadSpeed(formatTrafficSpeed(globalReadSpeed));
-                disk.setWriteSpeed(formatTrafficSpeed(globalWriteSpeed));
+            if (index == 0) {
+                disk.setReadSpeed(formatTrafficSpeed((long) (globalReadSpeed / elapsedSeconds)));
+                disk.setWriteSpeed(formatTrafficSpeed((long) (globalWriteSpeed / elapsedSeconds)));
             } else {
                 disk.setReadSpeed("-");
                 disk.setWriteSpeed("-");
             }
-
             list.add(disk);
         }
         return list;
+    }
+
+    private double getElapsedSeconds() {
+        long sampleInterval = refreshIntervalMs > 0 ? refreshIntervalMs : DEFAULT_SAMPLE_INTERVAL_MS;
+        if (lastSampleTime == 0L) {
+            return sampleInterval / 1000.0;
+        }
+        return Math.max((System.currentTimeMillis() - lastSampleTime) / 1000.0, 1.0);
+    }
+
+    private long sumReceivedBytes(List<NetworkIF> networkIFs) {
+        long total = 0;
+        for (NetworkIF networkIF : networkIFs) {
+            networkIF.updateAttributes();
+            total += networkIF.getBytesRecv();
+        }
+        return total;
+    }
+
+    private long sumSentBytes(List<NetworkIF> networkIFs) {
+        long total = 0;
+        for (NetworkIF networkIF : networkIFs) {
+            networkIF.updateAttributes();
+            total += networkIF.getBytesSent();
+        }
+        return total;
+    }
+
+    private long sumDiskReadBytes(List<HWDiskStore> diskStores) {
+        long total = 0;
+        for (HWDiskStore diskStore : diskStores) {
+            diskStore.updateAttributes();
+            total += diskStore.getReadBytes();
+        }
+        return total;
+    }
+
+    private long sumDiskWriteBytes(List<HWDiskStore> diskStores) {
+        long total = 0;
+        for (HWDiskStore diskStore : diskStores) {
+            diskStore.updateAttributes();
+            total += diskStore.getWriteBytes();
+        }
+        return total;
+    }
+
+    private String resolvePublicIp() {
+        if (!publicIpEnabled) {
+            return "未启用";
+        }
+        long currentTime = System.currentTimeMillis();
+        if (cachedPublicIp != null && currentTime - lastPublicIpRefreshTime < PUBLIC_IP_REFRESH_INTERVAL_MS) {
+            return cachedPublicIp;
+        }
+        try {
+            String wanIp = cn.hutool.http.HttpUtil.get(publicIpProviderUrl, 2000);
+            cachedPublicIp = wanIp == null || wanIp.isBlank() ? "获取失败" : wanIp.trim();
+        } catch (Exception ex) {
+            cachedPublicIp = "离线或不可达";
+        }
+        lastPublicIpRefreshTime = currentTime;
+        return cachedPublicIp;
     }
 
     private String formatDiskSize(long size) {

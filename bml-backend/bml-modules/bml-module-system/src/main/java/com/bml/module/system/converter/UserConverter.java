@@ -3,66 +3,72 @@ package com.bml.module.system.converter;
 import com.bml.module.system.dto.SysUserDTO;
 import com.bml.module.system.entity.SysUser;
 import com.bml.module.system.vo.SysUserVO;
-import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
-import org.mapstruct.factory.Mappers;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 用户对象转换器
- * <p>
- * 基于 MapStruct 自动生成 DTO ↔ Entity ↔ VO 之间的转换代码。
- * 使用 {@code Mappers.getMapper()} 获取实例（无 Spring 容器依赖）。
- * </p>
- * <p>
- * <b>使用方式：</b> {@code UserConverter.INSTANCE.toEntity(dto)}
- * </p>
- *
- * @author BML Team
+ * User mapper implemented manually to avoid MapStruct/Lombok inheritance issues
+ * on generated classes.
  */
-@Mapper
-public interface UserConverter {
+public final class UserConverter {
 
-    /** 转换器实例 */
-    UserConverter INSTANCE = Mappers.getMapper(UserConverter.class);
+    public static final UserConverter INSTANCE = new UserConverter();
 
-    /**
-     * DTO 转 Entity
-     *
-     * @param dto 用户传输对象
-     * @return 用户实体
-     */
-    @Mapping(target = "createBy", ignore = true)
-    @Mapping(target = "createTime", ignore = true)
-    @Mapping(target = "updateBy", ignore = true)
-    @Mapping(target = "updateTime", ignore = true)
-    @Mapping(target = "deleted", ignore = true)
-    @Mapping(target = "realName", ignore = true)
-    @Mapping(target = "orgId", ignore = true)
-    @Mapping(target = "loginIp", ignore = true)
-    @Mapping(target = "loginDate", ignore = true)
-    SysUser toEntity(SysUserDTO dto);
+    private UserConverter() {
+    }
 
-    /**
-     * Entity 转 VO
-     * <p>
-     * 部门名称和角色名称需要在 Service 层手动填充或通过关联查询获取。
-     * </p>
-     *
-     * @param entity 用户实体
-     * @return 用户视图对象
-     */
-    @Mapping(target = "deptName", ignore = true)
-    @Mapping(target = "roleNames", ignore = true)
-    @Mapping(target = "roleIds", ignore = true)
-    SysUserVO toVO(SysUser entity);
+    public SysUser toEntity(SysUserDTO dto) {
+        if (dto == null) {
+            return null;
+        }
 
-    /**
-     * Entity 列表 转 VO 列表
-     *
-     * @param list 用户实体列表
-     * @return 用户视图对象列表
-     */
-    List<SysUserVO> toVOList(List<SysUser> list);
+        SysUser user = new SysUser();
+        user.setId(dto.getId());
+        user.setUsername(dto.getUsername());
+        user.setPassword(dto.getPassword());
+        user.setNickname(dto.getNickname());
+        user.setEmail(dto.getEmail());
+        user.setPhone(dto.getPhone());
+        user.setGender(dto.getGender());
+        user.setAvatar(dto.getAvatar());
+        user.setStatus(dto.getStatus());
+        user.setDeptId(dto.getDeptId());
+        user.setRemark(dto.getRemark());
+        return user;
+    }
+
+    public SysUserVO toVO(SysUser entity) {
+        if (entity == null) {
+            return null;
+        }
+
+        SysUserVO vo = new SysUserVO();
+        vo.setId(entity.getId());
+        vo.setUsername(entity.getUsername());
+        vo.setNickname(entity.getNickname());
+        vo.setEmail(entity.getEmail());
+        vo.setPhone(entity.getPhone());
+        vo.setGender(entity.getGender());
+        vo.setAvatar(entity.getAvatar());
+        vo.setStatus(entity.getStatus());
+        vo.setDeptId(entity.getDeptId());
+        vo.setCreateTime(entity.getCreateTime());
+        vo.setLoginIp(entity.getLoginIp());
+        vo.setLoginDate(entity.getLoginDate());
+        vo.setRemark(entity.getRemark());
+        return vo;
+    }
+
+    public List<SysUserVO> toVOList(List<SysUser> list) {
+        if (list == null) {
+            return null;
+        }
+
+        List<SysUserVO> result = new ArrayList<>(list.size());
+        for (SysUser user : list) {
+            result.add(toVO(user));
+        }
+        return result;
+    }
 }

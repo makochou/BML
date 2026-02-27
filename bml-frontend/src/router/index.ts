@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router';
+import { getAccessToken } from '../utils/auth';
 
 const routes = [
     {
@@ -22,19 +23,19 @@ const routes = [
                 path: 'dashboard',
                 name: 'Dashboard',
                 component: () => import('../views/dashboard/Workplace.vue'),
-                meta: { title: '仪表台', affix: true }
+                meta: { title: '仪表盘', affix: true }
             },
             {
                 path: 'api/list',
                 name: 'ApiList',
-                component: () => import('../views/api/ApiList.vue'),
-                meta: { title: 'API 管理' }
+                component: () => import('../views/common/FeatureDisabled.vue'),
+                meta: { title: 'API 管理', featureName: 'API 管理' }
             },
             {
                 path: 'api/debug',
                 name: 'ApiDebug',
-                component: () => import('../views/api/ApiDebug.vue'),
-                meta: { title: '在线调试' }
+                component: () => import('../views/common/FeatureDisabled.vue'),
+                meta: { title: '在线调试', featureName: '在线调试' }
             },
             {
                 path: 'app',
@@ -51,30 +52,23 @@ const router = createRouter({
     routes
 });
 
-// 路由守卫
 router.beforeEach((to, _from, next) => {
-    const token = localStorage.getItem('token');
+    const token = getAccessToken();
     if (to.meta.title) {
         document.title = `${to.meta.title} - BML中台管理`;
     } else {
         document.title = 'BML中台管理';
     }
 
-    // 访问后台管理相关页面 (/admin 开头) 时需要校验权限
     if (to.path.startsWith('/admin')) {
-        // 如果是去登录页，直接放行
         if (to.path === '/admin/login') {
             next();
+        } else if (!token) {
+            next('/admin/login');
         } else {
-            // 如果没有 Token，跳转到登录页
-            if (!token) {
-                next('/admin/login');
-            } else {
-                next();
-            }
+            next();
         }
     } else {
-        // 访问业务前台，不需要 Token
         next();
     }
 });

@@ -108,7 +108,7 @@ public class SysMenuController extends BaseController {
     @PostMapping
     public Result<Void> add(@Validated @RequestBody SysMenuDTO dto) {
         if (!menuService.checkMenuNameUnique(dto)) {
-            return Result.fail("新增菜单'" + dto.getMenuName() + "'失败，菜单名称已存在");
+            return Result.badRequest("新增菜单'" + dto.getMenuName() + "'失败，菜单名称已存在");
         }
         return toAjax(menuService.insertMenu(dto));
     }
@@ -124,7 +124,7 @@ public class SysMenuController extends BaseController {
     @PutMapping
     public Result<Void> edit(@Validated @RequestBody SysMenuDTO dto) {
         if (!menuService.checkMenuNameUnique(dto)) {
-            return Result.fail("修改菜单'" + dto.getMenuName() + "'失败，菜单名称已存在");
+            return Result.badRequest("修改菜单'" + dto.getMenuName() + "'失败，菜单名称已存在");
         }
         return toAjax(menuService.updateMenu(dto));
     }

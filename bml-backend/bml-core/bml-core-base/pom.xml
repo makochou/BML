@@ -16,10 +16,9 @@
         <dependency>
             <groupId>com.bml</groupId>
             <artifactId>bml-core-common</artifactId>
-            <version>${project.version}</version>
         </dependency>
 
-        <!-- MyBatis Plus -->
+        <!-- MyBatis-Plus 基础扩展能力 -->
         <dependency>
             <groupId>com.baomidou</groupId>
             <artifactId>mybatis-plus-extension</artifactId>
@@ -29,19 +28,19 @@
             <artifactId>mybatis-plus-annotation</artifactId>
         </dependency>
 
-        <!-- Validation -->
+        <!-- Bean 参数校验 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
 
-        <!-- Swagger Annotations（版本由父 POM dependencyManagement 统一管理） -->
+        <!-- Swagger 注解，版本由父 POM 的 dependencyManagement 统一管理 -->
         <dependency>
             <groupId>io.swagger.core.v3</groupId>
             <artifactId>swagger-annotations</artifactId>
         </dependency>
-        
-        <!-- Lombok -->
+
+        <!-- Lombok，仅在编译期参与 -->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>

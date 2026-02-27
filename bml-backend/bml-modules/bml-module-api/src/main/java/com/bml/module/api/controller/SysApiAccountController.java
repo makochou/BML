@@ -3,8 +3,9 @@ package com.bml.module.api.controller;
 import com.bml.core.base.controller.BaseController;
 import com.bml.core.common.result.Result;
 import com.bml.module.api.dto.SysApiAccountDTO;
-import com.bml.module.api.entity.SysApiAccount;
 import com.bml.module.api.service.SysApiAccountService;
+import com.bml.module.api.vo.ApiCredentialVO;
+import com.bml.module.api.vo.SysApiAccountVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.Resource;
@@ -14,11 +15,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-/**
- * API账号管理
- *
- * @author BML Team
- */
 @Tag(name = "API账号管理")
 @RestController
 @RequestMapping("/api/account")
@@ -30,22 +26,22 @@ public class SysApiAccountController extends BaseController {
     @Operation(summary = "获取API账号列表")
     @PreAuthorize("@ss.hasPermi('api:account:list')")
     @GetMapping("/list")
-    public Result<List<SysApiAccount>> list(SysApiAccountDTO dto) {
+    public Result<List<SysApiAccountVO>> list(SysApiAccountDTO dto) {
         return Result.ok(accountService.selectAccountList(dto));
     }
 
-    @Operation(summary = "根据ID获取详细信息")
+    @Operation(summary = "根据ID获取详情信息")
     @PreAuthorize("@ss.hasPermi('api:account:query')")
     @GetMapping(value = "/{id}")
-    public Result<SysApiAccount> getInfo(@PathVariable Long id) {
-        return Result.ok(accountService.getById(id));
+    public Result<SysApiAccountVO> getInfo(@PathVariable Long id) {
+        return Result.ok(accountService.getAccountInfo(id));
     }
 
     @Operation(summary = "新增API账号")
     @PreAuthorize("@ss.hasPermi('api:account:add')")
     @PostMapping("/add")
-    public Result<Void> add(@Validated @RequestBody SysApiAccountDTO dto) {
-        return toAjax(accountService.insertAccount(dto));
+    public Result<ApiCredentialVO> add(@Validated @RequestBody SysApiAccountDTO dto) {
+        return Result.ok(accountService.insertAccount(dto));
     }
 
     @Operation(summary = "修改API账号")
@@ -65,7 +61,7 @@ public class SysApiAccountController extends BaseController {
     @Operation(summary = "重置密钥")
     @PreAuthorize("@ss.hasPermi('api:account:reset')")
     @PutMapping("/{id}/reset")
-    public Result<String> resetSecret(@PathVariable Long id) {
+    public Result<ApiCredentialVO> resetSecret(@PathVariable Long id) {
         return Result.ok(accountService.resetSecret(id));
     }
 }

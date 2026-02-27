@@ -238,6 +238,8 @@ const handleLogout = async () => {
   } catch (e) {
     // 忽略登出失败
   } finally {
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
     localStorage.removeItem('token');
     notificationStore.stopPolling(); // 退出时停止通知轮询
     tagsViewStore.delAllViews();

@@ -5,15 +5,11 @@ import lombok.Data;
 
 import java.time.LocalDateTime;
 
-/**
- * API账号视图对象
- *
- * @author BML Team
- */
 @Data
 @Schema(description = "API账号视图对象")
 public class SysApiAccountVO {
 
+    @Schema(description = "主键ID")
     private Long id;
 
     @Schema(description = "账号名称")
@@ -39,4 +35,7 @@ public class SysApiAccountVO {
 
     @Schema(description = "创建时间")
     private LocalDateTime createTime;
+
+    @Schema(description = "更新时间")
+    private LocalDateTime updateTime;
 }
