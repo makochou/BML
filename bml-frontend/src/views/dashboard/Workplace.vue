@@ -11,7 +11,7 @@
        </div>
        <div class="header-right">
           <div class="info-pill" v-if="serverInfo?.net">
-             <icon-swap style="margin-right: 4px; color: #165dff"/>
+             <icon-swap style="margin-right: 4px; color: var(--bml-primary, #165dff)"/>
              <span style="color: #86909c">↓</span> <span class="text-green hw-metric">{{ serverInfo.net.rxSpeed }}</span>
              <span style="color: #86909c; margin-left: 8px">↑</span> <span class="hardware-text hw-metric">{{ serverInfo.net.txSpeed }}</span>
              <span style="color: #86909c; margin-left: 8px" title="Total(Rx/Tx)">总计(收/发):</span> <span class="hw-metric" style="color: #1d2129">{{ serverInfo.net.totalRxBytes }} / {{ serverInfo.net.totalTxBytes }}</span>
@@ -33,7 +33,7 @@
        <div class="grid-left">
            <!-- 宿主机信息卡片 -->
            <div class="tech-card glass-panel left-card" style="flex: 1.1">
-               <div class="card-accent" style="background: linear-gradient(135deg, #165dff, #00b8d4);"></div>
+               <div class="card-accent" style="background: var(--bml-gradient, linear-gradient(135deg, #165dff, #00b8d4));"></div>
                <div class="card-title"><icon-computer/> 宿主机运行环境</div>
                <div class="info-list" v-if="serverInfo?.sys">
                    <div class="info-row"><span class="label">服务器名称</span> <span class="value hardware-text">{{ serverInfo.sys.computerName }}</span></div>
@@ -341,7 +341,7 @@ onUnmounted(() => {
 .header-left h2 {
   margin: 0;
   font-size: 22px;
-  background: linear-gradient(90deg, #165dff, #722ed1);
+  background: var(--bml-gradient-alt, linear-gradient(90deg, #165dff, #722ed1));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -388,7 +388,7 @@ onUnmounted(() => {
   text-overflow: ellipsis;
 }
 .info-pill span {
-  color: #165dff;
+  color: var(--bml-primary, #165dff);
   font-family: 'Courier New', monospace;
   font-weight: 500;
 }
@@ -441,8 +441,8 @@ onUnmounted(() => {
   transition: transform 0.3s, box-shadow 0.3s;
 }
 .tech-card:hover { 
-  box-shadow: 0 8px 24px rgba(22, 93, 255, 0.1); 
-  border-color: rgba(22, 93, 255, 0.2);
+  box-shadow: 0 8px 24px rgba(var(--bml-primary-rgb, 22,93,255), 0.1); 
+  border-color: rgba(var(--bml-primary-rgb, 22,93,255), 0.2);
 }
 
 .card-title {
@@ -454,7 +454,7 @@ onUnmounted(() => {
   align-items: center;
   gap: 8px;
 }
-.card-title svg { color: #165dff; }
+.card-title svg { color: var(--bml-primary, #165dff); }
 
 /* 列表展示 */
 .info-list {
@@ -472,7 +472,7 @@ onUnmounted(() => {
 }
 .info-row .label { color: #86909c; }
 .info-row .value { color: #1d2129; text-align: right; max-width: 60%; word-break: break-all; font-weight: 500; }
-.hardware-text { font-family: 'Courier New', monospace; font-weight: bold; color: #165dff !important; }
+.hardware-text { font-family: 'Courier New', monospace; font-weight: bold; color: var(--bml-primary, #165dff) !important; }
 .text-green { color: #00b42a !important; }
 .code-text { font-family: monospace; font-size: 12px; color: #ff7d00 !important; background: rgba(255, 125, 0, 0.05); padding: 1px 4px; border-radius: 4px; }
 
@@ -482,8 +482,8 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   background: #fff;
-  border: 1px solid rgba(22, 93, 255, 0.1);
-  box-shadow: 0 8px 24px rgba(22, 93, 255, 0.06);
+  border: 1px solid rgba(var(--bml-primary-rgb, 22,93,255), 0.1);
+  box-shadow: 0 8px 24px rgba(var(--bml-primary-rgb, 22,93,255), 0.06);
 }
 
 .center-head {
@@ -534,7 +534,7 @@ onUnmounted(() => {
 .bar-labels { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 6px; color: #1d2129; font-weight: 500;}
 .bar-track { width: 100%; height: 6px; background: rgba(0,0,0,0.05); border-radius: 3px; overflow: hidden; }
 .bar-fill { height: 100%; border-radius: 3px; transition: width 0.5s ease-out; }
-.bg-blue { background: #165dff; box-shadow: 0 0 6px rgba(22,93,255,0.4); }
+.bg-blue { background: var(--bml-primary, #165dff); box-shadow: 0 0 6px var(--bml-shadow, rgba(22,93,255,0.4)); }
 .bg-purple { background: #722ed1; box-shadow: 0 0 6px rgba(114,46,209,0.4); }
 .bg-orange { background: #ff7d00; box-shadow: 0 0 6px rgba(255,125,0,0.4); }
 
@@ -558,7 +558,7 @@ onUnmounted(() => {
 }
 .disk-head { display: flex; justify-content: space-between; margin-bottom: 12px; }
 .disk-path { font-weight: bold; color: #1d2129; font-size: 15px; }
-.disk-type { background: rgba(22,93,255,0.08); padding: 2px 6px; border-radius: 4px; font-size: 12px; color: #165dff; font-weight: 500; }
+.disk-type { background: var(--bml-primary-lighter, rgba(22,93,255,0.08)); padding: 2px 6px; border-radius: 4px; font-size: 12px; color: var(--bml-primary, #165dff); font-weight: 500; }
 
 .disk-progress { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
 .dp-track { flex: 1; height: 8px; background: rgba(0,0,0,0.05); border-radius: 4px; overflow: hidden; }
@@ -569,13 +569,13 @@ onUnmounted(() => {
 .text-red { color: #f53f3f; }
 
 .disk-foot { display: flex; justify-content: space-between; font-size: 12px; color: #86909c; font-weight: 500; }
-.disk-foot .disk-io { color: #165dff; display: flex; align-items: center; gap: 4px; font-family: 'Courier New', monospace; font-weight: bold; }
+.disk-foot .disk-io { color: var(--bml-primary, #165dff); display: flex; align-items: center; gap: 4px; font-family: 'Courier New', monospace; font-weight: bold; }
 
 .loading-state { text-align: center; color: #86909c; padding: 40px 0; font-size: 14px; }
 
 /* 算力与网络负载 */
-.load-badge { background: rgba(22,93,255,0.06); border: 1px solid rgba(22,93,255,0.2); padding: 4px 10px; border-radius: 6px; font-size: 13px; color: #4e5969; font-weight: 500; white-space: nowrap; }
-.load-badge span { color: #165dff; font-family: 'Courier New', monospace; font-weight: bold; }
+.load-badge { background: rgba(var(--bml-primary-rgb, 22,93,255), 0.06); border: 1px solid rgba(var(--bml-primary-rgb, 22,93,255), 0.2); padding: 4px 10px; border-radius: 6px; font-size: 13px; color: #4e5969; font-weight: 500; white-space: nowrap; }
+.load-badge span { color: var(--bml-primary, #165dff); font-family: 'Courier New', monospace; font-weight: bold; }
 .hw-metric { font-family: 'Courier New', monospace; font-weight: bold; min-width: 60px; display: inline-block;}
 
 /* 修改后的内存清理操作栏 - 更精致无边框感 */
@@ -587,19 +587,19 @@ onUnmounted(() => {
     border-radius: 8px;
     padding: 12px 20px; /* 减小上下 padding 从而减小高度 */
     margin: auto 16px; /* 使用 auto 实现垂直居中 */
-    border-left: 4px solid #165dff;
+    border-left: 4px solid var(--bml-primary, #165dff);
     transition: all 0.3s ease;
 }
 .gc-action-bar:hover {
-    box-shadow: 0 4px 12px rgba(22, 93, 255, 0.08);
+    box-shadow: 0 4px 12px rgba(var(--bml-primary-rgb, 22,93,255), 0.08);
 }
 .gc-desc {
     display: flex;
     align-items: center;
 }
 .gc-icon-bg {
-    background: rgba(22,93,255, 0.1);
-    color: #165dff;
+    background: rgba(var(--bml-primary-rgb, 22,93,255), 0.1);
+    color: var(--bml-primary, #165dff);
     width: 36px; height: 36px;
     border-radius: 8px;
     display: flex; justify-content: center; align-items: center;
@@ -621,10 +621,10 @@ onUnmounted(() => {
 }
 .tech-gc-btn {
     font-weight: bold;
-    box-shadow: 0 2px 8px rgba(22, 93, 255, 0.15);
+    box-shadow: 0 2px 8px rgba(var(--bml-primary-rgb, 22,93,255), 0.15);
 }
 .tech-gc-btn:hover {
-    box-shadow: 0 4px 12px rgba(22, 93, 255, 0.3);
+    box-shadow: 0 4px 12px rgba(var(--bml-primary-rgb, 22,93,255), 0.3);
 }
 
 /* 响应式调整以防压扁 */

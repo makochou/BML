@@ -188,7 +188,7 @@ onUnmounted(() => {
   height: 3px;
   width: 100%;
 }
-.toast-stripe.stripe-info { background: linear-gradient(90deg, #165dff, #4080ff); }
+.toast-stripe.stripe-info { background: linear-gradient(90deg, var(--bml-primary, #165dff), var(--bml-primary-light, #4080ff)); }
 .toast-stripe.stripe-warning { background: linear-gradient(90deg, #ff7d00, #ffb65d); }
 .toast-stripe.stripe-error { background: linear-gradient(90deg, #f53f3f, #ff7875); }
 .toast-stripe.stripe-critical { background: linear-gradient(90deg, #cb2634, #f53f3f); }
@@ -211,7 +211,7 @@ onUnmounted(() => {
   font-size: 20px;
   flex-shrink: 0;
 }
-.toast-icon.icon-info { background: rgba(22, 93, 255, 0.1); color: #165dff; }
+.toast-icon.icon-info { background: rgba(var(--bml-primary-rgb, 22,93,255), 0.1); color: var(--bml-primary, #165dff); }
 .toast-icon.icon-warning { background: rgba(255, 125, 0, 0.1); color: #ff7d00; }
 .toast-icon.icon-error { background: rgba(245, 63, 63, 0.1); color: #f53f3f; }
 .toast-icon.icon-critical { background: rgba(203, 38, 52, 0.15); color: #cb2634; }
@@ -287,7 +287,7 @@ onUnmounted(() => {
   animation: progress-shrink linear forwards;
   transform-origin: left;
 }
-.toast-progress-bar.bar-info { background: #165dff; }
+.toast-progress-bar.bar-info { background: var(--bml-primary, #165dff); }
 .toast-progress-bar.bar-warning { background: #ff7d00; }
 .toast-progress-bar.bar-error { background: #f53f3f; }
 .toast-progress-bar.bar-critical { background: #cb2634; }

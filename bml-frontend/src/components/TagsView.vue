@@ -161,7 +161,7 @@ onMounted(() => {
 /* Active State: Clean White Pill */
 .tags-view-item.active {
   background: #fff;
-  color: #165dff;
+  color: var(--bml-primary, #165dff);
   font-weight: 500;
   /* Crisp shadow instead of glow */
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);

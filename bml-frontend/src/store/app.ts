@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia';
+import { applyThemeColor, getSavedThemeColor } from '../utils/theme';
 
 export interface AppState {
     theme: 'light' | 'dark';
@@ -23,7 +24,7 @@ export const useAppStore = defineStore('app', {
         hideMenu: false,
         menuCollapse: false,
         footer: true,
-        themeColor: '#165DFF',
+        themeColor: getSavedThemeColor(),
         headerTheme: 'transparent',
         sidebarTheme: 'white',
         settingsVisible: false,
@@ -51,6 +52,13 @@ export const useAppStore = defineStore('app', {
         },
         updateSettings(partial: Partial<AppState>) {
             this.$patch(partial);
+        },
+        /**
+         * 初始化主题：在应用启动时调用，
+         * 从 localStorage 恢复保存的主题色并应用 CSS 变量
+         */
+        initTheme() {
+            applyThemeColor(this.themeColor);
         }
     },
 });

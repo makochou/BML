@@ -407,7 +407,7 @@ const handleMarkAllRead = async () => {
     background: linear-gradient(135deg, #ffffff 0%, #f4f5f7 100%);
     box-shadow: 0 12px 24px rgba(22,93,255,0.1), inset 0 2px 4px rgba(255,255,255,0.8), inset 0 -2px 4px rgba(0,0,0,0.02);
     display: flex; align-items: center; justify-content: center;
-    font-size: 24px; color: #165dff; position: relative; transition: all 0.3s;
+    font-size: 24px; color: var(--bml-primary, #165dff); position: relative; transition: all 0.3s;
 }
 .bell-wiggle { transform-origin: top center; animation: bell-swing 8s cubic-bezier(0.34, 1.56, 0.64, 1) infinite; }
 @keyframes bell-swing {
@@ -441,7 +441,7 @@ const handleMarkAllRead = async () => {
     font-family: inherit; font-size: 13px; font-weight: 700; color: #4e5969;
     display: flex; align-items: center; gap: 6px; cursor: pointer; transition: all 0.2s;
 }
-.h-btn-text:hover { color: #165dff; }
+.h-btn-text:hover { color: var(--bml-primary, #165dff); }
 .h-btn-text:disabled { opacity: 0.5; cursor: not-allowed; color: #86909c!important; }
 .h-btn-text.danger:hover { color: #f53f3f; }
 
@@ -484,11 +484,11 @@ const handleMarkAllRead = async () => {
     height: 26px;
     border-radius: 6px;
     background: rgba(22,93,255,0.1);
-    color: #165dff;
+    color: var(--bml-primary, #165dff);
     transition: all 0.2s;
 }
 .h-calendar-wrapper :deep(.arco-calendar-header-left .arco-btn:hover) {
-    background: #165dff;
+    background: var(--bml-primary, #165dff);
     color: #fff;
 }
 .h-calendar-wrapper :deep(.arco-calendar-header-left .arco-btn::after) {
@@ -523,8 +523,8 @@ const handleMarkAllRead = async () => {
 
 /* 为今天的日期数字增加浅浅的特殊背景底色标识 */
 .h-calendar-wrapper :deep(.arco-calendar-cell-today .arco-calendar-date-value) {
-    background: rgba(22, 93, 255, 0.08); /* 极淡的品牌蓝背景 */
-    color: #165dff;
+    background: rgba(var(--bml-primary-rgb, 22,93,255), 0.08); /* 极淡的品牌蓝背景 */
+    color: var(--bml-primary, #165dff);
     font-weight: 800;
     border-radius: 6px;
 }
@@ -532,7 +532,7 @@ const handleMarkAllRead = async () => {
 .h-date-legend { display: flex; gap: 12px; padding: 12px 20px; font-size: 11px; font-weight: 500; color: #86909c; }
 .legend-item { display: flex; align-items: center; gap: 6px; }
 .h-dot { width: 6px; height: 6px; border-radius: 50%; opacity: 0.8; }
-.h-dot.info { background: #165dff; }
+.h-dot.info { background: var(--bml-primary, #165dff); }
 .h-dot.error { background: #f53f3f; box-shadow: 0 0 6px rgba(245,63,63,0.5); }
 
 /* ================= Column 2：列表视图瀑布流 ================= */
@@ -543,7 +543,7 @@ const handleMarkAllRead = async () => {
 .list-filters { display: flex; }
 .list-filters :deep(.arco-radio-group) { background: #f4f5f7; border-radius: 6px; padding: 2px;}
 .list-filters :deep(.arco-radio-button) { background: transparent; border: none; font-size: 11px; font-weight: 600; color: #4e5969; padding: 0 10px; height: 22px; line-height: 22px;}
-.list-filters :deep(.arco-radio-button-checked) { background: #fff; color: #165dff; box-shadow: 0 2px 6px rgba(0,0,0,0.05); border-radius: 4px;}
+.list-filters :deep(.arco-radio-button-checked) { background: #fff; color: var(--bml-primary, #165dff); box-shadow: 0 2px 6px rgba(0,0,0,0.05); border-radius: 4px;}
 
 .h-list { display: flex; flex-direction: column; gap: 8px; padding-bottom: 12px; }
 .h-list-footer { text-align: center; padding: 12px 0; font-size: 11px; color: #86909c; font-weight: 600; border-top: 1px dashed rgba(0,0,0,0.04); }
@@ -559,14 +559,14 @@ const handleMarkAllRead = async () => {
 .h-n-card.is-selected { background: #f4f7ff; box-shadow: 0 4px 16px rgba(22,93,255,0.1), inset 0 0 0 1px rgba(22,93,255,0.3); transform: translateX(4px); }
 
 .h-neon-bar { position: absolute; left: 0; top: 0; bottom: 0; width: 4px; transition: all 0.3s; }
-.h-n-card.is-info .h-neon-bar { background: #165dff; }
+.h-n-card.is-info .h-neon-bar { background: var(--bml-primary, #165dff); }
 .h-n-card.is-warning .h-neon-bar { background: #ff7d00; }
 .h-n-card.is-error .h-neon-bar, .h-n-card.is-critical .h-neon-bar { background: #f53f3f; }
 
 .h-n-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
 .h-tag-combo { display: flex; align-items: center; gap: 6px; }
 .h-level-icon { font-size: 12px; display: flex;}
-.is-info .h-level-icon { color: #165dff; }
+.is-info .h-level-icon { color: var(--bml-primary, #165dff); }
 .is-warning .h-level-icon { color: #ff7d00; }
 .is-error .h-level-icon, .is-critical .h-level-icon { color: #f53f3f; }
 
@@ -582,7 +582,7 @@ const handleMarkAllRead = async () => {
 .h-dot { width: 6px; height: 6px; border-radius: 50%; background: #f53f3f; box-shadow: 0 0 8px rgba(245,63,63,0.8); animation: h-pulse 2s infinite; }
 @keyframes h-pulse { 0% { box-shadow: 0 0 0 0 rgba(245,63,63,0.4); } 70% { box-shadow: 0 0 0 4px rgba(245,63,63,0); } 100% { box-shadow: 0 0 0 0 rgba(245,63,63,0); } }
 
-.is-info .h-card-badge { color: #165dff; } .is-warning .h-card-badge { color: #ff7d00; } .is-error .h-card-badge, .is-critical .h-card-badge { color: #f53f3f; }
+.is-info .h-card-badge { color: var(--bml-primary, #165dff); } .is-warning .h-card-badge { color: #ff7d00; } .is-error .h-card-badge, .is-critical .h-card-badge { color: #f53f3f; }
 
 /* 已读半透明形态 */
 .h-n-card.is-read:not(.is-selected) { opacity: 0.6; filter: grayscale(50%); box-shadow: 0 2px 8px rgba(0,0,0,0.02), inset 0 0 0 1px rgba(0,0,0,0.02); }
@@ -611,7 +611,7 @@ const handleMarkAllRead = async () => {
     width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center;
     box-shadow: 0 8px 16px rgba(0,0,0,0.05);
 }
-.is-info .h-d-icon { color: #165dff; background: rgba(22,93,255,0.1); }
+.is-info .h-d-icon { color: var(--bml-primary, #165dff); background: rgba(var(--bml-primary-rgb, 22,93,255), 0.1); }
 .is-warning .h-d-icon { color: #ff7d00; background: rgba(255,125,0,0.1); }
 .is-error .h-d-icon, .is-critical .h-d-icon { color: #f53f3f; background: rgba(245,63,63,0.1); }
 
@@ -685,18 +685,18 @@ const handleMarkAllRead = async () => {
 :global(body[arco-theme='dark']) .h-calendar-wrapper :deep(.arco-calendar-panel) { background: #18181A; }
 :global(body[arco-theme='dark']) .h-calendar-wrapper :deep(.arco-calendar-date) { color: #86909c; }
 :global(body[arco-theme='dark']) .h-calendar-wrapper :deep(.arco-calendar-date:hover) { background: #2A2A2C; color: #E5E6EB; }
-:global(body[arco-theme='dark']) .h-calendar-wrapper :deep(.arco-calendar-date-selected) { background: #165dff; color: #fff; }
+:global(body[arco-theme='dark']) .h-calendar-wrapper :deep(.arco-calendar-date-selected) { background: var(--bml-primary, #165dff); color: #fff; }
 
 :global(body[arco-theme='dark']) .calendar-title { color: #E5E6EB; }
 :global(body[arco-theme='dark']) .h-month-trigger:hover { background: rgba(255,255,255,0.08); }
 :global(body[arco-theme='dark']) .h-trigger-arrow { color: #86909c; }
 :global(body[arco-theme='dark']) .h-calendar-wrapper :deep(.arco-calendar-header-left .arco-btn) { background: rgba(22,93,255,0.2); }
-:global(body[arco-theme='dark']) .h-calendar-wrapper :deep(.arco-calendar-header-left .arco-btn:hover) { background: #165dff; }
+:global(body[arco-theme='dark']) .h-calendar-wrapper :deep(.arco-calendar-header-left .arco-btn:hover) { background: var(--bml-primary, #165dff); }
 
 /* Filter Tabs Dark */
 :global(body[arco-theme='dark']) .list-filters :deep(.arco-radio-group) { background: #2A2A2C; }
 :global(body[arco-theme='dark']) .list-filters :deep(.arco-radio-button) { color: #86909c; }
-:global(body[arco-theme='dark']) .list-filters :deep(.arco-radio-button-checked) { background: #333336; color: #165dff; box-shadow: 0 2px 4px rgba(0,0,0,0.4);}
+:global(body[arco-theme='dark']) .list-filters :deep(.arco-radio-button-checked) { background: #333336; color: var(--bml-primary, #165dff); box-shadow: 0 2px 4px rgba(0,0,0,0.4);}
 
 /* Waterfall List */
 :global(body[arco-theme='dark']) .h-n-card { background: #2A2A2C; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.05); background-image: none; }

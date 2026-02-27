@@ -247,11 +247,11 @@ const handleLogout = async () => {
 };
 
 /**
- * 生命周期：启动通知轮询
- * 登录后进入 Layout 时自动开始每 30 秒轮询告警
+ * 生命周期：启动通知轮询 + 恢复主题
  */
 onMounted(() => {
     notificationStore.startPolling();
+    appStore.initTheme();
 });
 
 /**
@@ -339,7 +339,7 @@ onUnmounted(() => {
     width: 48px;
     height: 48px;
     background: #fff;
-    color: #165dff;
+    color: var(--bml-primary, #165dff);
     box-shadow: 0 12px 32px rgba(22, 93, 255, 0.25);
 }
 
@@ -358,7 +358,7 @@ onUnmounted(() => {
     content: 'B';
     font-size: 24px;
     font-weight: 900;
-    color: #165dff;
+    color: var(--bml-primary, #165dff);
     display: block;
     position: absolute !important;
     left: 50% !important;
@@ -376,7 +376,7 @@ onUnmounted(() => {
   font-size: 22px;
   font-weight: 900;
   letter-spacing: 2px;
-  background: linear-gradient(135deg, #165dff 0%, #722ed1 100%);
+  background: var(--bml-gradient-alt, linear-gradient(135deg, #165dff 0%, #722ed1 100%));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -413,15 +413,15 @@ onUnmounted(() => {
     transform: translateX(4px);
 }
 .layout-demo :deep(.arco-menu-item.arco-menu-selected) {
-    background: linear-gradient(135deg, #165dff 0%, #3c7eff 100%);
+    background: var(--bml-gradient, linear-gradient(135deg, #165dff 0%, #3c7eff 100%));
     color: #fff;
-    box-shadow: 0 4px 12px rgba(22, 93, 255, 0.3);
+    box-shadow: 0 4px 12px var(--bml-shadow, rgba(22, 93, 255, 0.3));
     font-weight: 600;
     transform: translateX(0);
 }
 .layout-demo :deep(.arco-menu-item.arco-menu-selected:hover) {
-    background: linear-gradient(135deg, #165dff 0%, #3c7eff 100%);
-    box-shadow: 0 6px 16px rgba(22, 93, 255, 0.4);
+    background: var(--bml-gradient, linear-gradient(135deg, #165dff 0%, #3c7eff 100%));
+    box-shadow: 0 6px 16px var(--bml-shadow, rgba(22, 93, 255, 0.4));
     transform: translateY(-1px);
 }
 .layout-demo :deep(.arco-menu-item .arco-icon) {
@@ -463,9 +463,9 @@ onUnmounted(() => {
     transform: translateY(-50%);
     width: 4px;
     height: 18px;
-    background: #165dff;
+    background: var(--bml-primary, #165dff);
     border-radius: 4px;
-    box-shadow: 0 2px 8px rgba(22, 93, 255, 0.4);
+    box-shadow: 0 2px 8px var(--bml-shadow, rgba(22, 93, 255, 0.4));
 }
 .modern-breadcrumb .breadcrumb-root {
     font-size: 14px;
@@ -551,7 +551,7 @@ onUnmounted(() => {
 .user-avatar {
     margin-right: 0;
     transition: transform 0.3s;
-    background-color: #165dff !important; /* Force brand color */
+    background-color: var(--bml-primary, #165dff) !important; /* Force brand color */
 }
 .user-item:hover .user-avatar {
     transform: rotate(10deg); /* Playful rotation */
@@ -639,15 +639,15 @@ onUnmounted(() => {
     transform: scale(1.1);
 }
 .mini-item.active {
-    background: linear-gradient(135deg, #165dff 0%, #3c7eff 100%);
+    background: var(--bml-gradient, linear-gradient(135deg, #165dff 0%, #3c7eff 100%));
     color: #fff;
-    box-shadow: 0 4px 12px rgba(22, 93, 255, 0.3);
+    box-shadow: 0 4px 12px var(--bml-shadow, rgba(22, 93, 255, 0.3));
 }
 .layout-demo :deep(.arco-layout-sider-collapsed) .logo::after {
     content: 'B'; /* 显示缩写 */
     font-size: 24px;
     font-weight: 900;
-    color: #165dff;
+    color: var(--bml-primary, #165dff);
     display: block;
     position: absolute !important;
     left: 50% !important;
