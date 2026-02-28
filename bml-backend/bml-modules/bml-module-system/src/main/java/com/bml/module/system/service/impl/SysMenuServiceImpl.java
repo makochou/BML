@@ -9,6 +9,8 @@ import com.bml.module.system.dto.SysMenuDTO;
 import com.bml.module.system.entity.SysMenu;
 import com.bml.module.system.mapper.SysMenuMapper;
 import com.bml.module.system.service.SysMenuService;
+import com.bml.module.system.vo.RouterMetaVO;
+import com.bml.module.system.vo.RouterVO;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -111,17 +113,29 @@ public class SysMenuServiceImpl extends BaseServiceImpl<SysMenuMapper, SysMenu> 
     /**
      * 构建前端路由所需的菜单结构
      * <p>
-     * TODO: 将菜单实体转换为前端路由所需的格式（RouterVO），
-     * 包括路由路径、组件路径、meta信息等。当前直接返回原始菜单列表。
+     * 将菜单实体转换为前端路由格式（RouterVO），
+     * 输出字段包含 path/component/name/meta/children，前端可直接动态装载。
      * </p>
      *
      * @param menus 菜单列表
      * @return 路由菜单列表
      */
     @Override
-    public List<SysMenu> buildMenus(List<SysMenu> menus) {
-        // TODO: 转换为 RouterVO 以适配前端路由格式
-        return menus;
+    public List<RouterVO> buildMenus(List<SysMenu> menus) {
+        if (CollUtil.isEmpty(menus)) {
+            return new ArrayList<>();
+        }
+        List<RouterVO> routers = new ArrayList<>();
+        for (SysMenu menu : menus) {
+            if (!isRouteMenu(menu)) {
+                continue;
+            }
+            RouterVO router = buildRouter(menu, true);
+            if (router != null) {
+                routers.add(router);
+            }
+        }
+        return routers;
     }
 
     /**
@@ -216,5 +230,102 @@ public class SysMenuServiceImpl extends BaseServiceImpl<SysMenuMapper, SysMenu> 
      */
     private boolean hasChildren(List<SysMenu> list, SysMenu menu) {
         return list.stream().anyMatch(m -> Objects.equals(m.getParentId(), menu.getId()));
+    }
+
+    /**
+     * 将菜单节点转换为前端路由节点。
+     */
+    private RouterVO buildRouter(SysMenu menu, boolean root) {
+        if (menu == null || !isRouteMenu(menu)) {
+            return null;
+        }
+
+        RouterVO router = new RouterVO();
+        router.setName(buildRouteName(menu));
+        router.setPath(normalizePath(menu.getPath(), root));
+        router.setComponent(resolveComponent(menu, root));
+        router.setHidden(menu.getVisible() != null && GlobalConstants.STATUS_DISABLE.equals(menu.getVisible()));
+        router.setAlwaysShow(CollUtil.isNotEmpty(menu.getChildren()) && "M".equalsIgnoreCase(menu.getMenuType()));
+        router.setMeta(buildMeta(menu));
+
+        if (CollUtil.isNotEmpty(menu.getChildren())) {
+            List<RouterVO> children = new ArrayList<>();
+            for (SysMenu child : menu.getChildren()) {
+                RouterVO childRouter = buildRouter(child, false);
+                if (childRouter != null) {
+                    children.add(childRouter);
+                }
+            }
+            router.setChildren(children);
+        }
+        return router;
+    }
+
+    /**
+     * 仅目录与菜单参与前端路由构建。
+     */
+    private boolean isRouteMenu(SysMenu menu) {
+        if (menu == null || StrUtil.isBlank(menu.getMenuType())) {
+            return false;
+        }
+        return "M".equalsIgnoreCase(menu.getMenuType()) || "C".equalsIgnoreCase(menu.getMenuType());
+    }
+
+    /**
+     * 生成稳定且可读的路由名称。
+     */
+    private String buildRouteName(SysMenu menu) {
+        if (StrUtil.isNotBlank(menu.getComponent())) {
+            String component = menu.getComponent();
+            if ("dashboard/Workplace".equals(component)) {
+                return "Dashboard";
+            }
+            if ("app/AppList".equals(component)) {
+                return "AppList";
+            }
+            if ("api/ApiList".equals(component)) {
+                return "ApiList";
+            }
+            if ("api/ApiDebug".equals(component)) {
+                return "ApiDebug";
+            }
+            return component.replace("/", "_").replace("-", "_");
+        }
+        return "menu_" + menu.getId();
+    }
+
+    /**
+     * 统一规范路由 path，根路由强制补全前导斜杠。
+     */
+    private String normalizePath(String path, boolean root) {
+        String normalized = StrUtil.blankToDefault(path, "menu");
+        if (root) {
+            return StrUtil.startWith(normalized, "/") ? normalized : "/" + normalized;
+        }
+        return normalized;
+    }
+
+    /**
+     * 目录节点默认映射到 Layout，菜单节点使用实际组件。
+     */
+    private String resolveComponent(SysMenu menu, boolean root) {
+        if ("M".equalsIgnoreCase(menu.getMenuType()) && (root || StrUtil.isBlank(menu.getComponent()))) {
+            return "Layout";
+        }
+        if (StrUtil.isBlank(menu.getComponent())) {
+            return "common/FeatureDisabled";
+        }
+        return menu.getComponent();
+    }
+
+    /**
+     * 构建路由元信息。
+     */
+    private RouterMetaVO buildMeta(SysMenu menu) {
+        RouterMetaVO meta = new RouterMetaVO();
+        meta.setTitle(menu.getMenuName());
+        meta.setIcon(StrUtil.blankToDefault(menu.getIcon(), "apps"));
+        meta.setNoCache(Boolean.FALSE);
+        return meta;
     }
 }

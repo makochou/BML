@@ -5,6 +5,8 @@ import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.bml.core.base.service.impl.BaseServiceImpl;
 import com.bml.module.system.converter.RoleConverter;
+import com.bml.module.system.datascope.DataScope;
+import com.bml.module.system.datascope.DataScopeContext;
 import com.bml.module.system.dto.SysRoleDTO;
 import com.bml.module.system.entity.SysRole;
 import com.bml.module.system.entity.SysRoleMenu;
@@ -75,7 +77,11 @@ public class SysRoleServiceImpl extends BaseServiceImpl<SysRoleMapper, SysRole> 
      * @return 角色列表
      */
     @Override
+    @DataScope(creatorColumn = "create_by")
     public List<SysRole> selectRoleList(SysRoleDTO role) {
+        if (role == null) {
+            role = new SysRoleDTO();
+        }
         LambdaQueryWrapper<SysRole> queryWrapper = new LambdaQueryWrapper<>();
         if (StrUtil.isNotEmpty(role.getRoleName())) {
             queryWrapper.like(SysRole::getRoleName, role.getRoleName());
@@ -86,7 +92,10 @@ public class SysRoleServiceImpl extends BaseServiceImpl<SysRoleMapper, SysRole> 
         if (role.getStatus() != null) {
             queryWrapper.eq(SysRole::getStatus, role.getStatus());
         }
-        // TODO: 添加数据权限过滤（Data Scope）
+        String dataScopeSql = DataScopeContext.getDataScopeSql();
+        if (StrUtil.isNotBlank(dataScopeSql)) {
+            queryWrapper.apply(dataScopeSql);
+        }
         return baseMapper.selectList(queryWrapper);
     }
 

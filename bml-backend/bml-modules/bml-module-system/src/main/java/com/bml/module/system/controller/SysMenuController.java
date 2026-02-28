@@ -5,7 +5,9 @@ import com.bml.core.common.result.Result;
 import com.bml.module.system.dto.SysMenuDTO;
 import com.bml.module.system.entity.SysMenu;
 import com.bml.module.system.service.SysMenuService;
+import com.bml.module.system.converter.MenuConverter;
 import com.bml.core.framework.security.utils.SecurityUtils;
+import com.bml.module.system.vo.SysMenuVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.Resource;
@@ -79,9 +81,9 @@ public class SysMenuController extends BaseController {
     @Operation(summary = "获取菜单列表")
     @PreAuthorize("@ss.hasPermi('system:menu:list')")
     @GetMapping("/list")
-    public Result<List<SysMenu>> list(SysMenuDTO dto) {
+    public Result<List<SysMenuVO>> list(SysMenuDTO dto) {
         Long userId = SecurityUtils.getUserId();
-        return Result.ok(menuService.selectMenuList(dto, userId));
+        return Result.ok(MenuConverter.INSTANCE.toVOList(menuService.selectMenuList(dto, userId)));
     }
 
     /**
@@ -93,8 +95,8 @@ public class SysMenuController extends BaseController {
     @Operation(summary = "根据菜单编号获取详细信息")
     @PreAuthorize("@ss.hasPermi('system:menu:query')")
     @GetMapping(value = "/{menuId}")
-    public Result<SysMenu> getInfo(@PathVariable Long menuId) {
-        return Result.ok(menuService.getById(menuId));
+    public Result<SysMenuVO> getInfo(@PathVariable Long menuId) {
+        return Result.ok(MenuConverter.INSTANCE.toVO(menuService.getById(menuId)));
     }
 
     /**

@@ -5,6 +5,7 @@ import com.bml.core.framework.security.model.LoginUser;
 import com.bml.core.framework.security.model.TokenVO;
 import com.bml.core.framework.security.service.TokenService;
 import com.bml.core.framework.security.utils.SecurityUtils;
+import com.bml.module.system.converter.UserConverter;
 import com.bml.module.system.dto.LoginBody;
 import com.bml.module.system.dto.RefreshTokenDTO;
 import com.bml.module.system.entity.SysMenu;
@@ -13,6 +14,7 @@ import com.bml.module.system.service.SysLoginService;
 import com.bml.module.system.service.SysMenuService;
 import com.bml.module.system.service.SysRoleService;
 import com.bml.module.system.service.SysUserService;
+import com.bml.module.system.vo.RouterVO;
 import com.bml.module.system.vo.UserInfoVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -236,7 +238,7 @@ public class AuthController {
 
         // 5. 组装返回数据
         UserInfoVO userInfoVO = UserInfoVO.builder()
-                .user(user)
+                .user(UserConverter.INSTANCE.toVO(user))
                 .roles(roles)
                 .permissions(permissions)
                 .build();
@@ -254,7 +256,7 @@ public class AuthController {
      */
     @Operation(summary = "获取路由菜单", description = "返回当前用户的菜单树，用于前端路由生成")
     @GetMapping("/routers")
-    public Result<List<SysMenu>> getRouters() {
+    public Result<List<RouterVO>> getRouters() {
         Long userId = SecurityUtils.getUserId();
         List<SysMenu> menus = menuService.selectMenuTreeByUserId(userId);
         return Result.ok(menuService.buildMenus(menus));

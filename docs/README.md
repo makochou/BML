@@ -28,6 +28,7 @@
 | 11 | [11-maven-build-governance.md](./11-maven-build-governance.md) | 父 POM、版本治理与插件治理 |
 | 12 | [12-unified-response-exception-spec.md](./12-unified-response-exception-spec.md) | 统一响应、统一异常、统一返回规范 |
 | 13 | [13-encoding-and-comment-guidelines.md](./13-encoding-and-comment-guidelines.md) | 编码规范、中文注释规范与排查指南 |
+| 14 | [14-stage-c-implementation-guide.md](./14-stage-c-implementation-guide.md) | 阶段 C 实施教程（VO 收口、数据权限、动态路由） |
 
 ## 文档使用原则
 

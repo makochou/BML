@@ -1,12 +1,14 @@
 package com.bml.module.system.controller;
 
 import com.bml.core.common.result.Result;
-import com.bml.module.system.entity.SysAlert;
+import com.bml.module.system.converter.AlertConverter;
 import com.bml.module.system.service.ISysAlertService;
+import com.bml.module.system.vo.SysAlertVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 
@@ -43,6 +45,7 @@ public class SysAlertController {
      * </p>
      */
     @Operation(summary = "获取未读的告警总数")
+    @PreAuthorize("@ss.hasPermi('monitor:alert:list')")
     @GetMapping("/unread-count")
     public Result<Long> getUnreadCount() {
         return Result.ok(sysAlertService.getUnreadCount());
@@ -55,10 +58,11 @@ public class SysAlertController {
      * </p>
      */
     @Operation(summary = "获取最近的系统监控告警列表")
+    @PreAuthorize("@ss.hasPermi('monitor:alert:list')")
     @GetMapping("/list")
-    public Result<List<SysAlert>> getRecentAlerts(
+    public Result<List<SysAlertVO>> getRecentAlerts(
             @Parameter(description = "返回条数，默认50") @RequestParam(name = "limit", defaultValue = "50") Integer limit) {
-        return Result.ok(sysAlertService.getRecentAlerts(limit));
+        return Result.ok(AlertConverter.INSTANCE.toVOList(sysAlertService.getRecentAlerts(limit)));
     }
 
     /**
@@ -70,16 +74,18 @@ public class SysAlertController {
      * </p>
      */
     @Operation(summary = "增量轮询 — 获取指定 ID 之后的最新告警")
+    @PreAuthorize("@ss.hasPermi('monitor:alert:list')")
     @GetMapping("/latest")
-    public Result<List<SysAlert>> getLatestAlerts(
+    public Result<List<SysAlertVO>> getLatestAlerts(
             @Parameter(description = "上次已知的最大告警 ID，首次可不传") @RequestParam(name = "lastId", required = false) Long lastId) {
-        return Result.ok(sysAlertService.getLatestAlerts(lastId));
+        return Result.ok(AlertConverter.INSTANCE.toVOList(sysAlertService.getLatestAlerts(lastId)));
     }
 
     /**
      * 将指定的告警置为已读
      */
     @Operation(summary = "将指定的告警置为已读")
+    @PreAuthorize("@ss.hasPermi('monitor:alert:edit')")
     @PutMapping("/read/{id}")
     public Result<Boolean> markAsRead(@PathVariable("id") Long id) {
         return Result.ok(sysAlertService.markAsRead(id));
@@ -89,6 +95,7 @@ public class SysAlertController {
      * 将所有未读告警一键置为已读
      */
     @Operation(summary = "将所有未读告警一键置为已读")
+    @PreAuthorize("@ss.hasPermi('monitor:alert:edit')")
     @PutMapping("/read-all")
     public Result<Integer> markAllAsRead() {
         return Result.ok(sysAlertService.markAllAsRead());
@@ -101,6 +108,7 @@ public class SysAlertController {
      * </p>
      */
     @Operation(summary = "获取存在告警的日期列表")
+    @PreAuthorize("@ss.hasPermi('monitor:alert:list')")
     @GetMapping("/dates")
     public Result<List<String>> getAlertDates() {
         return Result.ok(sysAlertService.getAlertDates());
@@ -113,16 +121,18 @@ public class SysAlertController {
      * </p>
      */
     @Operation(summary = "按日期查询告警列表")
+    @PreAuthorize("@ss.hasPermi('monitor:alert:list')")
     @GetMapping("/by-date")
-    public Result<List<SysAlert>> getAlertsByDate(
+    public Result<List<SysAlertVO>> getAlertsByDate(
             @Parameter(description = "查询日期 (yyyy-MM-dd)") @RequestParam("date") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
-        return Result.ok(sysAlertService.getAlertsByDate(date));
+        return Result.ok(AlertConverter.INSTANCE.toVOList(sysAlertService.getAlertsByDate(date)));
     }
 
     /**
      * 删除指定的告警记录 (逻辑删除)
      */
     @Operation(summary = "删除指定的告警记录")
+    @PreAuthorize("@ss.hasPermi('monitor:alert:remove')")
     @DeleteMapping("/{id}")
     public Result<Boolean> deleteAlert(@PathVariable("id") Long id) {
         return Result.ok(sysAlertService.deleteAlert(id));

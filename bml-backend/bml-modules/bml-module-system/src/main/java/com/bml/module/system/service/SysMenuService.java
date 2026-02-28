@@ -3,6 +3,7 @@ package com.bml.module.system.service;
 import com.bml.core.base.service.BaseService;
 import com.bml.module.system.dto.SysMenuDTO;
 import com.bml.module.system.entity.SysMenu;
+import com.bml.module.system.vo.RouterVO;
 
 import java.util.List;
 import java.util.Set;
@@ -32,7 +33,7 @@ public interface SysMenuService extends BaseService<SysMenu> {
     /**
      * 构建前端路由所需要的菜单
      */
-    List<SysMenu> buildMenus(List<SysMenu> menus);
+    List<RouterVO> buildMenus(List<SysMenu> menus);
 
     /**
      * 校验菜单名称是否唯一

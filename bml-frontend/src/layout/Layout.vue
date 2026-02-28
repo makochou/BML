@@ -16,53 +16,41 @@
         :style="{ width: '100%' }"
         @menu-item-click="onClickMenuItem"
       >
-        <a-menu-item key="Dashboard">
-          <icon-dashboard />
-          仪表台
-        </a-menu-item>
-        <a-menu-item key="ApiList">
-          <icon-list />
-          API 管理
-        </a-menu-item>
-        <a-menu-item key="ApiDebug">
-          <icon-bug />
-          在线调试
-        </a-menu-item>
-        <a-menu-item key="AppList">
-          <icon-apps />
-          应用管理
-        </a-menu-item>
+        <template v-for="menu in sidebarMenus" :key="menu.name">
+          <a-sub-menu v-if="menu.children.length > 0" :key="menu.name">
+            <template #icon>
+              <component :is="resolveMenuIcon(menu.icon)" />
+            </template>
+            <template #title>{{ menu.title }}</template>
+            <a-menu-item
+              v-for="child in menu.children"
+              :key="child.name"
+            >
+              <template #icon>
+                <component :is="resolveMenuIcon(child.icon)" />
+              </template>
+              {{ child.title }}
+            </a-menu-item>
+          </a-sub-menu>
+          <a-menu-item v-else :key="menu.name">
+            <template #icon>
+              <component :is="resolveMenuIcon(menu.icon)" />
+            </template>
+            {{ menu.title }}
+          </a-menu-item>
+        </template>
       </a-menu>
 
       <!-- 收起状态：完全自定义的 Mini Dock (Vision Pro 风格) -->
       <div v-else class="mini-menu">
         <div 
+            v-for="menu in sidebarMenus"
+            :key="menu.name"
             class="mini-item" 
-            :class="{ active: currentRouteName === 'Dashboard' }"
-            @click="onClickMenuItem('Dashboard')"
+            :class="{ active: isMenuActive(menu) }"
+            @click="onClickMenuItem(resolveMiniRouteName(menu))"
         >
-            <icon-dashboard />
-        </div>
-        <div 
-            class="mini-item" 
-            :class="{ active: currentRouteName === 'ApiList' }"
-            @click="onClickMenuItem('ApiList')"
-        >
-            <icon-list />
-        </div>
-        <div 
-            class="mini-item" 
-            :class="{ active: currentRouteName === 'ApiDebug' }"
-            @click="onClickMenuItem('ApiDebug')"
-        >
-            <icon-bug />
-        </div>
-        <div 
-            class="mini-item" 
-            :class="{ active: currentRouteName === 'AppList' }"
-            @click="onClickMenuItem('AppList')"
-        >
-            <icon-apps />
+            <component :is="resolveMenuIcon(menu.icon)" />
         </div>
       </div>
       
@@ -193,6 +181,9 @@ import AlertToast from '../components/AlertToast.vue';
 import { useTagsViewStore } from '../store/tagsView';
 import { useAppStore } from '../store/app';
 import { useNotificationStore } from '../store/notification';
+import { usePermissionStore, type SidebarMenuItem } from '../store/permission';
+import { clearAuthTokens } from '../utils/auth';
+import { resetDynamicRoutes } from '../router';
 
 const router = useRouter();
 const route = useRoute();
@@ -202,9 +193,37 @@ const isFullscreen = ref(false);
 const tagsViewStore = useTagsViewStore();
 const appStore = useAppStore();
 const notificationStore = useNotificationStore();
+const permissionStore = usePermissionStore();
 const cachedViews = computed(() => tagsViewStore.cachedViews);
+const sidebarMenus = computed(() => permissionStore.sidebarMenus);
 
-const currentRouteName = computed(() => route.name as string);
+const currentRouteName = computed(() => (route.name as string) || '');
+
+const menuIconMap: Record<string, any> = {
+  dashboard: IconDashboard,
+  monitor: IconDashboard,
+  list: IconList,
+  bug: IconBug,
+  apps: IconApps,
+  notification: IconNotification,
+  setting: IconSettings,
+  settings: IconSettings,
+  user: IconUser,
+  peoples: IconUser,
+  tree: IconApps,
+  'tree-table': IconApps,
+  dict: IconApps,
+  edit: IconSettings,
+  form: IconApps,
+  logininfor: IconApps
+};
+
+const resolveMenuIcon = (icon?: string) => {
+  if (!icon) {
+    return IconApps;
+  }
+  return menuIconMap[icon.toLowerCase()] || IconApps;
+};
 
 const onCollapse = (val: boolean) => {
   collapsed.value = val;
@@ -216,6 +235,21 @@ const toggleCollapse = () => {
 
 const onClickMenuItem = (key: string) => {
   router.push({ name: key });
+};
+
+const resolveMiniRouteName = (menu: SidebarMenuItem): string => {
+  if (menu.children.length > 0) {
+    const firstChild = menu.children[0];
+    return firstChild ? firstChild.name : menu.name;
+  }
+  return menu.name;
+};
+
+const isMenuActive = (menu: SidebarMenuItem): boolean => {
+  if (menu.name === currentRouteName.value) {
+    return true;
+  }
+  return menu.children.some(child => child.name === currentRouteName.value);
 };
 
 
@@ -238,9 +272,9 @@ const handleLogout = async () => {
   } catch (e) {
     // 忽略登出失败
   } finally {
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-    localStorage.removeItem('token');
+    clearAuthTokens();
+    resetDynamicRoutes();
+    permissionStore.resetRoutes();
     notificationStore.stopPolling(); // 退出时停止通知轮询
     tagsViewStore.delAllViews();
     Message.success('已退出登录');
@@ -743,5 +777,3 @@ onUnmounted(() => {
 .sidebar-primary :deep(.arco-menu-inline-header) { color: rgba(255,255,255,0.8); }
 .sidebar-primary :deep(.arco-menu-inline-header:hover) { color: #fff; background: rgba(255,255,255,0.1); }
 </style>
-
-

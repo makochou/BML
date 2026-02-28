@@ -1,6 +1,4 @@
 package com.bml.module.system.vo;
-
-import com.bml.module.system.entity.SysUser;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -56,7 +54,7 @@ public class UserInfoVO implements Serializable {
      * </p>
      */
     @Schema(description = "用户基本信息")
-    private SysUser user;
+    private SysUserVO user;
 
     /**
      * 角色标识集合

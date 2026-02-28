@@ -6,6 +6,7 @@ import com.bml.core.framework.security.handle.AuthenticationEntryPointImpl;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -14,6 +15,7 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
@@ -102,10 +104,9 @@ public class SecurityConfig {
                 http
                                 // 禁用 CSRF（无状态 Token 认证不需要 CSRF 保护）
                                 .csrf(AbstractHttpConfigurer::disable)
-                                // 禁用 Spring Security 自带的 CORS 过滤器，
-                                // 由 WebMvcConfig 中的 CorsRegistry 统一处理跨域策略。
-                                // 这不是禁用 CORS，而是让 WebMvcConfig 的 CORS 配置生效。
-                                .cors(AbstractHttpConfigurer::disable)
+                                // 启用 CORS，让 Security 层与 WebMvcConfig 的跨域规则保持一致，
+                                // 避免预检请求在 Security 层被提前拦截。
+                                .cors(Customizer.withDefaults())
                                 // 异常处理：未认证(401) + 权限不足(403)
                                 .exceptionHandling(handling -> handling
                                                 .authenticationEntryPoint(authenticationEntryPoint)
@@ -117,10 +118,15 @@ public class SecurityConfig {
                                 .authorizeHttpRequests(auth -> {
                                         // 白名单：始终允许匿名访问的路径
                                         auth.requestMatchers(
+                                                        HttpMethod.OPTIONS, "/**" // 预检请求放行
+                                        ).permitAll();
+
+                                        auth.requestMatchers(
                                                         "/auth/login", // 登录
                                                         "/auth/refresh", // 刷新Token
                                                         "/auth/register", // 注册（预留）
-                                                        "/actuator/health" // 健康检查(无需认证，供云原生探针或反向代理网关侦测)
+                                                        "/actuator/health", // 健康检查(无需认证，供云原生探针或反向代理网关侦测)
+                                                        "/open/api/**" // OpenAPI 走签名鉴权，不走 JWT 鉴权
                                         ).permitAll();
 
                                         // 仅在配置开启时允许 Swagger 文档访问

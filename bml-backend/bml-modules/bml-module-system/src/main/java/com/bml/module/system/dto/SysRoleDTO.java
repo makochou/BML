@@ -35,7 +35,7 @@ public class SysRoleDTO implements Serializable {
     @Schema(description = "显示顺序")
     private Integer sort;
 
-    @Schema(description = "数据范围 (1:全部 2:本部门 3:本部门及以下 4:仅本人 5:自定义)")
+    @Schema(description = "数据范围 (1:全部 2:本组织及下级 3:仅本组织 4:本部门及下级 5:仅本部门 6:仅本人 7:自定义)")
     private Integer dataScope;
 
     @Schema(description = "状态 (1:正常 0:停用)")

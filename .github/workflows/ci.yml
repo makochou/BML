@@ -38,7 +38,7 @@ jobs:
 
       - name: Build frontend
         working-directory: bml-frontend
-        run: npm run build
+        run: npm run build:ci
 
       - name: Test frontend
         working-directory: bml-frontend

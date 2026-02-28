@@ -27,7 +27,7 @@ public class SysMenuVO implements Serializable {
     @Schema(description = "菜单名称")
     private String menuName;
 
-    @Schema(description = "菜单类型 (M:目录 C:菜单 F:按钮)")
+    @Schema(description = "菜单类型 (M:目录 C:菜单 B:按钮)")
     private String menuType;
 
     @Schema(description = "路由路径")

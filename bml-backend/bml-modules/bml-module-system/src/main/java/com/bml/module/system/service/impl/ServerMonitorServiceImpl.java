@@ -25,6 +25,7 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Properties;
 
 @Service
@@ -155,8 +156,11 @@ public class ServerMonitorServiceImpl implements ServerMonitorService {
             int activeUsers = activeUserTracker != null ? activeUserTracker.getActiveUserCount() : 0;
             net.setTcpConnections(activeUsers);
             oshi.software.os.InternetProtocolStats ipStats = operatingSystem.getInternetProtocolStats();
-            long udpConns = ipStats.getUDPv4Stats().getDatagramsReceived();
-            net.setUdpConnections(udpConns > 0 ? -1 : 0);
+            long udpConnections = ipStats.getConnections().stream()
+                    .filter(connection -> connection.getType() != null
+                            && connection.getType().toLowerCase(Locale.ROOT).startsWith("udp"))
+                    .count();
+            net.setUdpConnections((int) Math.min(udpConnections, Integer.MAX_VALUE));
         } catch (Exception ex) {
             net.setTcpConnections(0);
             net.setUdpConnections(0);

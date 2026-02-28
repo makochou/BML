@@ -29,7 +29,7 @@ public class SysMenuDTO implements Serializable {
     @Size(min = 1, max = 50, message = "菜单名称长度必须在1到50个字符之间")
     private String menuName;
 
-    @Schema(description = "菜单类型 (M:目录 C:菜单 F:按钮)")
+    @Schema(description = "菜单类型 (M:目录 C:菜单 B:按钮)")
     @NotBlank(message = "菜单类型不能为空")
     private String menuType;
 

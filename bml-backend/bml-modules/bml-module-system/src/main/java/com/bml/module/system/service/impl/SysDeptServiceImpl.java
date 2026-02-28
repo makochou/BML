@@ -7,6 +7,8 @@ import com.bml.core.base.service.impl.BaseServiceImpl;
 import com.bml.core.common.constant.GlobalConstants;
 import com.bml.core.common.exception.BusinessException;
 import com.bml.module.system.converter.DeptConverter;
+import com.bml.module.system.datascope.DataScope;
+import com.bml.module.system.datascope.DataScopeContext;
 import com.bml.module.system.dto.SysDeptDTO;
 import com.bml.module.system.entity.SysDept;
 import com.bml.module.system.mapper.SysDeptMapper;
@@ -48,12 +50,17 @@ public class SysDeptServiceImpl extends BaseServiceImpl<SysDeptMapper, SysDept> 
      * @return 部门列表
      */
     @Override
+    @DataScope(deptColumn = "id", orgColumn = "org_id", creatorColumn = "create_by")
     public List<SysDept> selectDeptList(SysDeptDTO dept) {
         LambdaQueryWrapper<SysDept> lqw = new LambdaQueryWrapper<>();
         // @TableLogic 自动追加 deleted=0，无需手动添加
         if (dept != null) {
             lqw.like(StrUtil.isNotBlank(dept.getDeptName()), SysDept::getDeptName, dept.getDeptName());
             lqw.eq(dept.getStatus() != null, SysDept::getStatus, dept.getStatus());
+        }
+        String dataScopeSql = DataScopeContext.getDataScopeSql();
+        if (StrUtil.isNotBlank(dataScopeSql)) {
+            lqw.apply(dataScopeSql);
         }
         lqw.orderByAsc(SysDept::getParentId, SysDept::getSort);
         return baseMapper.selectList(lqw);

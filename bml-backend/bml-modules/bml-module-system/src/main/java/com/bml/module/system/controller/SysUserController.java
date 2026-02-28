@@ -2,9 +2,11 @@ package com.bml.module.system.controller;
 
 import com.bml.core.base.controller.BaseController;
 import com.bml.core.common.result.Result;
+import com.bml.module.system.converter.UserConverter;
 import com.bml.module.system.dto.SysUserDTO;
 import com.bml.module.system.entity.SysUser;
 import com.bml.module.system.service.SysUserService;
+import com.bml.module.system.vo.SysUserVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.Resource;
@@ -67,8 +69,8 @@ public class SysUserController extends BaseController {
     @Operation(summary = "获取用户列表")
     @PreAuthorize("@ss.hasPermi('system:user:list')")
     @GetMapping("/list")
-    public Result<List<SysUser>> list(SysUserDTO dto) {
-        return Result.ok(userService.selectUserList(dto));
+    public Result<List<SysUserVO>> list(SysUserDTO dto) {
+        return Result.ok(UserConverter.INSTANCE.toVOList(userService.selectUserList(dto)));
     }
 
     /**
@@ -80,8 +82,8 @@ public class SysUserController extends BaseController {
     @Operation(summary = "根据用户编号获取详细信息")
     @PreAuthorize("@ss.hasPermi('system:user:query')")
     @GetMapping(value = "/{userId}")
-    public Result<SysUser> getInfo(@PathVariable Long userId) {
-        return Result.ok(userService.getById(userId));
+    public Result<SysUserVO> getInfo(@PathVariable Long userId) {
+        return Result.ok(UserConverter.INSTANCE.toVO(userService.getById(userId)));
     }
 
     /**

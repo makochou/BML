@@ -85,7 +85,7 @@ import { IconPlus } from '@arco-design/web-vue/es/icon';
 import request from '../../utils/request';
 
 type AppRecord = {
-    id: number;
+    id: string;
     accountName: string;
     accessKey: string;
     status: number;
@@ -94,7 +94,7 @@ type AppRecord = {
 };
 
 type CredentialPayload = {
-    id: number;
+    id: string;
     accountName: string;
     accessKey: string;
     secretKey: string;

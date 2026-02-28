@@ -2,9 +2,11 @@ package com.bml.module.system.controller;
 
 import com.bml.core.base.controller.BaseController;
 import com.bml.core.common.result.Result;
+import com.bml.module.system.converter.RoleConverter;
 import com.bml.module.system.dto.SysRoleDTO;
 import com.bml.module.system.entity.SysRole;
 import com.bml.module.system.service.SysRoleService;
+import com.bml.module.system.vo.SysRoleVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.Resource;
@@ -68,8 +70,8 @@ public class SysRoleController extends BaseController {
     @Operation(summary = "获取角色列表")
     @PreAuthorize("@ss.hasPermi('system:role:list')")
     @GetMapping("/list")
-    public Result<List<SysRole>> list(SysRoleDTO dto) {
-        return Result.ok(roleService.selectRoleList(dto));
+    public Result<List<SysRoleVO>> list(SysRoleDTO dto) {
+        return Result.ok(RoleConverter.INSTANCE.toVOList(roleService.selectRoleList(dto)));
     }
 
     /**
@@ -81,8 +83,8 @@ public class SysRoleController extends BaseController {
     @Operation(summary = "根据角色编号获取详细信息")
     @PreAuthorize("@ss.hasPermi('system:role:query')")
     @GetMapping(value = "/{roleId}")
-    public Result<SysRole> getInfo(@PathVariable Long roleId) {
-        return Result.ok(roleService.getById(roleId));
+    public Result<SysRoleVO> getInfo(@PathVariable Long roleId) {
+        return Result.ok(RoleConverter.INSTANCE.toVO(roleService.getById(roleId)));
     }
 
     /**

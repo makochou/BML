@@ -2,9 +2,11 @@ package com.bml.module.system.controller;
 
 import com.bml.core.base.controller.BaseController;
 import com.bml.core.common.result.Result;
+import com.bml.module.system.converter.DeptConverter;
 import com.bml.module.system.dto.SysDeptDTO;
 import com.bml.module.system.entity.SysDept;
 import com.bml.module.system.service.SysDeptService;
+import com.bml.module.system.vo.SysDeptVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.Resource;
@@ -71,9 +73,9 @@ public class SysDeptController extends BaseController {
     @Operation(summary = "获取部门树列表")
     @PreAuthorize("@ss.hasPermi('system:dept:list')")
     @GetMapping("/list")
-    public Result<List<SysDept>> list(SysDeptDTO dto) {
+    public Result<List<SysDeptVO>> list(SysDeptDTO dto) {
         List<SysDept> depts = deptService.selectDeptList(dto);
-        return Result.ok(deptService.buildDeptTree(depts));
+        return Result.ok(DeptConverter.INSTANCE.toVOList(deptService.buildDeptTree(depts)));
     }
 
     /**
@@ -85,8 +87,8 @@ public class SysDeptController extends BaseController {
     @Operation(summary = "根据部门编号获取详细信息")
     @PreAuthorize("@ss.hasPermi('system:dept:query')")
     @GetMapping(value = "/{deptId}")
-    public Result<SysDept> getInfo(@PathVariable Long deptId) {
-        return Result.ok(deptService.getById(deptId));
+    public Result<SysDeptVO> getInfo(@PathVariable Long deptId) {
+        return Result.ok(DeptConverter.INSTANCE.toVO(deptService.getById(deptId)));
     }
 
     /**

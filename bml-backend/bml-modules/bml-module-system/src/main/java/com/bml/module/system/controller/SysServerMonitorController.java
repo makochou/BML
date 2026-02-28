@@ -5,7 +5,7 @@ import com.bml.module.system.service.ServerMonitorService;
 import com.bml.module.system.vo.ServerInfoVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-// import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -29,13 +29,14 @@ public class SysServerMonitorController {
     }
 
     @Operation(summary = "全量抓取服务器、JVM、磁盘最新硬件物理探针态")
-    // @PreAuthorize("@ss.hasPermi('monitor:server:list')") // 如需单独为大屏角色设定强权限可放开
+    @PreAuthorize("@ss.hasPermi('monitor:server:list')")
     @GetMapping("/server")
     public Result<ServerInfoVO> getServerInfo() {
         return Result.ok(serverMonitorService.getServerInfo());
     }
 
     @Operation(summary = "强制发送JVM垃圾回收指令(GC)，尝试释放内存")
+    @PreAuthorize("@ss.hasPermi('monitor:server:gc')")
     @PostMapping("/gc")
     public Result<String> cleanJvmMemory() {
         System.gc(); // Suggests to the JVM that it expend effort toward recycling unused objects

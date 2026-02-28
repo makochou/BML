@@ -1,5 +1,6 @@
 package com.bml.module.system.service.impl;
 
+import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.bml.core.base.service.impl.BaseServiceImpl;
 import com.bml.core.common.constant.GlobalConstants;
@@ -9,6 +10,8 @@ import com.bml.module.system.converter.UserConverter;
 import com.bml.module.system.dto.SysUserDTO;
 import com.bml.module.system.entity.SysUser;
 import com.bml.module.system.entity.SysUserRole;
+import com.bml.module.system.datascope.DataScope;
+import com.bml.module.system.datascope.DataScopeContext;
 import com.bml.module.system.mapper.SysUserMapper;
 import com.bml.module.system.mapper.SysUserRoleMapper;
 import com.bml.module.system.service.SysUserService;
@@ -26,7 +29,11 @@ public class SysUserServiceImpl extends BaseServiceImpl<SysUserMapper, SysUser> 
     private SysUserRoleMapper userRoleMapper;
 
     @Override
+    @DataScope(deptColumn = "dept_id", orgColumn = "org_id", userColumn = "id", creatorColumn = "create_by")
     public List<SysUser> selectUserList(SysUserDTO user) {
+        if (user == null) {
+            user = new SysUserDTO();
+        }
         LambdaQueryWrapper<SysUser> queryWrapper = new LambdaQueryWrapper<>();
         if (StringUtils.hasText(user.getUsername())) {
             queryWrapper.like(SysUser::getUsername, user.getUsername());
@@ -39,6 +46,10 @@ public class SysUserServiceImpl extends BaseServiceImpl<SysUserMapper, SysUser> 
         }
         if (user.getDeptId() != null) {
             queryWrapper.eq(SysUser::getDeptId, user.getDeptId());
+        }
+        String dataScopeSql = DataScopeContext.getDataScopeSql();
+        if (StrUtil.isNotBlank(dataScopeSql)) {
+            queryWrapper.apply(dataScopeSql);
         }
         return baseMapper.selectList(queryWrapper);
     }
