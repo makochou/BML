@@ -218,6 +218,11 @@
                 <artifactId>bml-module-api</artifactId>
                 <version>${project.version}</version>
             </dependency>
+            <dependency>
+                <groupId>com.bml</groupId>
+                <artifactId>bml-module-enterprise</artifactId>
+                <version>${project.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 

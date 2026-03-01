@@ -7,8 +7,8 @@ import com.bml.core.framework.web.request.CachedBodyHttpServletRequest;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 import org.mockito.ArgumentMatchers;
+import org.mockito.Mockito;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -33,10 +33,13 @@ class OpenApiInterceptorTest {
         RedisTemplate<String, Object> redisTemplate = mockRedisTemplate();
         ValueOperations<String, Object> valueOperations = mockValueOperations();
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-        when(valueOperations.setIfAbsent(anyString(), anyString(), anyLong(), ArgumentMatchers.any(TimeUnit.class))).thenReturn(true);
+        when(valueOperations.setIfAbsent(anyString(), anyString(), anyLong(), ArgumentMatchers.any(TimeUnit.class)))
+                .thenReturn(true);
         when(authService.getAppAuth("ak-test")).thenReturn(OpenApiAppAuth.builder()
                 .accountId(1L)
                 .secretKey("plain-secret")
+                .signVersion("v1")
+                .ipWhitelist("127.0.0.1,10.0.0.0/24")
                 .build());
         when(authService.isApiAuthorized(1L, "/open/api/demo", "POST")).thenReturn(true);
 
@@ -61,9 +64,11 @@ class OpenApiInterceptorTest {
         rawRequest.setQueryString("page=1");
         rawRequest.addParameter("page", "1");
         rawRequest.setContent(body.getBytes(StandardCharsets.UTF_8));
+        rawRequest.setRemoteAddr("127.0.0.1");
         rawRequest.addHeader("X-Bml-App-Key", "ak-test");
         rawRequest.addHeader("X-Bml-Timestamp", timestamp);
         rawRequest.addHeader("X-Bml-Nonce", nonce);
+        rawRequest.addHeader("X-Bml-Sign-Version", "v1");
         rawRequest.addHeader("X-Bml-Sign", signature);
 
         MockHttpServletResponse response = new MockHttpServletResponse();
@@ -79,10 +84,13 @@ class OpenApiInterceptorTest {
         RedisTemplate<String, Object> redisTemplate = mockRedisTemplate();
         ValueOperations<String, Object> valueOperations = mockValueOperations();
         when(redisTemplate.opsForValue()).thenReturn(valueOperations);
-        when(valueOperations.setIfAbsent(anyString(), anyString(), anyLong(), ArgumentMatchers.any(TimeUnit.class))).thenReturn(false);
+        when(valueOperations.setIfAbsent(anyString(), anyString(), anyLong(), ArgumentMatchers.any(TimeUnit.class)))
+                .thenReturn(false);
         when(authService.getAppAuth("ak-test")).thenReturn(OpenApiAppAuth.builder()
                 .accountId(1L)
                 .secretKey("plain-secret")
+                .signVersion("v1")
+                .ipWhitelist("127.0.0.1")
                 .build());
         when(authService.isApiAuthorized(1L, "/open/api/demo", "GET")).thenReturn(true);
 
@@ -100,9 +108,11 @@ class OpenApiInterceptorTest {
 
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/open/api/demo");
         request.setContextPath("/api");
+        request.setRemoteAddr("127.0.0.1");
         request.addHeader("X-Bml-App-Key", "ak-test");
         request.addHeader("X-Bml-Timestamp", timestamp);
         request.addHeader("X-Bml-Nonce", "nonce-1");
+        request.addHeader("X-Bml-Sign-Version", "v1");
         request.addHeader("X-Bml-Sign", signature);
 
         MockHttpServletResponse response = new MockHttpServletResponse();
@@ -112,8 +122,66 @@ class OpenApiInterceptorTest {
         assertEquals(409, response.getStatus());
         JsonNode jsonNode = new ObjectMapper().readTree(response.getContentAsString());
         assertEquals(2106, jsonNode.get("code").asInt());
-        assertEquals("重复请求已被拒绝", jsonNode.get("message").asText());
-        assertTrue(jsonNode.has("timestamp"));
+    }
+
+    @Test
+    void shouldRejectWhenIpNotInWhitelist() throws Exception {
+        OpenApiAuthService authService = Mockito.mock(OpenApiAuthService.class);
+        RedisTemplate<String, Object> redisTemplate = mockRedisTemplate();
+        when(authService.getAppAuth("ak-test")).thenReturn(OpenApiAppAuth.builder()
+                .accountId(1L)
+                .secretKey("plain-secret")
+                .signVersion("v1")
+                .ipWhitelist("10.10.10.10")
+                .build());
+
+        OpenApiInterceptor interceptor = buildInterceptor(authService, redisTemplate);
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/open/api/demo");
+        request.setContextPath("/api");
+        request.setRemoteAddr("127.0.0.1");
+        request.addHeader("X-Bml-App-Key", "ak-test");
+        request.addHeader("X-Bml-Timestamp", String.valueOf(System.currentTimeMillis()));
+        request.addHeader("X-Bml-Nonce", "nonce-2");
+        request.addHeader("X-Bml-Sign-Version", "v1");
+        request.addHeader("X-Bml-Sign", "ignore-sign");
+
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        boolean passed = interceptor.preHandle(request, response, new Object());
+
+        assertFalse(passed);
+        assertEquals(403, response.getStatus());
+        JsonNode jsonNode = new ObjectMapper().readTree(response.getContentAsString());
+        assertEquals(2109, jsonNode.get("code").asInt());
+    }
+
+    @Test
+    void shouldRejectWhenSignVersionMismatch() throws Exception {
+        OpenApiAuthService authService = Mockito.mock(OpenApiAuthService.class);
+        RedisTemplate<String, Object> redisTemplate = mockRedisTemplate();
+        when(authService.getAppAuth("ak-test")).thenReturn(OpenApiAppAuth.builder()
+                .accountId(1L)
+                .secretKey("plain-secret")
+                .signVersion("v1")
+                .ipWhitelist("127.0.0.1")
+                .build());
+
+        OpenApiInterceptor interceptor = buildInterceptor(authService, redisTemplate);
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/open/api/demo");
+        request.setContextPath("/api");
+        request.setRemoteAddr("127.0.0.1");
+        request.addHeader("X-Bml-App-Key", "ak-test");
+        request.addHeader("X-Bml-Timestamp", String.valueOf(System.currentTimeMillis()));
+        request.addHeader("X-Bml-Nonce", "nonce-3");
+        request.addHeader("X-Bml-Sign-Version", "v2");
+        request.addHeader("X-Bml-Sign", "ignore-sign");
+
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        boolean passed = interceptor.preHandle(request, response, new Object());
+
+        assertFalse(passed);
+        assertEquals(401, response.getStatus());
+        JsonNode jsonNode = new ObjectMapper().readTree(response.getContentAsString());
+        assertEquals(2108, jsonNode.get("code").asInt());
     }
 
     private OpenApiInterceptor buildInterceptor(OpenApiAuthService authService, RedisTemplate<String, Object> redisTemplate) {

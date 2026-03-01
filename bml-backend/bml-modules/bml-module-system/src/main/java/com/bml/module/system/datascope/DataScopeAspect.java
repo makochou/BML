@@ -4,6 +4,7 @@ import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
 import com.bml.core.common.constant.GlobalConstants;
 import com.bml.core.framework.security.model.LoginUser;
+import com.bml.core.framework.security.model.OpenApiLoginUser;
 import com.bml.core.framework.security.utils.SecurityUtils;
 import com.bml.module.system.entity.SysRole;
 import com.bml.module.system.entity.SysUser;
@@ -70,6 +71,11 @@ public class DataScopeAspect {
         }
 
         Long userId = loginUser.getUserId();
+        if (loginUser instanceof OpenApiLoginUser) {
+            // API 账号授权以接口维度为主，不参与后台角色数据范围裁剪，
+            // 否则会因缺少后台用户组织关系导致本应授权的接口被误拒绝。
+            return StrUtil.EMPTY;
+        }
         if (userId == null) {
             return DENY_ALL_SQL;
         }

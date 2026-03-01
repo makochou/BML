@@ -6,6 +6,7 @@ import { usePermissionStore, type BackendRouteItem } from '../store/permission';
 
 const viewModules = import.meta.glob('../views/**/*.vue');
 const FeatureDisabledView = () => import('../views/common/FeatureDisabled.vue');
+const API_ACCOUNT_MANAGE_FULL_PATH = '/admin/api/account';
 
 const ParentView = {
     name: 'ParentView',
@@ -39,21 +40,27 @@ const staticRoutes: RouteRecordRaw[] = [
             },
             {
                 path: 'api/list',
-                name: 'ApiList',
-                component: () => import('../views/api/ApiList.vue'),
-                meta: { title: 'API 管理' }
+                name: 'LegacyApiListRedirect',
+                redirect: API_ACCOUNT_MANAGE_FULL_PATH,
+                meta: { title: 'API账号管理', hidden: true }
             },
             {
                 path: 'api/debug',
-                name: 'ApiDebug',
-                component: () => import('../views/api/ApiDebug.vue'),
-                meta: { title: '在线调试' }
+                name: 'LegacyApiDebugRedirect',
+                redirect: API_ACCOUNT_MANAGE_FULL_PATH,
+                meta: { title: 'API账号管理', hidden: true }
+            },
+            {
+                path: 'api/account/:id',
+                name: 'ApiAccountDetail',
+                component: () => import('../views/api/ApiAccountDetail.vue'),
+                meta: { title: 'API账号详情', hidden: true }
             },
             {
                 path: 'app',
-                name: 'AppList',
-                component: () => import('../views/app/AppList.vue'),
-                meta: { title: '应用管理' }
+                name: 'LegacyAppListRedirect',
+                redirect: API_ACCOUNT_MANAGE_FULL_PATH,
+                meta: { title: 'API账号管理', hidden: true }
             }
         ]
     }

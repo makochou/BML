@@ -1,7 +1,10 @@
 package com.bml.core.framework.interceptor;
 
 import cn.hutool.core.util.StrUtil;
+import com.bml.core.common.exception.BusinessException;
 import com.bml.core.common.enums.GlobalErrorCode;
+import com.bml.core.common.support.ApiIpWhitelistSupport;
+import com.bml.core.common.support.ApiSignatureVersionSupport;
 import com.bml.core.framework.security.utils.OpenApiSignatureUtils;
 import com.bml.core.framework.service.OpenApiAuthService;
 import com.bml.core.framework.service.model.OpenApiAppAuth;
@@ -21,29 +24,31 @@ import org.springframework.web.servlet.HandlerInterceptor;
 import java.util.concurrent.TimeUnit;
 
 /**
- * OpenAPI 签名校验拦截器。
+ * OpenAPI 请求统一鉴权拦截器。
  * <p>
- * 所有开放接口统一在该拦截器中完成：
+ * 这里集中处理开放接口调用的公共安全能力，避免每个控制器重复拼接认证逻辑。
+ * 当前统一校验请求头、时间戳、签名版本、IP 白名单、接口授权、nonce 防重放和签名值。
  * </p>
- * <ul>
- *     <li>请求头完整性校验</li>
- *     <li>时间戳校验</li>
- *     <li>应用凭证校验</li>
- *     <li>接口授权校验</li>
- *     <li>nonce 防重放校验</li>
- *     <li>签名串计算与校验</li>
- * </ul>
- *
- * @author BML Team
  */
 @Slf4j
 @Component
 public class OpenApiInterceptor implements HandlerInterceptor {
 
+    /**
+     * 请求作用域内的 API 账号鉴权结果。
+     * <p>
+     * API 账号过滤器在验签通过后会从该属性中读取账号上下文，并写入 SecurityContext。
+     * </p>
+     */
+    public static final String REQUEST_ATTR_APP_AUTH = OpenApiInterceptor.class.getName() + ".APP_AUTH";
+
     private static final String HEADER_APP_KEY = "X-Bml-App-Key";
     private static final String HEADER_TIMESTAMP = "X-Bml-Timestamp";
     private static final String HEADER_NONCE = "X-Bml-Nonce";
     private static final String HEADER_SIGN = "X-Bml-Sign";
+    private static final String HEADER_SIGN_VERSION = "X-Bml-Sign-Version";
+    private static final String HEADER_FORWARDED_FOR = "X-Forwarded-For";
+    private static final String HEADER_REAL_IP = "X-Real-IP";
     private static final String NONCE_KEY_PREFIX = "openapi:nonce:";
 
     @Resource
@@ -65,6 +70,15 @@ public class OpenApiInterceptor implements HandlerInterceptor {
         String timestamp = request.getHeader(HEADER_TIMESTAMP);
         String nonce = request.getHeader(HEADER_NONCE);
         String sign = request.getHeader(HEADER_SIGN);
+        String signVersion;
+        try {
+            signVersion = StrUtil.blankToDefault(
+                    ApiSignatureVersionSupport.normalizeVersion(request.getHeader(HEADER_SIGN_VERSION)),
+                    ApiSignatureVersionSupport.defaultVersion());
+        } catch (BusinessException exception) {
+            writeError(response, HttpServletResponse.SC_UNAUTHORIZED, GlobalErrorCode.OPEN_API_SIGN_VERSION_INVALID);
+            return false;
+        }
 
         if (StrUtil.hasBlank(appKey, timestamp, nonce, sign)) {
             writeError(response, HttpServletResponse.SC_BAD_REQUEST, GlobalErrorCode.OPEN_API_HEADER_MISSING);
@@ -74,13 +88,12 @@ public class OpenApiInterceptor implements HandlerInterceptor {
         long clientTimestamp;
         try {
             clientTimestamp = Long.parseLong(timestamp);
-        } catch (NumberFormatException ex) {
+        } catch (NumberFormatException exception) {
             writeError(response, HttpServletResponse.SC_BAD_REQUEST, GlobalErrorCode.OPEN_API_TIMESTAMP_INVALID);
             return false;
         }
 
-        long currentTimestamp = System.currentTimeMillis();
-        if (Math.abs(currentTimestamp - clientTimestamp) > nonceTtlMs) {
+        if (Math.abs(System.currentTimeMillis() - clientTimestamp) > nonceTtlMs) {
             writeError(response, HttpServletResponse.SC_UNAUTHORIZED, GlobalErrorCode.OPEN_API_REQUEST_EXPIRED);
             return false;
         }
@@ -88,6 +101,21 @@ public class OpenApiInterceptor implements HandlerInterceptor {
         OpenApiAppAuth appAuth = openApiAuthService.getAppAuth(appKey);
         if (appAuth == null || StrUtil.isBlank(appAuth.getSecretKey())) {
             writeError(response, HttpServletResponse.SC_UNAUTHORIZED, GlobalErrorCode.OPEN_API_APP_INVALID);
+            return false;
+        }
+
+        String accountSignVersion = StrUtil.blankToDefault(
+                ApiSignatureVersionSupport.normalizeVersion(appAuth.getSignVersion()),
+                ApiSignatureVersionSupport.defaultVersion());
+        if (!StrUtil.equals(signVersion, accountSignVersion)) {
+            writeError(response, HttpServletResponse.SC_UNAUTHORIZED, GlobalErrorCode.OPEN_API_SIGN_VERSION_INVALID);
+            return false;
+        }
+
+        String clientIp = resolveClientIp(request);
+        if (!ApiIpWhitelistSupport.isAllowed(clientIp, appAuth.getIpWhitelist())) {
+            log.warn("OpenAPI IP 白名单校验失败，accountId={}, clientIp={}", appAuth.getAccountId(), clientIp);
+            writeError(response, HttpServletResponse.SC_FORBIDDEN, GlobalErrorCode.OPEN_API_IP_FORBIDDEN);
             return false;
         }
 
@@ -119,13 +147,17 @@ public class OpenApiInterceptor implements HandlerInterceptor {
                 canonicalQuery,
                 bodySha256);
         String calculatedSign = OpenApiSignatureUtils.sign(payload, appAuth.getSecretKey());
-
         if (!StrUtil.equals(sign, calculatedSign)) {
-            log.warn("OpenAPI 签名校验失败，请求路径: {}, 期望签名: {}, 实际签名: {}", requestPath, calculatedSign, sign);
+            log.warn("OpenAPI 签名校验失败，requestPath={}, expectedSign={}, actualSign={}",
+                    requestPath,
+                    calculatedSign,
+                    sign);
             redisTemplate.delete(nonceRedisKey);
             writeError(response, HttpServletResponse.SC_UNAUTHORIZED, GlobalErrorCode.OPEN_API_SIGNATURE_INVALID);
             return false;
         }
+
+        request.setAttribute(REQUEST_ATTR_APP_AUTH, appAuth);
 
         return true;
     }
@@ -149,11 +181,54 @@ public class OpenApiInterceptor implements HandlerInterceptor {
         return requestUri;
     }
 
+    /**
+     * 生产环境中开放接口通常经由网关或反向代理转发，请优先信任代理透传的真实来源 IP。
+     */
+    private String resolveClientIp(HttpServletRequest request) {
+        String forwardedIp = firstValidIpToken(request.getHeader(HEADER_FORWARDED_FOR));
+        if (StrUtil.isNotBlank(forwardedIp)) {
+            return forwardedIp;
+        }
+        String realIp = normalizeSingleHeaderIp(request.getHeader(HEADER_REAL_IP));
+        if (StrUtil.isNotBlank(realIp)) {
+            return realIp;
+        }
+        return normalizeSingleHeaderIp(request.getRemoteAddr());
+    }
+
+    private String firstValidIpToken(String headerValue) {
+        if (StrUtil.isBlank(headerValue)) {
+            return null;
+        }
+        String[] segments = headerValue.split(",");
+        for (String segment : segments) {
+            String ip = normalizeSingleHeaderIp(segment);
+            if (StrUtil.isNotBlank(ip)) {
+                return ip;
+            }
+        }
+        return null;
+    }
+
+    private String normalizeSingleHeaderIp(String source) {
+        String normalized = StrUtil.trimToNull(source);
+        if (normalized == null || "unknown".equalsIgnoreCase(normalized)) {
+            return null;
+        }
+        if (normalized.startsWith("[") && normalized.contains("]")) {
+            return normalized.substring(1, normalized.indexOf(']'));
+        }
+        if (normalized.contains(".") && normalized.chars().filter(ch -> ch == ':').count() == 1) {
+            return normalized.substring(0, normalized.lastIndexOf(':'));
+        }
+        return normalized;
+    }
+
     private void writeError(HttpServletResponse response, int httpStatus, GlobalErrorCode errorCode) {
         try {
             ServletResponseUtils.writeFailure(response, objectMapper, httpStatus, errorCode);
-        } catch (Exception ex) {
-            log.error("写出 OpenAPI 失败响应时发生异常", ex);
+        } catch (Exception exception) {
+            log.error("写出 OpenAPI 失败响应时发生异常", exception);
         }
     }
 }

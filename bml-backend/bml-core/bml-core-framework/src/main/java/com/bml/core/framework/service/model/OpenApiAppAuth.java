@@ -10,4 +10,8 @@ public class OpenApiAppAuth {
     private Long accountId;
 
     private String secretKey;
+
+    private String signVersion;
+
+    private String ipWhitelist;
 }

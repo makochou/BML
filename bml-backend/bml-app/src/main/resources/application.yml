@@ -60,6 +60,14 @@ bml:
   openapi:
     nonce-ttl-ms: ${BML_OPENAPI_NONCE_TTL_MS:300000}
     secret-encryption-key: ${BML_OPENAPI_SECRET_ENCRYPTION_KEY:wYti1sv73JhRan4vxgooytG95IZp20pn}
+    callback:
+      retry-enabled: ${BML_OPENAPI_CALLBACK_RETRY_ENABLED:true}
+      max-retry-count: ${BML_OPENAPI_CALLBACK_MAX_RETRY_COUNT:3}
+      retry-interval-seconds: ${BML_OPENAPI_CALLBACK_RETRY_INTERVAL_SECONDS:60}
+      processor-fixed-delay-ms: ${BML_OPENAPI_CALLBACK_PROCESSOR_FIXED_DELAY_MS:30000}
+      batch-size: ${BML_OPENAPI_CALLBACK_BATCH_SIZE:20}
+    registry:
+      auto-sync-on-startup: ${BML_OPENAPI_REGISTRY_AUTO_SYNC_ON_STARTUP:true}
   monitor:
     refresh-interval-ms: ${BML_MONITOR_REFRESH_INTERVAL_MS:3000}
     public-ip-enabled: ${BML_MONITOR_PUBLIC_IP_ENABLED:true}

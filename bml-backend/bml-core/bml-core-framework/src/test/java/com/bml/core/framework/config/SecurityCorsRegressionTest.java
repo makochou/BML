@@ -1,5 +1,7 @@
 package com.bml.core.framework.config;
 
+import com.bml.core.framework.interceptor.OpenApiInterceptor;
+import com.bml.core.framework.security.filter.ApiAccountAuthenticationFilter;
 import com.bml.core.framework.security.filter.JwtAuthenticationFilter;
 import com.bml.core.framework.security.handle.AccessDeniedHandlerImpl;
 import com.bml.core.framework.security.handle.AuthenticationEntryPointImpl;
@@ -35,6 +37,9 @@ class SecurityCorsRegressionTest {
     @MockBean
     private TokenService tokenService;
 
+    @MockBean
+    private OpenApiInterceptor openApiInterceptor;
+
     @Test
     void shouldAllowOptionsPreflightWithoutAuthentication() throws Exception {
         mockMvc.perform(options("/system/protected"))
@@ -42,9 +47,9 @@ class SecurityCorsRegressionTest {
     }
 
     @Test
-    void shouldAllowOpenApiPathWithoutJwtAuthentication() throws Exception {
+    void shouldRejectUnsignedManagedApiPathWithoutAuthentication() throws Exception {
         mockMvc.perform(get("/open/api/ping"))
-                .andExpect(status().isOk());
+                .andExpect(status().isUnauthorized());
     }
 
     @RestController
@@ -86,6 +91,11 @@ class SecurityCorsRegressionTest {
         @Bean
         JwtAuthenticationFilter jwtAuthenticationFilter(TokenService tokenService) {
             return new JwtAuthenticationFilter(tokenService);
+        }
+
+        @Bean
+        ApiAccountAuthenticationFilter apiAccountAuthenticationFilter(OpenApiInterceptor openApiInterceptor) {
+            return new ApiAccountAuthenticationFilter(openApiInterceptor);
         }
     }
 }

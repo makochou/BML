@@ -1,10 +1,14 @@
 package com.bml.core.framework.config;
 
+import com.bml.core.framework.security.filter.ApiAccountAuthenticationFilter;
 import com.bml.core.framework.security.filter.JwtAuthenticationFilter;
 import com.bml.core.framework.security.handle.AccessDeniedHandlerImpl;
 import com.bml.core.framework.security.handle.AuthenticationEntryPointImpl;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -15,165 +19,148 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.http.HttpMethod;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 /**
- * Spring Security 安全框架配置
+ * Spring Security 统一安全配置。
  * <p>
- * 核心安全配置类，定义了认证和授权的完整策略：
+ * 当前系统同时支持两条认证链路：
+ * 1. 管理后台通过 JWT 访问内部管理接口；
+ * 2. 外部系统通过 API 账号签名访问受管项目接口。
  * </p>
- * <ul>
- * <li><b>无状态会话</b> — 不使用 HttpSession，完全依赖 JWT + Redis 管理会话</li>
- * <li><b>JWT 过滤器</b> — 在 {@link UsernamePasswordAuthenticationFilter} 之前执行</li>
- * <li><b>白名单路径</b> — 登录、刷新Token、API文档等路径允许匿名访问</li>
- * <li><b>异常处理</b> — 统一的401（未认证）和403（无权限）响应</li>
- * <li><b>方法级权限</b> — 通过 {@code @EnableMethodSecurity} 支持
- * {@code @PreAuthorize}</li>
- * </ul>
- *
- * <h3>白名单路径说明：</h3>
- * <table>
- * <tr>
- * <th>路径</th>
- * <th>说明</th>
- * </tr>
- * <tr>
- * <td>{@code /auth/login}</td>
- * <td>用户登录接口</td>
- * </tr>
- * <tr>
- * <td>{@code /auth/refresh}</td>
- * <td>刷新 AccessToken 接口</td>
- * </tr>
- * <tr>
- * <td>{@code /auth/register}</td>
- * <td>用户注册接口（预留）</td>
- * </tr>
- * <tr>
- * <td>{@code /v3/api-docs/**}</td>
- * <td>OpenAPI 文档接口</td>
- * </tr>
- * <tr>
- * <td>{@code /swagger-ui/**}</td>
- * <td>Swagger UI 页面</td>
- * </tr>
- * </table>
- *
- * @author BML Team
+ * <p>
+ * 这样可以在不破坏现有后台登录体系的前提下，将接口级授权统一收口到
+ * {@code sys_api_registry + sys_api_permission}，并保证后续新增接口能够自动进入授权目录。
+ * </p>
  */
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
 public class SecurityConfig {
 
-        /** 未认证处理器（401） */
-        private final AuthenticationEntryPointImpl authenticationEntryPoint;
+    private final AuthenticationEntryPointImpl authenticationEntryPoint;
 
-        /** 权限不足处理器（403） */
-        private final AccessDeniedHandlerImpl accessDeniedHandler;
+    private final AccessDeniedHandlerImpl accessDeniedHandler;
 
-        /** JWT 认证过滤器 */
-        private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
-        @org.springframework.beans.factory.annotation.Value("${bml.swagger.enabled:false}")
-        private Boolean swaggerEnabled;
+    private final ApiAccountAuthenticationFilter apiAccountAuthenticationFilter;
 
-        public SecurityConfig(AuthenticationEntryPointImpl authenticationEntryPoint,
-                        AccessDeniedHandlerImpl accessDeniedHandler,
-                        JwtAuthenticationFilter jwtAuthenticationFilter) {
-                this.authenticationEntryPoint = authenticationEntryPoint;
-                this.accessDeniedHandler = accessDeniedHandler;
-                this.jwtAuthenticationFilter = jwtAuthenticationFilter;
-        }
+    @Value("${bml.swagger.enabled:false}")
+    private Boolean swaggerEnabled;
 
-        /**
-         * 安全过滤器链配置
-         * <p>
-         * 配置了完整的 HTTP 安全策略，包括 CSRF 禁用、CORS 委托、
-         * 会话策略、异常处理、请求授权规则和 JWT 过滤器注册。
-         * </p>
-         *
-         * @param http HttpSecurity 构建器
-         * @return 构建完成的 SecurityFilterChain
-         * @throws Exception 配置异常
-         */
-        @Bean
-        public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-                http
-                                // 禁用 CSRF（无状态 Token 认证不需要 CSRF 保护）
-                                .csrf(AbstractHttpConfigurer::disable)
-                                // 启用 CORS，让 Security 层与 WebMvcConfig 的跨域规则保持一致，
-                                // 避免预检请求在 Security 层被提前拦截。
-                                .cors(Customizer.withDefaults())
-                                // 异常处理：未认证(401) + 权限不足(403)
-                                .exceptionHandling(handling -> handling
-                                                .authenticationEntryPoint(authenticationEntryPoint)
-                                                .accessDeniedHandler(accessDeniedHandler))
-                                // 无状态会话（不创建 HttpSession）
-                                .sessionManagement(session -> session
-                                                .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                                // 请求授权规则
-                                .authorizeHttpRequests(auth -> {
-                                        // 白名单：始终允许匿名访问的路径
-                                        auth.requestMatchers(
-                                                        HttpMethod.OPTIONS, "/**" // 预检请求放行
-                                        ).permitAll();
+    public SecurityConfig(AuthenticationEntryPointImpl authenticationEntryPoint,
+            AccessDeniedHandlerImpl accessDeniedHandler,
+            JwtAuthenticationFilter jwtAuthenticationFilter,
+            ApiAccountAuthenticationFilter apiAccountAuthenticationFilter) {
+        this.authenticationEntryPoint = authenticationEntryPoint;
+        this.accessDeniedHandler = accessDeniedHandler;
+        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.apiAccountAuthenticationFilter = apiAccountAuthenticationFilter;
+    }
 
-                                        auth.requestMatchers(
-                                                        "/auth/login", // 登录
-                                                        "/auth/refresh", // 刷新Token
-                                                        "/auth/register", // 注册（预留）
-                                                        "/actuator/health", // 健康检查(无需认证，供云原生探针或反向代理网关侦测)
-                                                        "/open/api/**" // OpenAPI 走签名鉴权，不走 JWT 鉴权
-                                        ).permitAll();
+    /**
+     * 构建统一的安全过滤器链。
+     * <p>
+     * 白名单只保留登录、令牌刷新、健康检查和文档接口，其余项目接口必须先完成认证。
+     * 认证优先级如下：
+     * 1. API 账号签名认证；
+     * 2. 后台 JWT 认证。
+     * </p>
+     *
+     * @param http HttpSecurity 构建器
+     * @return 安全过滤器链
+     * @throws Exception 安全组件初始化异常
+     */
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        http
+                .csrf(AbstractHttpConfigurer::disable)
+                .cors(Customizer.withDefaults())
+                .exceptionHandling(handling -> handling
+                        .authenticationEntryPoint(authenticationEntryPoint)
+                        .accessDeniedHandler(accessDeniedHandler))
+                .sessionManagement(session -> session
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(auth -> {
+                    auth.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll();
 
-                                        // 仅在配置开启时允许 Swagger 文档访问
-                                        if (Boolean.TRUE.equals(swaggerEnabled)) {
-                                                auth.requestMatchers(
-                                                                "/v3/api-docs/**", // OpenAPI 文档
-                                                                "/swagger-ui/**", // Swagger UI
-                                                                "/swagger-ui.html" // Swagger UI 入口
-                                                ).permitAll();
-                                        }
+                    auth.requestMatchers(
+                                    "/auth/login",
+                                    "/auth/refresh",
+                                    "/auth/register",
+                                    "/actuator/health")
+                            .permitAll();
 
-                                        // 其他所有请求需要认证
-                                        auth.anyRequest().authenticated();
-                                })
-                                // 在 UsernamePasswordAuthenticationFilter 之前插入 JWT 过滤器
-                                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                    if (Boolean.TRUE.equals(swaggerEnabled)) {
+                        auth.requestMatchers(
+                                        "/v3/api-docs/**",
+                                        "/swagger-ui/**",
+                                        "/swagger-ui.html")
+                                .permitAll();
+                    }
 
-                return http.build();
-        }
+                    auth.anyRequest().authenticated();
+                })
+                // 先执行 API 账号签名认证，再执行后台 JWT 认证。
+                .addFilterBefore(apiAccountAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(jwtAuthenticationFilter, ApiAccountAuthenticationFilter.class);
 
-        /**
-         * 认证管理器
-         * <p>
-         * 由 Spring Security 自动配置，用于 {@code SysLoginService} 中
-         * 调用 {@code authenticationManager.authenticate()} 进行密码验证。
-         * </p>
-         *
-         * @param config 认证配置
-         * @return AuthenticationManager 实例
-         * @throws Exception 配置异常
-         */
-        @Bean
-        public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
-                return config.getAuthenticationManager();
-        }
+        return http.build();
+    }
 
-        /**
-         * 密码编码器
-         * <p>
-         * 使用 BCrypt 算法加密密码，强度默认为 10（Spring Security 默认值）。
-         * BCrypt 是目前推荐的密码存储算法，具有自动加盐和可调节计算成本的特点。
-         * </p>
-         *
-         * @return BCryptPasswordEncoder 实例
-         */
-        @Bean
-        public PasswordEncoder passwordEncoder() {
-                return new BCryptPasswordEncoder();
-        }
+    /**
+     * 禁止 JWT 过滤器以普通 Servlet 过滤器方式重复注册。
+     * <p>
+     * 该过滤器仅应通过 Spring Security 过滤器链生效，否则会出现一次请求被执行两遍的问题。
+     * </p>
+     *
+     * @param filter JWT 过滤器
+     * @return 关闭自动注册的过滤器注册器
+     */
+    @Bean
+    public FilterRegistrationBean<JwtAuthenticationFilter> jwtAuthenticationFilterRegistration(
+            JwtAuthenticationFilter filter) {
+        FilterRegistrationBean<JwtAuthenticationFilter> registrationBean = new FilterRegistrationBean<>(filter);
+        registrationBean.setEnabled(false);
+        return registrationBean;
+    }
+
+    /**
+     * 禁止 API 账号过滤器以普通 Servlet 过滤器方式重复注册。
+     *
+     * @param filter API 账号认证过滤器
+     * @return 关闭自动注册的过滤器注册器
+     */
+    @Bean
+    public FilterRegistrationBean<ApiAccountAuthenticationFilter> apiAccountAuthenticationFilterRegistration(
+            ApiAccountAuthenticationFilter filter) {
+        FilterRegistrationBean<ApiAccountAuthenticationFilter> registrationBean =
+                new FilterRegistrationBean<>(filter);
+        registrationBean.setEnabled(false);
+        return registrationBean;
+    }
+
+    /**
+     * 认证管理器。
+     *
+     * @param config Spring Security 认证配置
+     * @return 认证管理器
+     * @throws Exception 认证组件初始化异常
+     */
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+        return config.getAuthenticationManager();
+    }
+
+    /**
+     * 密码编码器。
+     *
+     * @return BCrypt 密码编码器
+     */
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
 }

@@ -1,6 +1,5 @@
 package com.bml.core.framework.config;
 
-import com.bml.core.framework.interceptor.OpenApiInterceptor;
 import jakarta.annotation.Resource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
@@ -9,13 +8,17 @@ import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
-import java.util.Arrays;
-
+/**
+ * Web MVC 通用配置。
+ * <p>
+ * 说明：
+ * 1. API 账号签名鉴权已经前移到 Spring Security 过滤器链，不再通过 MVC 拦截器按路径单独挂载；
+ * 2. 这里仅保留后台在线用户跟踪与统一跨域配置；
+ * 3. 这样可以避免接口目录范围扩展后，鉴权规则散落在多个入口点难以维护。
+ * </p>
+ */
 @Configuration
 public class WebMvcConfig implements WebMvcConfigurer {
-
-    @Resource
-    private OpenApiInterceptor openApiInterceptor;
 
     @Autowired(required = false)
     private HandlerInterceptor activeUserInterceptor;
@@ -25,10 +28,6 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-        registry.addInterceptor(openApiInterceptor)
-                .addPathPatterns("/open/api/**")
-                .excludePathPatterns("/open/api/test/**");
-
         if (activeUserInterceptor != null) {
             registry.addInterceptor(activeUserInterceptor)
                     .addPathPatterns("/**")
@@ -43,8 +42,6 @@ public class WebMvcConfig implements WebMvcConfigurer {
                 .toArray(String[]::new);
 
         registry.addMapping("/**")
-                // CorsRegistration comes with permit-default-values, which preset
-                // allowedOrigins="*". Clear it before using explicit origin patterns.
                 .allowedOrigins()
                 .allowedOriginPatterns(sanitizedOrigins)
                 .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")

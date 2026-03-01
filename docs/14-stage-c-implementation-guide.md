@@ -100,7 +100,7 @@ public List<SysUser> selectUserList(SysUserDTO user) {
 若后端新增菜单想被前端自动识别：
 
 1. DB 菜单配置 `menu_type` 必须为 `M` 或 `C`。
-2. `path` 与 `component` 正确填写（例如 `app/AppList`）。
+2. `path` 与 `component` 正确填写（例如 `api/ApiAccountManage`）。
 3. `component` 对应文件路径：`src/views/${component}.vue`。
 4. 若组件不存在，前端自动降级到 `FeatureDisabled`。
 

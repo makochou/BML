@@ -280,14 +280,8 @@ public class SysMenuServiceImpl extends BaseServiceImpl<SysMenuMapper, SysMenu> 
             if ("dashboard/Workplace".equals(component)) {
                 return "Dashboard";
             }
-            if ("app/AppList".equals(component)) {
-                return "AppList";
-            }
-            if ("api/ApiList".equals(component)) {
-                return "ApiList";
-            }
-            if ("api/ApiDebug".equals(component)) {
-                return "ApiDebug";
+            if ("api/ApiAccountManage".equals(component)) {
+                return "ApiAccountManage";
             }
             return component.replace("/", "_").replace("-", "_");
         }

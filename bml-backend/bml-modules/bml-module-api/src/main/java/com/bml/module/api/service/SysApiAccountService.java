@@ -2,132 +2,548 @@ package com.bml.module.api.service;
 
 import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.RandomUtil;
+import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.bml.core.common.exception.BusinessException;
+import com.bml.core.common.result.PageResult;
+import com.bml.core.common.support.ApiIpWhitelistSupport;
+import com.bml.core.common.support.ApiSignatureVersionSupport;
+import com.bml.module.api.dto.CreateSysApiAccountCommand;
 import com.bml.module.api.dto.SysApiAccountDTO;
+import com.bml.module.api.dto.SysApiAccountPageQuery;
+import com.bml.module.api.dto.UpdateSysApiAccountCommand;
 import com.bml.module.api.entity.SysApiAccount;
 import com.bml.module.api.mapper.SysApiAccountMapper;
+import com.bml.module.api.mapper.SysApiPermissionMapper;
+import com.bml.module.api.support.ApiAccountEnvironmentSupport;
+import com.bml.module.api.support.ApiAccountEnvironmentWhitelistSupport;
+import com.bml.module.api.support.ApiClientTypeSupport;
+import com.bml.module.api.vo.ApiAccountPermissionCountVO;
 import com.bml.module.api.vo.ApiCredentialVO;
+import com.bml.module.api.vo.SysApiAccountDetailVO;
 import com.bml.module.api.vo.SysApiAccountVO;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.Serializable;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
+/**
+ * API 账号服务。
+ */
 @Service
 public class SysApiAccountService extends ServiceImpl<SysApiAccountMapper, SysApiAccount> {
 
-    private final ApiSecretCryptoService secretCryptoService;
+    private static final int DEFAULT_ACCOUNT_TYPE = 1;
+    private static final int DEFAULT_RATE_LIMIT = 1000;
+    private static final int DEFAULT_STATUS = 1;
+    private static final long DEFAULT_PAGE_NUM = 1L;
+    private static final long DEFAULT_PAGE_SIZE = 10L;
+    private static final long MAX_PAGE_SIZE = 100L;
 
-    public SysApiAccountService(ApiSecretCryptoService secretCryptoService) {
+    private final ApiSecretCryptoService secretCryptoService;
+    private final SysApiPermissionMapper apiPermissionMapper;
+
+    public SysApiAccountService(ApiSecretCryptoService secretCryptoService,
+            SysApiPermissionMapper apiPermissionMapper) {
         this.secretCryptoService = secretCryptoService;
+        this.apiPermissionMapper = apiPermissionMapper;
+    }
+
+    public PageResult<SysApiAccountVO> pageAccounts(SysApiAccountPageQuery query) {
+        long pageNum = normalizePageNum(query == null ? null : query.getPageNum());
+        long pageSize = normalizePageSize(query == null ? null : query.getPageSize());
+
+        LambdaQueryWrapper<SysApiAccount> wrapper = buildAccountQueryWrapper(
+                query == null ? null : query.getAccountName(),
+                query == null ? null : query.getStatus(),
+                query == null ? null : query.getAccountType(),
+                query == null ? null : query.getClientType(),
+                query == null ? null : query.getSystemKeyword(),
+                query == null ? null : query.getAccessEnvironment());
+        long total = this.count(wrapper);
+        if (total <= 0) {
+            return PageResult.empty(pageNum, pageSize);
+        }
+
+        long offset = (pageNum - 1L) * pageSize;
+        List<SysApiAccount> accounts = this.list(buildAccountQueryWrapper(
+                query == null ? null : query.getAccountName(),
+                query == null ? null : query.getStatus(),
+                query == null ? null : query.getAccountType(),
+                query == null ? null : query.getClientType(),
+                query == null ? null : query.getSystemKeyword(),
+                query == null ? null : query.getAccessEnvironment())
+                .last("LIMIT " + offset + "," + pageSize));
+        return PageResult.of(toVoList(accounts), total, pageNum, pageSize);
     }
 
     public List<SysApiAccountVO> selectAccountList(SysApiAccountDTO dto) {
-        return this.list(new LambdaQueryWrapper<SysApiAccount>()
-                .like(dto.getAccountName() != null, SysApiAccount::getAccountName, dto.getAccountName())
-                .eq(dto.getStatus() != null, SysApiAccount::getStatus, dto.getStatus())
-                .orderByDesc(SysApiAccount::getCreateTime))
-                .stream()
-                .map(this::toVo)
-                .toList();
+        if (dto == null) {
+            return toVoList(this.list(buildAccountQueryWrapper(null, null, null, null, null, null)));
+        }
+        return toVoList(this.list(buildAccountQueryWrapper(
+                dto.getAccountName(),
+                dto.getStatus(),
+                null,
+                dto.getClientType(),
+                dto.getSystemKeyword(),
+                dto.getAccessEnvironment())));
+    }
+
+    public SysApiAccountDetailVO getAccountDetail(Long id) {
+        return toDetailVo(getRequiredAccount(id));
     }
 
     public SysApiAccountVO getAccountInfo(Long id) {
-        SysApiAccount account = this.getById(id);
-        if (account == null) {
-            throw new BusinessException("API 账号不存在");
-        }
-        return toVo(account);
+        return toVo(getRequiredAccount(id));
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public ApiCredentialVO createAccount(CreateSysApiAccountCommand command) {
+        String accountName = normalizeAccountName(command.getAccountName());
+        validateAccountNameUnique(accountName, null);
+        String accessEnvironment = normalizeAccessEnvironment(command.getAccessEnvironment());
+
+        String plainSecret = RandomUtil.randomString(32);
+        SysApiAccount account = new SysApiAccount();
+        account.setAccountName(accountName);
+        account.setAccessKey(generateAccessKey());
+        account.setSecretKey(secretCryptoService.encrypt(plainSecret));
+        account.setAccountType(command.getAccountType() == null ? DEFAULT_ACCOUNT_TYPE : command.getAccountType());
+        account.setClientTypes(ApiClientTypeSupport.serializeClientTypes(command.getClientTypes()));
+        account.setOwnerName(normalizeOwnerName(command.getOwnerName()));
+        account.setOwnerContact(normalizeOwnerContact(command.getOwnerContact()));
+        account.setSystemName(normalizeSystemName(command.getSystemName()));
+        account.setSystemCode(normalizeSystemCode(command.getSystemCode()));
+        account.setAccessEnvironment(accessEnvironment);
+        applyWhitelistFields(account, accessEnvironment, command.getIpWhitelist(), command.getEnvironmentIpWhitelist());
+        account.setSignVersion(normalizeSignVersion(command.getSignVersion()));
+        account.setCallbackUrl(normalizeCallbackUrl(command.getCallbackUrl()));
+        account.setRateLimit(command.getRateLimit() == null ? DEFAULT_RATE_LIMIT : command.getRateLimit());
+        account.setExpireTime(command.getExpireTime());
+        account.setStatus(command.getStatus() == null ? DEFAULT_STATUS : command.getStatus());
+        account.setRemark(normalizeRemark(command.getRemark()));
+        this.save(account);
+        return buildCredential(account, plainSecret);
     }
 
     @Transactional(rollbackFor = Exception.class)
     public ApiCredentialVO insertAccount(SysApiAccountDTO dto) {
-        if (dto.getAccountName() == null || dto.getAccountName().trim().isEmpty()) {
-            throw new BusinessException("账号名称不能为空");
-        }
-
-        String plaintextSecret = RandomUtil.randomString(32);
-        SysApiAccount account = new SysApiAccount();
-        account.setAccountName(dto.getAccountName());
-        account.setAccountType(dto.getAccountType() == null ? 1 : dto.getAccountType());
-        account.setRateLimit(dto.getRateLimit() == null ? 1000 : dto.getRateLimit());
-        account.setExpireTime(dto.getExpireTime());
-        account.setStatus(dto.getStatus() == null ? 1 : dto.getStatus());
-        account.setRemark(dto.getRemark());
-        account.setAccessKey("ak_" + IdUtil.simpleUUID());
-        account.setSecretKey(secretCryptoService.encrypt(plaintextSecret));
-
-        this.save(account);
-        return ApiCredentialVO.builder()
-                .id(account.getId())
-                .accountName(account.getAccountName())
-                .accessKey(account.getAccessKey())
-                .secretKey(plaintextSecret)
-                .build();
+        CreateSysApiAccountCommand command = new CreateSysApiAccountCommand();
+        command.setAccountName(dto == null ? null : dto.getAccountName());
+        command.setAccountType(dto == null ? null : dto.getAccountType());
+        command.setClientTypes(dto == null ? null : dto.getClientTypes());
+        command.setOwnerName(dto == null ? null : dto.getOwnerName());
+        command.setOwnerContact(dto == null ? null : dto.getOwnerContact());
+        command.setSystemName(dto == null ? null : dto.getSystemName());
+        command.setSystemCode(dto == null ? null : dto.getSystemCode());
+        command.setAccessEnvironment(dto == null ? null : dto.getAccessEnvironment());
+        command.setIpWhitelist(dto == null ? null : dto.getIpWhitelist());
+        command.setEnvironmentIpWhitelist(dto == null ? null : dto.getEnvironmentIpWhitelist());
+        command.setSignVersion(dto == null ? null : dto.getSignVersion());
+        command.setCallbackUrl(dto == null ? null : dto.getCallbackUrl());
+        command.setRateLimit(dto == null ? null : dto.getRateLimit());
+        command.setExpireTime(dto == null ? null : dto.getExpireTime());
+        command.setStatus(dto == null ? null : dto.getStatus());
+        command.setRemark(dto == null ? null : dto.getRemark());
+        return createAccount(command);
     }
 
     @Transactional(rollbackFor = Exception.class)
-    public boolean updateAccount(SysApiAccountDTO dto) {
-        SysApiAccount account = this.getById(dto.getId());
-        if (account == null) {
-            throw new BusinessException("API 账号不存在");
-        }
+    public boolean updateAccount(Long id, UpdateSysApiAccountCommand command) {
+        SysApiAccount account = getRequiredAccount(id);
+        String accountName = normalizeAccountName(command.getAccountName());
+        validateAccountNameUnique(accountName, id);
+        String accessEnvironment = normalizeAccessEnvironment(command.getAccessEnvironment());
 
-        if (dto.getAccountName() != null) {
-            account.setAccountName(dto.getAccountName());
-        }
-        if (dto.getAccountType() != null) {
-            account.setAccountType(dto.getAccountType());
-        }
-        if (dto.getRateLimit() != null) {
-            account.setRateLimit(dto.getRateLimit());
-        }
-        if (dto.getExpireTime() != null) {
-            account.setExpireTime(dto.getExpireTime());
-        }
-        if (dto.getStatus() != null) {
-            account.setStatus(dto.getStatus());
-        }
-        if (dto.getRemark() != null) {
-            account.setRemark(dto.getRemark());
-        }
-
+        account.setAccountName(accountName);
+        account.setAccountType(command.getAccountType() == null ? DEFAULT_ACCOUNT_TYPE : command.getAccountType());
+        account.setClientTypes(ApiClientTypeSupport.serializeClientTypes(command.getClientTypes()));
+        account.setOwnerName(normalizeOwnerName(command.getOwnerName()));
+        account.setOwnerContact(normalizeOwnerContact(command.getOwnerContact()));
+        account.setSystemName(normalizeSystemName(command.getSystemName()));
+        account.setSystemCode(normalizeSystemCode(command.getSystemCode()));
+        account.setAccessEnvironment(accessEnvironment);
+        applyWhitelistFields(account, accessEnvironment, command.getIpWhitelist(), command.getEnvironmentIpWhitelist());
+        account.setSignVersion(normalizeSignVersion(command.getSignVersion()));
+        account.setCallbackUrl(normalizeCallbackUrl(command.getCallbackUrl()));
+        account.setRateLimit(command.getRateLimit() == null ? DEFAULT_RATE_LIMIT : command.getRateLimit());
+        account.setExpireTime(command.getExpireTime());
+        account.setStatus(command.getStatus() == null ? DEFAULT_STATUS : command.getStatus());
+        account.setRemark(normalizeRemark(command.getRemark()));
         return this.updateById(account);
     }
 
     @Transactional(rollbackFor = Exception.class)
+    public boolean updateAccount(SysApiAccountDTO dto) {
+        if (dto == null || dto.getId() == null) {
+            throw new BusinessException("API账号ID不能为空");
+        }
+        UpdateSysApiAccountCommand command = new UpdateSysApiAccountCommand();
+        command.setAccountName(dto.getAccountName());
+        command.setAccountType(dto.getAccountType());
+        command.setClientTypes(dto.getClientTypes());
+        command.setOwnerName(dto.getOwnerName());
+        command.setOwnerContact(dto.getOwnerContact());
+        command.setSystemName(dto.getSystemName());
+        command.setSystemCode(dto.getSystemCode());
+        command.setAccessEnvironment(dto.getAccessEnvironment());
+        command.setIpWhitelist(dto.getIpWhitelist());
+        command.setEnvironmentIpWhitelist(dto.getEnvironmentIpWhitelist());
+        command.setSignVersion(dto.getSignVersion());
+        command.setCallbackUrl(dto.getCallbackUrl());
+        command.setRateLimit(dto.getRateLimit());
+        command.setExpireTime(dto.getExpireTime());
+        command.setStatus(dto.getStatus());
+        command.setRemark(dto.getRemark());
+        return updateAccount(dto.getId(), command);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public boolean updateAccountStatus(Long id, Integer status) {
+        SysApiAccount account = getRequiredAccount(id);
+        account.setStatus(status);
+        return this.updateById(account);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public boolean removeAccount(Long id) {
+        getRequiredAccount(id);
+        apiPermissionMapper.deleteByAccountId(id);
+        return super.removeById(id);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean removeById(Serializable id) {
+        if (id instanceof Long accountId) {
+            return removeAccount(accountId);
+        }
+        return super.removeById(id);
+    }
+
+    @Transactional(rollbackFor = Exception.class)
     public ApiCredentialVO resetSecret(Long id) {
+        SysApiAccount account = getRequiredAccount(id);
+        String plainSecret = RandomUtil.randomString(32);
+        account.setSecretKey(secretCryptoService.encrypt(plainSecret));
+        this.updateById(account);
+        return buildCredential(account, plainSecret);
+    }
+
+    public SysApiAccount getRequiredAccount(Long id) {
+        if (id == null) {
+            throw new BusinessException("API账号ID不能为空");
+        }
         SysApiAccount account = this.getById(id);
         if (account == null) {
-            throw new BusinessException("API 账号不存在");
+            throw new BusinessException("API账号不存在");
         }
+        return account;
+    }
 
-        String newSecret = RandomUtil.randomString(32);
-        account.setSecretKey(secretCryptoService.encrypt(newSecret));
-        this.updateById(account);
+    private LambdaQueryWrapper<SysApiAccount> buildAccountQueryWrapper(
+            String accountName,
+            Integer status,
+            Integer accountType,
+            String clientType,
+            String systemKeyword,
+            String accessEnvironment) {
+        String normalizedClientType = ApiClientTypeSupport.normalizeSingleClientType(clientType);
+        String normalizedSystemKeyword = StrUtil.trimToNull(systemKeyword);
+        String normalizedEnvironment = ApiAccountEnvironmentSupport.normalizeEnvironment(accessEnvironment);
+        return new LambdaQueryWrapper<SysApiAccount>()
+                .like(StrUtil.isNotBlank(accountName), SysApiAccount::getAccountName, StrUtil.trim(accountName))
+                .eq(status != null, SysApiAccount::getStatus, status)
+                .eq(accountType != null, SysApiAccount::getAccountType, accountType)
+                .apply(StrUtil.isNotBlank(normalizedClientType), "FIND_IN_SET({0}, client_types)", normalizedClientType)
+                .and(StrUtil.isNotBlank(normalizedSystemKeyword), wrapper -> wrapper
+                        .like(SysApiAccount::getSystemName, normalizedSystemKeyword)
+                        .or()
+                        .like(SysApiAccount::getSystemCode, normalizedSystemKeyword))
+                .eq(StrUtil.isNotBlank(normalizedEnvironment), SysApiAccount::getAccessEnvironment, normalizedEnvironment)
+                .orderByDesc(SysApiAccount::getCreateTime, SysApiAccount::getId);
+    }
 
-        return ApiCredentialVO.builder()
-                .id(account.getId())
-                .accountName(account.getAccountName())
-                .accessKey(account.getAccessKey())
-                .secretKey(newSecret)
-                .build();
+    private List<SysApiAccountVO> toVoList(List<SysApiAccount> accounts) {
+        if (accounts == null || accounts.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<Long> accountIds = accounts.stream().map(SysApiAccount::getId).filter(Objects::nonNull).toList();
+        Map<Long, Long> authorizedCountMap = toCountMap(apiPermissionMapper.selectAuthorizedCountList(accountIds));
+        Map<Long, Long> enabledAuthorizedCountMap = toCountMap(apiPermissionMapper.selectEnabledAuthorizedCountList(accountIds));
+        return accounts.stream()
+                .map(account -> toVo(account, authorizedCountMap, enabledAuthorizedCountMap))
+                .toList();
+    }
+
+    private Map<Long, Long> toCountMap(List<ApiAccountPermissionCountVO> countList) {
+        if (countList == null || countList.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        return countList.stream()
+                .filter(item -> item.getAccountId() != null)
+                .collect(Collectors.toMap(
+                        ApiAccountPermissionCountVO::getAccountId,
+                        item -> item.getAuthorizedApiCount() == null ? 0L : item.getAuthorizedApiCount(),
+                        (left, right) -> right,
+                        LinkedHashMap::new));
     }
 
     private SysApiAccountVO toVo(SysApiAccount account) {
+        return toVo(account, Collections.emptyMap(), Collections.emptyMap());
+    }
+
+    private SysApiAccountVO toVo(SysApiAccount account,
+            Map<Long, Long> authorizedCountMap,
+            Map<Long, Long> enabledAuthorizedCountMap) {
         SysApiAccountVO vo = new SysApiAccountVO();
         vo.setId(account.getId());
         vo.setAccountName(account.getAccountName());
         vo.setAccessKey(account.getAccessKey());
         vo.setAccountType(account.getAccountType());
+        vo.setClientTypes(ApiClientTypeSupport.deserializeClientTypes(account.getClientTypes()));
+        vo.setOwnerName(account.getOwnerName());
+        vo.setOwnerContact(account.getOwnerContact());
+        vo.setSystemName(account.getSystemName());
+        vo.setSystemCode(account.getSystemCode());
+        vo.setAccessEnvironment(account.getAccessEnvironment());
+        Map<String, List<String>> environmentWhitelistMap = buildEnvironmentWhitelistMap(account);
+        vo.setEnvironmentIpWhitelist(environmentWhitelistMap);
+        vo.setIpWhitelist(resolveEffectiveWhitelist(account.getAccessEnvironment(), account.getIpWhitelist(),
+                environmentWhitelistMap));
+        vo.setSignVersion(account.getSignVersion());
+        vo.setCallbackUrl(account.getCallbackUrl());
         vo.setRateLimit(account.getRateLimit());
         vo.setExpireTime(account.getExpireTime());
         vo.setStatus(account.getStatus());
         vo.setRemark(account.getRemark());
+        vo.setAuthorizedApiCount(authorizedCountMap.getOrDefault(account.getId(), 0L));
+        vo.setEnabledAuthorizedApiCount(enabledAuthorizedCountMap.getOrDefault(account.getId(), 0L));
         vo.setCreateTime(account.getCreateTime());
         vo.setUpdateTime(account.getUpdateTime());
         return vo;
+    }
+
+    private SysApiAccountDetailVO toDetailVo(SysApiAccount account) {
+        List<Long> accountIds = List.of(account.getId());
+        Map<Long, Long> authorizedCountMap = toCountMap(apiPermissionMapper.selectAuthorizedCountList(accountIds));
+        Map<Long, Long> enabledAuthorizedCountMap = toCountMap(apiPermissionMapper.selectEnabledAuthorizedCountList(accountIds));
+        SysApiAccountVO baseVo = toVo(account, authorizedCountMap, enabledAuthorizedCountMap);
+        SysApiAccountDetailVO detailVO = new SysApiAccountDetailVO();
+        detailVO.setId(baseVo.getId());
+        detailVO.setAccountName(baseVo.getAccountName());
+        detailVO.setAccessKey(baseVo.getAccessKey());
+        detailVO.setAccountType(baseVo.getAccountType());
+        detailVO.setClientTypes(baseVo.getClientTypes());
+        detailVO.setOwnerName(baseVo.getOwnerName());
+        detailVO.setOwnerContact(baseVo.getOwnerContact());
+        detailVO.setSystemName(baseVo.getSystemName());
+        detailVO.setSystemCode(baseVo.getSystemCode());
+        detailVO.setAccessEnvironment(baseVo.getAccessEnvironment());
+        detailVO.setIpWhitelist(baseVo.getIpWhitelist());
+        detailVO.setEnvironmentIpWhitelist(baseVo.getEnvironmentIpWhitelist());
+        detailVO.setSignVersion(baseVo.getSignVersion());
+        detailVO.setCallbackUrl(baseVo.getCallbackUrl());
+        detailVO.setRateLimit(baseVo.getRateLimit());
+        detailVO.setExpireTime(baseVo.getExpireTime());
+        detailVO.setStatus(baseVo.getStatus());
+        detailVO.setRemark(baseVo.getRemark());
+        detailVO.setAuthorizedApiCount(baseVo.getAuthorizedApiCount());
+        detailVO.setEnabledAuthorizedApiCount(baseVo.getEnabledAuthorizedApiCount());
+        detailVO.setCreateTime(baseVo.getCreateTime());
+        detailVO.setUpdateTime(baseVo.getUpdateTime());
+        return detailVO;
+    }
+
+    private ApiCredentialVO buildCredential(SysApiAccount account, String plainSecret) {
+        return ApiCredentialVO.builder()
+                .id(account.getId())
+                .accountName(account.getAccountName())
+                .accessKey(account.getAccessKey())
+                .clientTypes(ApiClientTypeSupport.deserializeClientTypes(account.getClientTypes()))
+                .ownerName(account.getOwnerName())
+                .ownerContact(account.getOwnerContact())
+                .systemName(account.getSystemName())
+                .systemCode(account.getSystemCode())
+                .accessEnvironment(account.getAccessEnvironment())
+                .ipWhitelist(resolveEffectiveWhitelist(account.getAccessEnvironment(), account.getIpWhitelist(),
+                        buildEnvironmentWhitelistMap(account)))
+                .environmentIpWhitelist(buildEnvironmentWhitelistMap(account))
+                .signVersion(account.getSignVersion())
+                .callbackUrl(account.getCallbackUrl())
+                .secretKey(plainSecret)
+                .build();
+    }
+
+    /**
+     * 兼容旧单白名单字段，并把三环境独立维护的白名单统一写回实体。
+     * <p>
+     * 新版页面会传入完整环境映射，旧版调用方仍可能只传一个 ipWhitelist。
+     * 因此这里统一根据当前账号接入环境回填旧字段，确保鉴权链路和兼容接口都能读取到当前生效白名单。
+     * </p>
+     */
+    private void applyWhitelistFields(SysApiAccount account,
+            String accessEnvironment,
+            List<String> legacyIpWhitelist,
+            Map<String, List<String>> environmentIpWhitelist) {
+        Map<String, List<String>> normalizedMap = ApiAccountEnvironmentWhitelistSupport
+                .normalizeEnvironmentWhitelistMap(environmentIpWhitelist);
+        if (normalizedMap.values().stream().allMatch(List::isEmpty) && legacyIpWhitelist != null) {
+            normalizedMap.put(accessEnvironment, ApiIpWhitelistSupport.normalizeEntries(legacyIpWhitelist));
+        }
+        account.setTestIpWhitelist(ApiIpWhitelistSupport.serializeEntries(
+                normalizedMap.get(ApiAccountEnvironmentWhitelistSupport.TEST)));
+        account.setStagingIpWhitelist(ApiIpWhitelistSupport.serializeEntries(
+                normalizedMap.get(ApiAccountEnvironmentWhitelistSupport.STAGING)));
+        account.setProductionIpWhitelist(ApiIpWhitelistSupport.serializeEntries(
+                normalizedMap.get(ApiAccountEnvironmentWhitelistSupport.PRODUCTION)));
+        account.setIpWhitelist(ApiIpWhitelistSupport.serializeEntries(
+                resolveEffectiveWhitelist(accessEnvironment, legacyIpWhitelist, normalizedMap)));
+    }
+
+    private Map<String, List<String>> buildEnvironmentWhitelistMap(SysApiAccount account) {
+        return ApiAccountEnvironmentWhitelistSupport.buildEnvironmentWhitelistMap(
+                account.getTestIpWhitelist(),
+                account.getStagingIpWhitelist(),
+                account.getProductionIpWhitelist());
+    }
+
+    private List<String> resolveEffectiveWhitelist(String accessEnvironment,
+            String fallbackSerializedWhitelist,
+            Map<String, List<String>> environmentWhitelistMap) {
+        return resolveEffectiveWhitelist(accessEnvironment,
+                ApiIpWhitelistSupport.deserializeEntries(fallbackSerializedWhitelist),
+                environmentWhitelistMap);
+    }
+
+    private List<String> resolveEffectiveWhitelist(String accessEnvironment,
+            List<String> fallbackWhitelist,
+            Map<String, List<String>> environmentWhitelistMap) {
+        return ApiAccountEnvironmentWhitelistSupport.resolveEffectiveWhitelist(
+                accessEnvironment,
+                environmentWhitelistMap,
+                fallbackWhitelist);
+    }
+
+    private void validateAccountNameUnique(String accountName, Long excludeId) {
+        long count = this.lambdaQuery()
+                .eq(SysApiAccount::getAccountName, accountName)
+                .ne(excludeId != null, SysApiAccount::getId, excludeId)
+                .count();
+        if (count > 0) {
+            throw new BusinessException("API账号名称已存在");
+        }
+    }
+
+    private String generateAccessKey() {
+        String accessKey;
+        do {
+            accessKey = "ak_" + IdUtil.simpleUUID();
+        } while (this.lambdaQuery().eq(SysApiAccount::getAccessKey, accessKey).count() > 0);
+        return accessKey;
+    }
+
+    private String normalizeAccountName(String accountName) {
+        String normalized = StrUtil.trim(accountName);
+        if (StrUtil.isBlank(normalized)) {
+            throw new BusinessException("API账号名称不能为空");
+        }
+        return normalized;
+    }
+
+    private String normalizeOwnerName(String ownerName) {
+        String normalized = StrUtil.trim(ownerName);
+        if (StrUtil.isBlank(normalized)) {
+            throw new BusinessException("接入方负责人不能为空");
+        }
+        return normalized;
+    }
+
+    private String normalizeOwnerContact(String ownerContact) {
+        String normalized = StrUtil.trim(ownerContact);
+        if (StrUtil.isBlank(normalized)) {
+            throw new BusinessException("负责人联系方式不能为空");
+        }
+        return normalized;
+    }
+
+    private String normalizeSystemName(String systemName) {
+        String normalized = StrUtil.trim(systemName);
+        if (StrUtil.isBlank(normalized)) {
+            throw new BusinessException("业务系统名称不能为空");
+        }
+        return normalized;
+    }
+
+    private String normalizeSystemCode(String systemCode) {
+        String normalized = StrUtil.trim(systemCode);
+        if (StrUtil.isBlank(normalized)) {
+            throw new BusinessException("业务系统编码不能为空");
+        }
+        if (!normalized.matches("^[A-Za-z0-9_-]{2,64}$")) {
+            throw new BusinessException("业务系统编码仅支持2到64位字母、数字、下划线和中划线");
+        }
+        return normalized.toUpperCase();
+    }
+
+    private String normalizeAccessEnvironment(String accessEnvironment) {
+        String normalized = ApiAccountEnvironmentSupport.normalizeEnvironment(accessEnvironment);
+        if (StrUtil.isBlank(normalized)) {
+            throw new BusinessException("接入环境不能为空");
+        }
+        return normalized;
+    }
+
+    private String normalizeSignVersion(String signVersion) {
+        String normalized = ApiSignatureVersionSupport.normalizeVersion(signVersion);
+        if (StrUtil.isBlank(normalized)) {
+            throw new BusinessException("签名算法版本不能为空");
+        }
+        return normalized;
+    }
+
+    private String normalizeCallbackUrl(String callbackUrl) {
+        String normalized = StrUtil.trimToNull(callbackUrl);
+        if (normalized == null) {
+            return null;
+        }
+        try {
+            URI uri = new URI(normalized);
+            String scheme = StrUtil.blankToDefault(uri.getScheme(), "").toLowerCase();
+            if (!"http".equals(scheme) && !"https".equals(scheme)) {
+                throw new BusinessException("回调地址仅支持 http 或 https 协议");
+            }
+            if (StrUtil.isBlank(uri.getHost())) {
+                throw new BusinessException("回调地址必须包含合法域名");
+            }
+            return uri.toString();
+        } catch (URISyntaxException exception) {
+            throw new BusinessException("回调地址格式不正确");
+        }
+    }
+
+    private String normalizeRemark(String remark) {
+        return StrUtil.trimToNull(remark);
+    }
+
+    private long normalizePageNum(Integer pageNum) {
+        return pageNum == null || pageNum < 1 ? DEFAULT_PAGE_NUM : pageNum.longValue();
+    }
+
+    private long normalizePageSize(Integer pageSize) {
+        if (pageSize == null || pageSize < 1) {
+            return DEFAULT_PAGE_SIZE;
+        }
+        return Math.min(pageSize.longValue(), MAX_PAGE_SIZE);
     }
 }

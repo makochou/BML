@@ -15,8 +15,6 @@ import lombok.Getter;
  *     <li>2000-2099：认证与登录态错误</li>
  *     <li>2100-2199：OpenAPI 调用错误</li>
  * </ul>
- *
- * @author BML Team
  */
 @Getter
 @AllArgsConstructor
@@ -51,7 +49,9 @@ public enum GlobalErrorCode implements ErrorCode {
     OPEN_API_APP_INVALID(2104, "无效的应用凭证"),
     OPEN_API_FORBIDDEN(2105, "当前应用无权访问该接口"),
     OPEN_API_REPLAY_REQUEST(2106, "重复请求已被拒绝"),
-    OPEN_API_SIGNATURE_INVALID(2107, "签名校验失败");
+    OPEN_API_SIGNATURE_INVALID(2107, "签名校验失败"),
+    OPEN_API_SIGN_VERSION_INVALID(2108, "签名算法版本不匹配"),
+    OPEN_API_IP_FORBIDDEN(2109, "当前来源 IP 不在白名单内");
 
     private final int code;
     private final String message;
