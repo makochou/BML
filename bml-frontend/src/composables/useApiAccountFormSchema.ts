@@ -16,13 +16,17 @@ export function useApiAccountFormSchema(options: {
   environmentOptions: SelectOption[];
   signVersionOptions: SelectOption[];
   statusOptions: SelectOption[];
+  compactMode?: boolean;
 }) {
+  const compactMode = options.compactMode ?? false;
   const sections: GovernanceFormSectionSchema[] = [
     {
       key: 'basic',
       title: '基础归属信息',
       description: '先完成账号主体、所属系统和联系人信息录入，便于后续授权排查和凭证联调。',
       layout: 'grid',
+      // 新建场景使用更高信息密度，首屏可见更多字段；编辑场景保持稳妥可读性。
+      columns: compactMode ? 3 : 2,
       fields: [
         {
           key: 'accountName',
@@ -79,6 +83,7 @@ export function useApiAccountFormSchema(options: {
       title: '接入策略与安全配置',
       description: '统一维护客户端范围、接入环境、签名版本与状态策略，保证账号配置口径一致。',
       layout: 'grid',
+      columns: compactMode ? 3 : 2,
       fields: [
         {
           key: 'clientTypes',
@@ -146,7 +151,8 @@ export function useApiAccountFormSchema(options: {
       key: 'callback',
       title: '回调与补充说明',
       description: '补充异步回调地址与运营备注，便于后续通知联调、问题追踪和风险记录。',
-      layout: 'single',
+      layout: compactMode ? 'grid' : 'single',
+      columns: compactMode ? 2 : 1,
       fields: [
         {
           key: 'callbackUrl',
@@ -165,9 +171,10 @@ export function useApiAccountFormSchema(options: {
           field: 'remark',
           label: '备注',
           kind: 'textarea',
+          colSpan: compactMode ? 2 : 1,
           componentProps: {
             maxlength: 500,
-            autoSize: { minRows: 4, maxRows: 7 },
+            autoSize: compactMode ? { minRows: 2, maxRows: 4 } : { minRows: 4, maxRows: 7 },
             placeholder: '填写客户来源、风险说明、联调备注等运营信息'
           }
         }

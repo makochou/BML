@@ -1,6 +1,6 @@
 <template>
   <div class="governance-workbench" :class="[`theme-${theme}`, { 'hero-sticky': stickyHero }]">
-    <header class="governance-workbench__hero" :class="{ sticky: stickyHero }">
+    <header v-if="!hideHero" class="governance-workbench__hero" :class="{ sticky: stickyHero }">
       <div class="governance-workbench__hero-main">
         <p class="governance-workbench__eyebrow">{{ eyebrow }}</p>
         <div class="governance-workbench__title-row">
@@ -65,12 +65,15 @@ withDefaults(
     stats?: WorkbenchStatCard[];
     theme?: GovernanceWorkbenchTheme;
     stickyHero?: boolean;
+    hideHero?: boolean;
   }>(),
   {
     tags: () => [],
     stats: () => [],
     theme: 'ocean',
-    stickyHero: false
+    stickyHero: false,
+    // 允许业务页按需隐藏顶部 Hero 区，仅保留主体布局与底部操作区。
+    hideHero: false
   }
 );
 </script>

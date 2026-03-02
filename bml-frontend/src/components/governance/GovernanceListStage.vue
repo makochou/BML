@@ -1,9 +1,13 @@
 <template>
-  <section class="governance-list-stage" :class="{ 'governance-list-stage--headless': !hasHeadContent }" :style="stageStyle">
+  <section class="governance-list-stage" :class="[`density-${density}`, { 'governance-list-stage--headless': !hasHeadContent }]" :style="stageStyle">
     <div class="governance-list-stage__glow" aria-hidden="true" />
 
-    <header v-if="hasHeadContent" class="governance-list-stage__head">
-      <div class="governance-list-stage__intro">
+    <header
+      v-if="hasHeadContent"
+      class="governance-list-stage__head"
+      :class="{ 'governance-list-stage__head--actions-only': !hasIntroContent }"
+    >
+      <div v-if="hasIntroContent" class="governance-list-stage__intro">
         <p v-if="eyebrow" class="governance-list-stage__eyebrow">{{ eyebrow }}</p>
 
         <div v-if="title || $slots.titleSuffix" class="governance-list-stage__title-row">
@@ -52,12 +56,15 @@ const props = withDefaults(
     description?: string;
     metaItems?: GovernanceCompactMetaItem[];
     maxWidth?: string;
+    density?: 'regular' | 'compact' | 'ultra';
   }>(),
   {
     eyebrow: '',
     description: '',
     metaItems: () => [],
-    maxWidth: '1260px'
+    maxWidth: '1260px',
+    // 默认常规密度，页面可按需切换 ultra 获得极致紧凑布局。
+    density: 'regular'
   }
 );
 
@@ -67,40 +74,91 @@ const stageStyle = computed(() => ({
   '--governance-list-stage-max-width': props.maxWidth
 }));
 
-// 列表工作台允许按需隐藏头部，便于页面在只需要“列表容器”时复用同一套外壳。
-const hasHeadContent = computed(() => Boolean(
+// 头部文案区与动作区分离判断，便于支持“仅右侧按钮”这一高频布局。
+const hasIntroContent = computed(() => Boolean(
   props.eyebrow
   || props.title
   || props.description
   || props.metaItems.length
-  || slots.actions
   || slots.titleSuffix
 ));
+
+// 列表工作台允许按需隐藏头部，便于页面在只需要“列表容器”时复用同一套外壳。
+const hasHeadContent = computed(() => Boolean(hasIntroContent.value || slots.actions));
 </script>
 
 <style scoped>
 .governance-list-stage {
+  --stage-margin-top: 16px;
+  --stage-padding: 16px;
+  --stage-radius: 24px;
+  --stage-head-gap: 12px;
+  --stage-head-margin-bottom: 12px;
+  --stage-actions-gap: 12px;
+  --stage-button-min-width: 104px;
+  --stage-button-height: 36px;
+  --stage-button-padding-inline: 14px;
+  --stage-body-padding: 12px;
+  --stage-body-radius: 18px;
+  --stage-meta-height: 34px;
   position: relative;
   width: min(100%, var(--governance-list-stage-max-width));
-  margin: 20px auto 0;
-  padding: 24px;
-  border-radius: 30px;
-  border: 1px solid rgba(220, 230, 241, 0.98);
+  margin: var(--stage-margin-top) auto 0;
+  padding: var(--stage-padding);
+  border-radius: var(--stage-radius);
+  border: 1px solid rgba(218, 228, 240, 0.98);
   background:
-    linear-gradient(135deg, rgba(237, 245, 255, 0.96), rgba(255, 255, 255, 0.98) 34%, rgba(241, 252, 251, 0.96)),
+    linear-gradient(135deg, rgba(238, 246, 255, 0.96), rgba(255, 255, 255, 0.98) 34%, rgba(243, 252, 251, 0.96)),
     #ffffff;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.96),
-    0 22px 48px rgba(15, 23, 42, 0.06);
+    0 12px 30px rgba(15, 23, 42, 0.05);
   overflow: hidden;
+}
+
+.governance-list-stage.density-compact {
+  --stage-margin-top: 12px;
+  --stage-padding: 12px;
+  --stage-radius: 20px;
+  --stage-head-gap: 10px;
+  --stage-head-margin-bottom: 10px;
+  --stage-actions-gap: 10px;
+  --stage-button-min-width: 96px;
+  --stage-button-height: 34px;
+  --stage-button-padding-inline: 12px;
+  --stage-body-padding: 10px;
+  --stage-body-radius: 16px;
+  --stage-meta-height: 32px;
+}
+
+.governance-list-stage.density-ultra {
+  --stage-margin-top: 10px;
+  --stage-padding: 9px;
+  --stage-radius: 16px;
+  --stage-head-gap: 8px;
+  --stage-head-margin-bottom: 8px;
+  --stage-actions-gap: 8px;
+  --stage-button-min-width: 84px;
+  --stage-button-height: 30px;
+  --stage-button-padding-inline: 10px;
+  --stage-body-padding: 8px;
+  --stage-body-radius: 12px;
+  --stage-meta-height: 28px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.96),
+    0 8px 18px rgba(15, 23, 42, 0.04);
+}
+
+.governance-list-stage.density-ultra .governance-list-stage__glow {
+  opacity: 0.72;
 }
 
 .governance-list-stage__glow {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(circle at top left, rgba(37, 99, 235, 0.12), transparent 28%),
-    radial-gradient(circle at bottom right, rgba(20, 184, 166, 0.12), transparent 30%);
+    radial-gradient(circle at top left, rgba(37, 99, 235, 0.08), transparent 26%),
+    radial-gradient(circle at bottom right, rgba(20, 184, 166, 0.08), transparent 28%);
   pointer-events: none;
 }
 
@@ -113,9 +171,16 @@ const hasHeadContent = computed(() => Boolean(
 .governance-list-stage__head {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 18px;
+  gap: var(--stage-head-gap);
   align-items: end;
-  margin-bottom: 20px;
+  margin-bottom: var(--stage-head-margin-bottom);
+}
+
+.governance-list-stage__head--actions-only {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  margin-bottom: var(--stage-head-margin-bottom);
 }
 
 .governance-list-stage__intro {
@@ -164,7 +229,7 @@ const hasHeadContent = computed(() => Boolean(
 .governance-list-stage__meta-item {
   display: inline-flex;
   align-items: center;
-  min-height: 34px;
+  min-height: var(--stage-meta-height);
   padding: 0 14px;
   border-radius: 999px;
   border: 1px solid rgba(203, 213, 225, 0.94);
@@ -200,13 +265,13 @@ const hasHeadContent = computed(() => Boolean(
   flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
-  gap: 12px;
+  gap: var(--stage-actions-gap);
 }
 
 .governance-list-stage__actions :deep(.arco-btn) {
-  min-width: 118px;
-  height: 42px;
-  padding: 0 18px;
+  min-width: var(--stage-button-min-width);
+  height: var(--stage-button-height);
+  padding: 0 var(--stage-button-padding-inline);
   border-radius: 999px;
   font-weight: 700;
 }
@@ -224,15 +289,15 @@ const hasHeadContent = computed(() => Boolean(
 }
 
 .governance-list-stage__body {
-  padding: 18px;
-  border-radius: 24px;
+  padding: var(--stage-body-padding);
+  border-radius: var(--stage-body-radius);
   border: 1px solid rgba(223, 232, 243, 0.92);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(244, 249, 255, 0.96));
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.92);
 }
 
 .governance-list-stage--headless .governance-list-stage__body {
-  border-radius: 26px;
+  border-radius: var(--stage-body-radius);
 }
 
 @media (max-width: 1280px) {
@@ -247,8 +312,12 @@ const hasHeadContent = computed(() => Boolean(
 
 @media (max-width: 768px) {
   .governance-list-stage {
-    padding: 18px;
-    border-radius: 24px;
+    --stage-padding: 9px;
+    --stage-radius: 16px;
+    --stage-body-padding: 8px;
+    --stage-body-radius: 12px;
+    --stage-button-min-width: 0;
+    --stage-button-height: 30px;
   }
 
   .governance-list-stage__title-row h3 {
@@ -256,8 +325,8 @@ const hasHeadContent = computed(() => Boolean(
   }
 
   .governance-list-stage__body {
-    padding: 14px;
-    border-radius: 20px;
+    padding: var(--stage-body-padding);
+    border-radius: var(--stage-body-radius);
   }
 
   .governance-list-stage__actions {

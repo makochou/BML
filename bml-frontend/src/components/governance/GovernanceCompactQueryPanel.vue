@@ -1,7 +1,7 @@
 <template>
   <section
     class="governance-compact-query-panel"
-    :class="[`align-${align}`, { 'is-minimal': !hasHeader, 'has-footer': hasFooter }]"
+    :class="[`align-${align}`, `density-${density}`, { 'is-minimal': !hasHeader, 'has-footer': hasFooter }]"
     :style="{ '--query-panel-max-width': maxWidth || '100%' }"
   >
     <header v-if="hasHeader" class="governance-compact-query-panel__header">
@@ -72,6 +72,7 @@ const props = withDefaults(
     metaItems?: GovernanceCompactMetaItem[];
     maxWidth?: string;
     align?: 'start' | 'center';
+    density?: 'regular' | 'compact' | 'ultra';
   }>(),
   {
     eyebrow: '',
@@ -81,7 +82,9 @@ const props = withDefaults(
     noteText: '',
     metaItems: () => [],
     maxWidth: '',
-    align: 'center'
+    align: 'center',
+    // 默认使用常规密度，业务页可按需切换为 compact 或 ultra。
+    density: 'regular'
   }
 );
 
@@ -97,42 +100,56 @@ const hasFooter = computed(() => Boolean(props.noteTitle || props.noteText || sl
 
 <style scoped>
 .governance-compact-query-panel {
+  --query-panel-padding: 10px;
+  --query-panel-radius: 24px;
+  --query-panel-body-margin-top: 8px;
+  --query-panel-body-padding: 10px 12px 2px;
+  --query-panel-body-radius: 18px;
+  --query-panel-footer-margin-top: 6px;
+  --query-panel-footer-gap: 10px;
+  --query-panel-field-gap-x: 8px;
+  --query-panel-form-item-gap: 4px;
+  --query-panel-label-size: 12px;
+  --query-panel-input-min-height: 34px;
+  --query-panel-button-min-width: 104px;
+  --query-panel-button-height: 36px;
+  --query-panel-button-padding-inline: 14px;
   position: relative;
   overflow: hidden;
   width: min(100%, var(--query-panel-max-width));
-  padding: 12px;
-  border: 1px solid rgba(226, 232, 240, 0.92);
-  border-radius: 30px;
+  padding: var(--query-panel-padding);
+  border: 1px solid rgba(218, 228, 240, 0.95);
+  border-radius: var(--query-panel-radius);
   background:
-    radial-gradient(circle at top left, rgba(37, 99, 235, 0.1), transparent 28%),
-    radial-gradient(circle at bottom right, rgba(45, 212, 191, 0.1), transparent 34%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.97), rgba(245, 249, 255, 0.96));
+    radial-gradient(circle at top left, rgba(37, 99, 235, 0.08), transparent 28%),
+    radial-gradient(circle at bottom right, rgba(45, 212, 191, 0.08), transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(246, 250, 255, 0.96));
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.9),
-    0 20px 48px rgba(15, 23, 42, 0.08);
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    0 12px 30px rgba(15, 23, 42, 0.05);
 }
 
 .governance-compact-query-panel::before {
   content: '';
   position: absolute;
   top: 0;
-  left: 18px;
-  width: 180px;
-  height: 4px;
+  left: 14px;
+  width: 120px;
+  height: 3px;
   border-radius: 999px;
   background: linear-gradient(90deg, #1769ff, #11c5b7);
-  opacity: 0.88;
+  opacity: 0.84;
 }
 
 .governance-compact-query-panel::after {
   content: '';
   position: absolute;
-  top: -72px;
-  right: -54px;
-  width: 220px;
-  height: 220px;
+  top: -56px;
+  right: -44px;
+  width: 156px;
+  height: 156px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(14, 165, 233, 0.14), transparent 72%);
+  background: radial-gradient(circle, rgba(14, 165, 233, 0.1), transparent 72%);
   pointer-events: none;
 }
 
@@ -144,10 +161,56 @@ const hasFooter = computed(() => Boolean(props.noteTitle || props.noteText || sl
   margin-inline: auto;
 }
 
+.governance-compact-query-panel.density-compact {
+  --query-panel-padding: 9px;
+  --query-panel-radius: 20px;
+  --query-panel-body-margin-top: 7px;
+  --query-panel-body-padding: 8px 10px 1px;
+  --query-panel-body-radius: 16px;
+  --query-panel-footer-margin-top: 5px;
+  --query-panel-field-gap-x: 7px;
+  --query-panel-form-item-gap: 3px;
+  --query-panel-label-size: 12px;
+  --query-panel-input-min-height: 32px;
+  --query-panel-button-min-width: 96px;
+  --query-panel-button-height: 34px;
+  --query-panel-button-padding-inline: 12px;
+}
+
+.governance-compact-query-panel.density-ultra {
+  --query-panel-padding: 7px;
+  --query-panel-radius: 16px;
+  --query-panel-body-margin-top: 6px;
+  --query-panel-body-padding: 6px 8px 0;
+  --query-panel-body-radius: 12px;
+  --query-panel-footer-margin-top: 4px;
+  --query-panel-footer-gap: 8px;
+  --query-panel-field-gap-x: 6px;
+  --query-panel-form-item-gap: 2px;
+  --query-panel-label-size: 11px;
+  --query-panel-input-min-height: 30px;
+  --query-panel-button-min-width: 84px;
+  --query-panel-button-height: 30px;
+  --query-panel-button-padding-inline: 10px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    0 6px 14px rgba(15, 23, 42, 0.04);
+}
+
+.governance-compact-query-panel.density-ultra::before {
+  left: 10px;
+  width: 76px;
+  height: 2px;
+}
+
+.governance-compact-query-panel.density-ultra::after {
+  display: none;
+}
+
 .governance-compact-query-panel__header {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 14px;
+  gap: 10px;
   align-items: center;
 }
 
@@ -176,7 +239,7 @@ const hasFooter = computed(() => Boolean(props.noteTitle || props.noteText || sl
 
 .governance-compact-query-panel__title-row h2 {
   margin: 0;
-  font-size: 22px;
+  font-size: 20px;
   line-height: 1.14;
   color: #0f172a;
 }
@@ -233,9 +296,9 @@ const hasFooter = computed(() => Boolean(props.noteTitle || props.noteText || sl
 }
 
 .governance-compact-query-panel__actions :deep(.arco-btn) {
-  min-width: 110px;
-  height: 38px;
-  padding: 0 15px;
+  min-width: var(--query-panel-button-min-width);
+  height: var(--query-panel-button-height);
+  padding: 0 var(--query-panel-button-padding-inline);
   border-radius: 999px;
   font-weight: 700;
 }
@@ -248,14 +311,14 @@ const hasFooter = computed(() => Boolean(props.noteTitle || props.noteText || sl
 
 .governance-compact-query-panel__body {
   position: relative;
-  margin-top: 10px;
-  padding: 14px 16px 4px;
-  border-radius: 24px;
-  border: 1px solid rgba(218, 227, 240, 0.96);
-  background: linear-gradient(180deg, rgba(251, 253, 255, 0.98), rgba(245, 249, 255, 0.96));
+  margin-top: var(--query-panel-body-margin-top);
+  padding: var(--query-panel-body-padding);
+  border-radius: var(--query-panel-body-radius);
+  border: 1px solid rgba(216, 226, 238, 0.96);
+  background: linear-gradient(180deg, rgba(252, 254, 255, 0.98), rgba(245, 249, 255, 0.96));
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.92),
-    0 10px 24px rgba(15, 23, 42, 0.04);
+    inset 0 1px 0 rgba(255, 255, 255, 0.94),
+    0 8px 18px rgba(15, 23, 42, 0.03);
 }
 
 .governance-compact-query-panel__body.no-header {
@@ -263,16 +326,16 @@ const hasFooter = computed(() => Boolean(props.noteTitle || props.noteText || sl
 }
 
 .governance-compact-query-panel.is-minimal .governance-compact-query-panel__body {
-  padding-top: 16px;
+  padding-top: max(6px, calc(var(--query-panel-input-min-height) * 0.24));
 }
 
 .governance-compact-query-panel__footer {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 14px;
-  margin-top: 10px;
-  padding: 6px 6px 2px;
+  gap: var(--query-panel-footer-gap);
+  margin-top: var(--query-panel-footer-margin-top);
+  padding: 4px 2px 0;
 }
 
 .governance-compact-query-panel__footer:not(.has-note) {
@@ -300,14 +363,14 @@ const hasFooter = computed(() => Boolean(props.noteTitle || props.noteText || sl
 
 .governance-compact-query-panel__footer-actions {
   justify-content: flex-end;
-  gap: 12px;
+  gap: var(--query-panel-footer-gap);
   margin-left: auto;
 }
 
 .governance-compact-query-panel__footer-actions :deep(.arco-btn) {
-  min-width: 116px;
-  height: 40px;
-  padding: 0 18px;
+  min-width: var(--query-panel-button-min-width);
+  height: var(--query-panel-button-height);
+  padding: 0 var(--query-panel-button-padding-inline);
   border-radius: 999px;
   font-weight: 700;
 }
@@ -330,7 +393,7 @@ const hasFooter = computed(() => Boolean(props.noteTitle || props.noteText || sl
 }
 
 .governance-compact-query-panel__body :deep(.governance-form-panel__fields.layout-grid) {
-  gap: 0 10px;
+  gap: 0 var(--query-panel-field-gap-x);
 }
 
 .governance-compact-query-panel__body :deep(.governance-form-panel.variant-embedded .governance-form-panel__heading) {
@@ -347,25 +410,25 @@ const hasFooter = computed(() => Boolean(props.noteTitle || props.noteText || sl
 }
 
 .governance-compact-query-panel__body :deep(.arco-form-item) {
-  margin-bottom: 6px;
+  margin-bottom: var(--query-panel-form-item-gap);
 }
 
 .governance-compact-query-panel__body :deep(.arco-form-item-label-col) {
-  padding-bottom: 3px;
+  padding-bottom: 2px;
 }
 
 .governance-compact-query-panel__body :deep(.arco-form-item-label-col > label) {
   color: #1e293b;
   font-weight: 700;
-  font-size: 11px;
+  font-size: var(--query-panel-label-size);
   line-height: 1.2;
   letter-spacing: 0.02em;
 }
 
 .governance-compact-query-panel__body :deep(.arco-input-wrapper),
 .governance-compact-query-panel__body :deep(.arco-select-view) {
-  min-height: 36px;
-  border-radius: 14px;
+  min-height: var(--query-panel-input-min-height);
+  border-radius: 12px;
   border-color: #d7e2ef;
   background: rgba(255, 255, 255, 0.92);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.94);
@@ -407,8 +470,12 @@ const hasFooter = computed(() => Boolean(props.noteTitle || props.noteText || sl
 
 @media (max-width: 768px) {
   .governance-compact-query-panel {
-    padding: 14px;
-    border-radius: 24px;
+    --query-panel-padding: 8px;
+    --query-panel-radius: 16px;
+    --query-panel-body-padding: 8px 8px 1px;
+    --query-panel-body-radius: 12px;
+    --query-panel-button-min-width: 0;
+    --query-panel-button-height: 32px;
   }
 
   .governance-compact-query-panel__title-row h2 {
@@ -416,8 +483,8 @@ const hasFooter = computed(() => Boolean(props.noteTitle || props.noteText || sl
   }
 
   .governance-compact-query-panel__body {
-    padding: 12px 12px 2px;
-    border-radius: 20px;
+    padding: var(--query-panel-body-padding);
+    border-radius: var(--query-panel-body-radius);
   }
 
   .governance-compact-query-panel__actions :deep(.arco-btn) {

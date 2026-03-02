@@ -54,12 +54,31 @@ export interface ApiCredentialPayload extends ApiAccountGovernanceFields {
 export interface ApiAccountPageQuery {
     pageNum: number;
     pageSize: number;
+    accountId?: number;
     accountName?: string;
+    accessKey?: string;
+    ownerName?: string;
+    ownerContact?: string;
+    systemName?: string;
+    systemCode?: string;
+    systemKeyword?: string;
+    signVersion?: string;
+    callbackUrl?: string;
+    remark?: string;
+    ipKeyword?: string;
+    textMatchMode?: 'fuzzy' | 'exact';
     status?: number;
     accountType?: number;
     clientType?: string;
-    systemKeyword?: string;
     accessEnvironment?: string;
+    rateLimitMin?: number;
+    rateLimitMax?: number;
+    expireTimeStart?: string;
+    expireTimeEnd?: string;
+    createTimeStart?: string;
+    createTimeEnd?: string;
+    updateTimeStart?: string;
+    updateTimeEnd?: string;
 }
 
 export interface SaveApiAccountPayload extends ApiAccountGovernanceFields {

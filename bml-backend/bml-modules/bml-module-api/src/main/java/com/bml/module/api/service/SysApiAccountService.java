@@ -29,6 +29,11 @@ import org.springframework.transaction.annotation.Transactional;
 import java.io.Serializable;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -48,6 +53,9 @@ public class SysApiAccountService extends ServiceImpl<SysApiAccountMapper, SysAp
     private static final long DEFAULT_PAGE_NUM = 1L;
     private static final long DEFAULT_PAGE_SIZE = 10L;
     private static final long MAX_PAGE_SIZE = 100L;
+    private static final String TEXT_MATCH_MODE_EXACT = "exact";
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    private static final DateTimeFormatter DATETIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private final ApiSecretCryptoService secretCryptoService;
     private final SysApiPermissionMapper apiPermissionMapper;
@@ -62,41 +70,29 @@ public class SysApiAccountService extends ServiceImpl<SysApiAccountMapper, SysAp
         long pageNum = normalizePageNum(query == null ? null : query.getPageNum());
         long pageSize = normalizePageSize(query == null ? null : query.getPageSize());
 
-        LambdaQueryWrapper<SysApiAccount> wrapper = buildAccountQueryWrapper(
-                query == null ? null : query.getAccountName(),
-                query == null ? null : query.getStatus(),
-                query == null ? null : query.getAccountType(),
-                query == null ? null : query.getClientType(),
-                query == null ? null : query.getSystemKeyword(),
-                query == null ? null : query.getAccessEnvironment());
+        LambdaQueryWrapper<SysApiAccount> wrapper = buildAccountQueryWrapper(query);
         long total = this.count(wrapper);
         if (total <= 0) {
             return PageResult.empty(pageNum, pageSize);
         }
 
         long offset = (pageNum - 1L) * pageSize;
-        List<SysApiAccount> accounts = this.list(buildAccountQueryWrapper(
-                query == null ? null : query.getAccountName(),
-                query == null ? null : query.getStatus(),
-                query == null ? null : query.getAccountType(),
-                query == null ? null : query.getClientType(),
-                query == null ? null : query.getSystemKeyword(),
-                query == null ? null : query.getAccessEnvironment())
+        List<SysApiAccount> accounts = this.list(buildAccountQueryWrapper(query)
                 .last("LIMIT " + offset + "," + pageSize));
         return PageResult.of(toVoList(accounts), total, pageNum, pageSize);
     }
 
     public List<SysApiAccountVO> selectAccountList(SysApiAccountDTO dto) {
         if (dto == null) {
-            return toVoList(this.list(buildAccountQueryWrapper(null, null, null, null, null, null)));
+            return toVoList(this.list(buildAccountQueryWrapper(null)));
         }
-        return toVoList(this.list(buildAccountQueryWrapper(
-                dto.getAccountName(),
-                dto.getStatus(),
-                null,
-                dto.getClientType(),
-                dto.getSystemKeyword(),
-                dto.getAccessEnvironment())));
+        SysApiAccountPageQuery query = new SysApiAccountPageQuery();
+        query.setAccountName(dto.getAccountName());
+        query.setStatus(dto.getStatus());
+        query.setClientType(dto.getClientType());
+        query.setSystemKeyword(dto.getSystemKeyword());
+        query.setAccessEnvironment(dto.getAccessEnvironment());
+        return toVoList(this.list(buildAccountQueryWrapper(query)));
     }
 
     public SysApiAccountDetailVO getAccountDetail(Long id) {
@@ -251,27 +247,105 @@ public class SysApiAccountService extends ServiceImpl<SysApiAccountMapper, SysAp
         return account;
     }
 
-    private LambdaQueryWrapper<SysApiAccount> buildAccountQueryWrapper(
-            String accountName,
-            Integer status,
-            Integer accountType,
-            String clientType,
-            String systemKeyword,
-            String accessEnvironment) {
-        String normalizedClientType = ApiClientTypeSupport.normalizeSingleClientType(clientType);
-        String normalizedSystemKeyword = StrUtil.trimToNull(systemKeyword);
-        String normalizedEnvironment = ApiAccountEnvironmentSupport.normalizeEnvironment(accessEnvironment);
-        return new LambdaQueryWrapper<SysApiAccount>()
-                .like(StrUtil.isNotBlank(accountName), SysApiAccount::getAccountName, StrUtil.trim(accountName))
-                .eq(status != null, SysApiAccount::getStatus, status)
-                .eq(accountType != null, SysApiAccount::getAccountType, accountType)
-                .apply(StrUtil.isNotBlank(normalizedClientType), "FIND_IN_SET({0}, client_types)", normalizedClientType)
-                .and(StrUtil.isNotBlank(normalizedSystemKeyword), wrapper -> wrapper
-                        .like(SysApiAccount::getSystemName, normalizedSystemKeyword)
-                        .or()
-                        .like(SysApiAccount::getSystemCode, normalizedSystemKeyword))
+    /**
+     * 构建账号分页查询条件。
+     * 统一承接“全字段筛选 + 字符字段模糊/精准模式 + 时间/数值范围”能力。
+     */
+    private LambdaQueryWrapper<SysApiAccount> buildAccountQueryWrapper(SysApiAccountPageQuery query) {
+        boolean exactTextMatch = isExactTextMatchMode(query == null ? null : query.getTextMatchMode());
+        String normalizedClientType = ApiClientTypeSupport.normalizeSingleClientType(query == null ? null : query.getClientType());
+        String normalizedEnvironment = ApiAccountEnvironmentSupport.normalizeEnvironment(query == null ? null : query.getAccessEnvironment());
+
+        String normalizedAccountName = normalizeQueryText(query == null ? null : query.getAccountName());
+        String normalizedAccessKey = normalizeQueryText(query == null ? null : query.getAccessKey());
+        String normalizedOwnerName = normalizeQueryText(query == null ? null : query.getOwnerName());
+        String normalizedOwnerContact = normalizeQueryText(query == null ? null : query.getOwnerContact());
+        String normalizedSystemName = normalizeQueryText(query == null ? null : query.getSystemName());
+        String normalizedSystemCode = normalizeQueryText(query == null ? null : query.getSystemCode());
+        String normalizedSystemKeyword = normalizeQueryText(query == null ? null : query.getSystemKeyword());
+        String normalizedSignVersion = normalizeQueryText(query == null ? null : query.getSignVersion());
+        String normalizedCallbackUrl = normalizeQueryText(query == null ? null : query.getCallbackUrl());
+        String normalizedRemark = normalizeQueryText(query == null ? null : query.getRemark());
+        String normalizedIpKeyword = normalizeQueryText(query == null ? null : query.getIpKeyword());
+
+        Integer rateLimitMin = query == null ? null : query.getRateLimitMin();
+        Integer rateLimitMax = query == null ? null : query.getRateLimitMax();
+        validateRange(rateLimitMin, rateLimitMax, "限流范围");
+
+        LocalDateTime expireTimeStart = parseDateTimeQuery(query == null ? null : query.getExpireTimeStart(), "过期开始时间", false);
+        LocalDateTime expireTimeEnd = parseDateTimeQuery(query == null ? null : query.getExpireTimeEnd(), "过期结束时间", true);
+        validateRange(expireTimeStart, expireTimeEnd, "过期时间范围");
+
+        LocalDateTime createTimeStart = parseDateTimeQuery(query == null ? null : query.getCreateTimeStart(), "创建开始时间", false);
+        LocalDateTime createTimeEnd = parseDateTimeQuery(query == null ? null : query.getCreateTimeEnd(), "创建结束时间", true);
+        validateRange(createTimeStart, createTimeEnd, "创建时间范围");
+
+        LocalDateTime updateTimeStart = parseDateTimeQuery(query == null ? null : query.getUpdateTimeStart(), "更新开始时间", false);
+        LocalDateTime updateTimeEnd = parseDateTimeQuery(query == null ? null : query.getUpdateTimeEnd(), "更新结束时间", true);
+        validateRange(updateTimeStart, updateTimeEnd, "更新时间范围");
+
+        LambdaQueryWrapper<SysApiAccount> wrapper = new LambdaQueryWrapper<SysApiAccount>()
+                .eq(query != null && query.getAccountId() != null, SysApiAccount::getId, query == null ? null : query.getAccountId())
+                .eq(query != null && query.getStatus() != null, SysApiAccount::getStatus, query == null ? null : query.getStatus())
+                .eq(query != null && query.getAccountType() != null, SysApiAccount::getAccountType, query == null ? null : query.getAccountType())
                 .eq(StrUtil.isNotBlank(normalizedEnvironment), SysApiAccount::getAccessEnvironment, normalizedEnvironment)
-                .orderByDesc(SysApiAccount::getCreateTime, SysApiAccount::getId);
+                .apply(StrUtil.isNotBlank(normalizedClientType), "FIND_IN_SET({0}, client_types)", normalizedClientType)
+                .ge(rateLimitMin != null, SysApiAccount::getRateLimit, rateLimitMin)
+                .le(rateLimitMax != null, SysApiAccount::getRateLimit, rateLimitMax)
+                .ge(expireTimeStart != null, SysApiAccount::getExpireTime, expireTimeStart)
+                .le(expireTimeEnd != null, SysApiAccount::getExpireTime, expireTimeEnd)
+                .ge(createTimeStart != null, SysApiAccount::getCreateTime, createTimeStart)
+                .le(createTimeEnd != null, SysApiAccount::getCreateTime, createTimeEnd)
+                .ge(updateTimeStart != null, SysApiAccount::getUpdateTime, updateTimeStart)
+                .le(updateTimeEnd != null, SysApiAccount::getUpdateTime, updateTimeEnd);
+
+        applyStringFilter(wrapper, SysApiAccount::getAccountName, normalizedAccountName, exactTextMatch);
+        applyStringFilter(wrapper, SysApiAccount::getAccessKey, normalizedAccessKey, exactTextMatch);
+        applyStringFilter(wrapper, SysApiAccount::getOwnerName, normalizedOwnerName, exactTextMatch);
+        applyStringFilter(wrapper, SysApiAccount::getOwnerContact, normalizedOwnerContact, exactTextMatch);
+        applyStringFilter(wrapper, SysApiAccount::getSystemName, normalizedSystemName, exactTextMatch);
+        applyStringFilter(wrapper, SysApiAccount::getSystemCode, normalizedSystemCode, exactTextMatch);
+        applyStringFilter(wrapper, SysApiAccount::getSignVersion, normalizedSignVersion, exactTextMatch);
+        applyStringFilter(wrapper, SysApiAccount::getCallbackUrl, normalizedCallbackUrl, exactTextMatch);
+        applyStringFilter(wrapper, SysApiAccount::getRemark, normalizedRemark, exactTextMatch);
+
+        if (StrUtil.isNotBlank(normalizedSystemKeyword)) {
+            wrapper.and(nested -> {
+                if (exactTextMatch) {
+                    nested.eq(SysApiAccount::getSystemName, normalizedSystemKeyword)
+                            .or()
+                            .eq(SysApiAccount::getSystemCode, normalizedSystemKeyword);
+                } else {
+                    nested.like(SysApiAccount::getSystemName, normalizedSystemKeyword)
+                            .or()
+                            .like(SysApiAccount::getSystemCode, normalizedSystemKeyword);
+                }
+            });
+        }
+
+        if (StrUtil.isNotBlank(normalizedIpKeyword)) {
+            wrapper.and(nested -> {
+                if (exactTextMatch) {
+                    nested.apply("FIND_IN_SET({0}, ip_whitelist)", normalizedIpKeyword)
+                            .or()
+                            .apply("FIND_IN_SET({0}, test_ip_whitelist)", normalizedIpKeyword)
+                            .or()
+                            .apply("FIND_IN_SET({0}, staging_ip_whitelist)", normalizedIpKeyword)
+                            .or()
+                            .apply("FIND_IN_SET({0}, production_ip_whitelist)", normalizedIpKeyword);
+                } else {
+                    nested.like(SysApiAccount::getIpWhitelist, normalizedIpKeyword)
+                            .or()
+                            .like(SysApiAccount::getTestIpWhitelist, normalizedIpKeyword)
+                            .or()
+                            .like(SysApiAccount::getStagingIpWhitelist, normalizedIpKeyword)
+                            .or()
+                            .like(SysApiAccount::getProductionIpWhitelist, normalizedIpKeyword);
+                }
+            });
+        }
+
+        return wrapper.orderByDesc(SysApiAccount::getCreateTime, SysApiAccount::getId);
     }
 
     private List<SysApiAccountVO> toVoList(List<SysApiAccount> accounts) {
@@ -534,6 +608,51 @@ public class SysApiAccountService extends ServiceImpl<SysApiAccountMapper, SysAp
 
     private String normalizeRemark(String remark) {
         return StrUtil.trimToNull(remark);
+    }
+
+    private String normalizeQueryText(String value) {
+        return StrUtil.trimToNull(value);
+    }
+
+    private boolean isExactTextMatchMode(String matchMode) {
+        String normalized = matchMode == null ? "" : matchMode.trim();
+        return TEXT_MATCH_MODE_EXACT.equalsIgnoreCase(normalized);
+    }
+
+    private void applyStringFilter(LambdaQueryWrapper<SysApiAccount> wrapper,
+            com.baomidou.mybatisplus.core.toolkit.support.SFunction<SysApiAccount, String> column,
+            String keyword,
+            boolean exactTextMatch) {
+        if (StrUtil.isBlank(keyword)) {
+            return;
+        }
+        if (exactTextMatch) {
+            wrapper.eq(column, keyword);
+            return;
+        }
+        wrapper.like(column, keyword);
+    }
+
+    private LocalDateTime parseDateTimeQuery(String value, String fieldName, boolean useDayEndWhenOnlyDate) {
+        String normalized = StrUtil.trimToNull(value);
+        if (normalized == null) {
+            return null;
+        }
+        try {
+            if (normalized.length() == 10) {
+                LocalDate date = LocalDate.parse(normalized, DATE_FORMATTER);
+                return useDayEndWhenOnlyDate ? LocalDateTime.of(date, LocalTime.of(23, 59, 59)) : date.atStartOfDay();
+            }
+            return LocalDateTime.parse(normalized, DATETIME_FORMATTER);
+        } catch (DateTimeParseException exception) {
+            throw new BusinessException(fieldName + "格式不正确，支持 yyyy-MM-dd 或 yyyy-MM-dd HH:mm:ss");
+        }
+    }
+
+    private <T extends Comparable<T>> void validateRange(T start, T end, String rangeName) {
+        if (start != null && end != null && start.compareTo(end) > 0) {
+            throw new BusinessException(rangeName + "不合法：开始值不能大于结束值");
+        }
     }
 
     private long normalizePageNum(Integer pageNum) {

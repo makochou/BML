@@ -162,7 +162,16 @@ const { columns: demoTableColumns, getPlainText } = useTableColumns(demoTableCol
 4. `violet`
 适用于凭证交付、安全展示、敏感信息查看。
 
-### 3.6 标准接入方式
+### 3.6 Hero 显隐控制
+
+`GovernanceWorkbenchShell` 新增了 `hideHero` 属性，用于按场景隐藏顶部 Hero 区：
+
+1. `hideHero=false`（默认）
+   - 展示顶部 Hero、标签和统计卡，适合编辑/治理场景。
+2. `hideHero=true`
+   - 隐藏顶部 Hero，仅保留主布局与底部动作，适合新增流程的轻量录入场景。
+
+### 3.7 标准接入方式
 
 ```vue
 <GovernanceWorkbenchShell
@@ -189,7 +198,20 @@ const { columns: demoTableColumns, getPlainText } = useTableColumns(demoTableCol
 </GovernanceWorkbenchShell>
 ```
 
-### 3.7 新增治理页的推荐步骤
+新增场景可直接开启轻量模式：
+
+```vue
+<GovernanceWorkbenchShell
+  :hide-hero="isCreateMode"
+  ...
+>
+  <template v-if="!isCreateMode" #aside>
+    <!-- 编辑模式展示侧栏 -->
+  </template>
+</GovernanceWorkbenchShell>
+```
+
+### 3.8 新增治理页的推荐步骤
 
 当后续新增“账号详情”“凭证审计”“授权审批记录”“回调分析”等页面时，推荐按以下顺序实现：
 
@@ -199,7 +221,7 @@ const { columns: demoTableColumns, getPlainText } = useTableColumns(demoTableCol
 4. 再整理右侧主区域的表单、表格、树或详情区。
 5. 如有保存、确认或批量动作，再补 `footer`。
 
-### 3.8 开发注意事项
+### 3.9 开发注意事项
 
 1. 视觉结构统一后，尽量不要在页面中重新发明另一套 Hero 或侧栏骨架。
 2. 如果只是替换文案、摘要卡、动作按钮，应优先通过 props 和 slots 处理。
@@ -212,9 +234,76 @@ const { columns: demoTableColumns, getPlainText } = useTableColumns(demoTableCol
 
 1. 账号列表表格使用 `useTableColumns`
 2. 回调日志表格使用 `useTableColumns`
-3. 新建 / 编辑账号接入 `GovernanceWorkbenchShell`
+3. 新建 / 编辑账号接入 `GovernanceWorkbenchShell`，并在新增模式下启用 `hideHero`
 4. 凭证查看接入 `GovernanceWorkbenchShell`
 5. 接口授权接入 `GovernanceWorkbenchShell`
 6. 回调日志接入 `GovernanceWorkbenchShell`
 
 这意味着后续如果再新增治理场景，优先复用现有组合式函数和工作台骨架即可，无需从零搭模板结构。
+
+## 5. 新建弹窗紧凑化与可拖拽改造说明
+
+### 5.1 改造目标
+
+本节针对“新建API账号”场景新增三项能力：
+
+1. 弹窗支持拖拽（减少遮挡，便于边看列表边录入）。
+2. 弹窗上下保留可视留白，不贴浏览器顶部或底部。
+3. 新建模式使用紧凑多列字段布局，提高首屏录入效率。
+
+### 5.2 代码落点
+
+1. 弹窗页面：`bml-frontend/src/views/api/ApiAccountManage.vue`
+2. 表单 schema：`bml-frontend/src/composables/useApiAccountFormSchema.ts`
+
+### 5.3 弹窗接入规范
+
+`a-modal` 推荐使用以下统一参数：
+
+1. `draggable`：启用拖拽。
+2. `align-center`：以居中方式打开弹窗，减少“顶边贴合”感。
+3. `modal-class` 与 `body-class`：统一注入样式钩子，用于控制最大高度和内部滚动。
+4. `width`：按模式动态控制，新建模式优先紧凑宽度。
+
+### 5.4 表单紧凑布局规范
+
+`useApiAccountFormSchema` 新增 `compactMode` 可选参数，页面根据模式开启：
+
+1. 基础归属分区：`columns` 由 `2` 调整为 `3`（仅紧凑模式）。
+2. 接入策略分区：`columns` 由 `2` 调整为 `3`（仅紧凑模式）。
+3. 回调分区：由 `single` 切为 `grid + columns=2`（仅紧凑模式）。
+4. 备注字段：紧凑模式下 `colSpan=2`，同时文本域行数收敛为 `2-4` 行。
+
+这样可在一屏内展示更多输入项，同时保留 schema 驱动方式，便于后续字段扩展和跨页面复用。
+
+### 5.5 样式治理规范
+
+建议保持以下样式边界：
+
+1. 弹窗“边界与滚动”只在页面级处理（`ApiAccountManage.vue` 的 `modal-class/body-class`）。
+2. 字段“列数与组件属性”只在 schema 层处理（`useApiAccountFormSchema.ts`）。
+3. 不在业务模板中硬编码列数和间距，避免后续改版牵连模板结构。
+
+### 5.6 验证清单
+
+每次调整后建议执行：
+
+1. `npm run build`（前端类型和构建校验）。
+2. 手工验证新建弹窗拖拽、滚动、字段换行与移动端降列。
+3. 验证编辑模式仍维持原有可读布局，不受新建紧凑模式影响。
+
+### 5.7 视口交互增强（拖拽/四向缩放/全屏）
+
+本次在 `ApiAccountManage.vue` 增加了统一的弹窗视口控制实现：
+
+1. 标题栏拖拽：按住标题栏可移动弹窗位置。
+2. 四边与四角缩放：靠近边缘后拖动，可按方向调整宽高。
+3. 全屏切换：标题栏按钮支持“全屏/还原”。
+4. 安全留白：通过统一 margin 限制，确保弹窗不会贴住浏览器上下边缘。
+
+实现要点：
+
+1. 视口状态统一收口到 `accountModalViewport`（宽、高、位移、全屏）。
+2. 指针状态统一收口到 `accountModalPointerState`（动作类型、起始坐标、起始尺寸）。
+3. 使用 `clampAccountModalViewport()` 做边界收敛，防止拖拽缩放后越界。
+4. 通过 `watch(accountModal.visible)` 统一绑定/解绑 DOM 监听，避免内存泄漏。
