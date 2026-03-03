@@ -50,6 +50,7 @@
               :model="filterModel"
               :sections="callbackFilterSections"
               variant="embedded"
+              label-layout="inline"
             />
           </a-form>
           <div class="callback-filter-actions">

@@ -4,6 +4,7 @@
       class="query-panel"
       max-width="1260px"
       density="ultra"
+      theme="aurora"
     >
       <template v-if="querySecondarySections.length" #note>
         <a-button class="query-panel__toggle-btn" @click="toggleQueryAdvanced">
@@ -41,21 +42,17 @@
           :model="queryFormAsRecord"
           :sections="queryPrimarySections"
           variant="embedded"
+          label-layout="inline"
         />
 
         <transition name="query-advanced-fold">
           <div v-if="queryAdvancedExpanded && querySecondarySections.length" class="query-panel__advanced">
-            <div class="query-panel__advanced-shell">
-              <div class="query-panel__advanced-heading">
-                <span>扩展条件</span>
-              </div>
-
-              <GovernanceFormSections
-                :model="queryFormAsRecord"
-                :sections="querySecondarySections"
-                variant="embedded"
-              />
-            </div>
+            <GovernanceFormSections
+              :model="queryFormAsRecord"
+              :sections="querySecondarySections"
+              variant="embedded"
+              label-layout="inline"
+            />
           </div>
         </transition>
       </a-form>
@@ -65,67 +62,161 @@
       class="table-shell"
       max-width="1260px"
       density="ultra"
+      body-fill
     >
       <template #actions>
         <a-button :loading="syncingRegistry" @click="handleSyncRegistry">
           <template #icon><icon-sync /></template>
           同步接口目录
         </a-button>
+        <a-popover trigger="click" position="bl" :popup-style="{ padding: '0' }">
+          <a-button class="table-column-setting-btn">
+            <template #icon><icon-settings /></template>
+            列设置
+          </a-button>
+          <template #content>
+            <div class="table-column-setting-panel">
+              <div class="table-column-setting-panel__head">
+                <strong>字段显示与顺序</strong>
+                <a-link @click="resetAccountTableColumnLayout">恢复默认</a-link>
+              </div>
+              <div class="table-column-setting-panel__list">
+                <div
+                  v-for="item in accountTableColumnSettingItems"
+                  :key="item.kind"
+                  class="table-column-setting-panel__item"
+                  :class="{
+                    'is-draggable': !item.locked,
+                    'is-drag-source': columnSettingDragState.draggingKind === item.kind,
+                    'is-drag-over-before': columnSettingDragState.overKind === item.kind && columnSettingDragState.dropPosition === 'before',
+                    'is-drag-over-after': columnSettingDragState.overKind === item.kind && columnSettingDragState.dropPosition === 'after'
+                  }"
+                  @dragover="handleColumnSettingDragOver(item.kind, $event)"
+                  @drop="handleColumnSettingDrop(item.kind, $event)"
+                >
+                  <div class="table-column-setting-panel__label">
+                    <span
+                      v-if="!item.locked"
+                      class="table-column-setting-panel__drag-handle"
+                      draggable="true"
+                      title="拖动调整字段顺序"
+                      @dragstart="handleColumnSettingDragStart(item.kind, $event)"
+                      @dragend="handleColumnSettingDragEnd"
+                    >
+                      <icon-drag-arrow />
+                    </span>
+                    <span>{{ item.title }}</span>
+                    <small v-if="item.locked">固定</small>
+                  </div>
+                  <div class="table-column-setting-panel__actions">
+                    <a-switch
+                      size="small"
+                      :model-value="item.visible"
+                      :disabled="item.locked"
+                      @change="handleAccountColumnVisibilityChange(item.kind, Boolean($event))"
+                    />
+                    <a-button size="mini" class="table-column-setting-panel__order-btn" :disabled="item.moveUpDisabled" @click="moveAccountTableColumn(item.kind, -1)">
+                      <template #icon><icon-up /></template>
+                    </a-button>
+                    <a-button size="mini" class="table-column-setting-panel__order-btn" :disabled="item.moveDownDisabled" @click="moveAccountTableColumn(item.kind, 1)">
+                      <template #icon><icon-down /></template>
+                    </a-button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </template>
+        </a-popover>
         <a-button type="primary" @click="openCreateModal">
           <template #icon><icon-plus /></template>
           新建账号
         </a-button>
       </template>
-      <a-table class="account-table" size="small" row-key="id" :data="accountList" :loading="tableLoading" :pagination="paginationConfig" :scroll="{ x: 1320 }" @row-dblclick="handleAccountRowDblClick" @page-change="handlePageChange" @page-size-change="handlePageSizeChange">
-        <template #columns>
-          <a-table-column v-for="column in accountTableColumns" :key="column.key" :title="column.title" :data-index="column.dataIndex" :width="column.width" :fixed="column.fixed" :ellipsis="column.ellipsis" :tooltip="column.tooltip">
-            <template #cell="{ record }">
-              <div v-if="column.kind === 'account'" class="table-account-main">
-                <strong>{{ record.accountName }}</strong>
-                <div class="table-account-main__meta">
-                  <a-tag :color="getAccountTypeTagColor(record.accountType)">{{ getAccountTypeLabel(record.accountType) }}</a-tag>
-                  <small>#{{ record.id }}</small>
-                </div>
-              </div>
-              <div v-else-if="column.kind === 'system'" class="table-compact-cell">
-                <strong>{{ record.systemName || '未维护' }}</strong>
-                <small>{{ record.systemCode || '未维护系统编码' }}</small>
-                <small>{{ record.ownerName || '未维护负责人' }}</small>
-              </div>
-              <div v-else-if="column.kind === 'access'" class="table-compact-cell table-compact-cell--inline">
-                <div class="table-tag-row">
-                  <a-tag :color="getEnvironmentTagColor(record.accessEnvironment)">{{ getAccessEnvironmentLabel(record.accessEnvironment) }}</a-tag>
-                  <a-tag color="arcoblue">{{ getCompactClientCountLabel(record.clientTypes) }}</a-tag>
-                </div>
-                <small>{{ getCompactClientSummary(record.clientTypes) }}</small>
-                <small>{{ getCallbackConfigLabel(record.callbackUrl) }} · {{ record.rateLimit || 0 }} / min</small>
-              </div>
-              <div v-else-if="column.kind === 'status'" class="table-status-cell">
-                <a-tag :color="record.status === 1 ? 'green' : 'red'">{{ getStatusLabel(record.status) }}</a-tag>
-                <small>授权 {{ record.authorizedApiCount || 0 }} 项</small>
-              </div>
-              <div v-else-if="column.kind === 'updateTime'" class="table-compact-cell">
-                <strong>{{ record.updateTime || '-' }}</strong>
-                <small>{{ getExpireTimeLabel(record.expireTime) }}</small>
-              </div>
-              <div v-else-if="column.kind === 'actions'" class="table-row-actions" @click.stop @dblclick.stop>
-                <a-button size="small" type="primary" class="table-action-button table-action-button--primary" @click="handleOpenAccountPreview(record)">详情</a-button>
-                <a-button size="small" class="table-action-button" @click="handleEditAccount(record)">编辑</a-button>
-                <a-button size="small" class="table-action-button" @click="handleAuthorizeAccount(record)">授权</a-button>
-                <a-dropdown trigger="click" position="br">
-                  <a-button size="small" class="table-action-button">更多</a-button>
-                  <template #content>
-                    <a-doption @click="handleCallbackLogAccount(record)">回调日志</a-doption>
-                    <a-doption @click="confirmResetSecret(record)">重置密钥</a-doption>
-                    <a-doption class="table-row-actions__danger" @click="confirmDeleteAccount(record)">删除账号</a-doption>
-                  </template>
-                </a-dropdown>
-              </div>
-              <span v-else>{{ getPlainText(record, column.dataIndex, '-') }}</span>
+      <div class="table-shell__split">
+        <div ref="accountTableListRegionRef" class="table-shell__list-region">
+          <a-table
+            class="account-table"
+            size="small"
+            row-key="id"
+            :data="accountList"
+            :loading="tableLoading"
+            :pagination="false"
+            :scroll="{ x: accountTableScrollX, y: '100%' }"
+            :scrollbar="false"
+            sticky-header
+            column-resizable
+            @column-resize="handleAccountColumnResize"
+            @row-dblclick="handleAccountRowDblClick"
+          >
+            <template #columns>
+              <a-table-column v-for="column in accountTableColumns" :key="column.key" :title="column.title" :data-index="column.dataIndex" :width="column.width" :fixed="column.kind === 'actions' ? 'right' : column.fixed" :ellipsis="column.ellipsis" :tooltip="column.tooltip">
+                <template #cell="{ record }">
+                  <div v-if="column.kind === 'accountName'" class="table-field-cell">
+                    <strong class="table-field-cell__primary">{{ getPlainText(record, 'accountName', '-') }}</strong>
+                  </div>
+                  <div v-else-if="column.kind === 'accountType'" class="table-field-cell">
+                    <a-tag :color="getAccountTypeTagColor(record.accountType)">{{ getAccountTypeLabel(record.accountType) }}</a-tag>
+                  </div>
+                  <div v-else-if="column.kind === 'accountId'" class="table-field-cell">
+                    <span class="table-field-cell__mono">#{{ record.id }}</span>
+                  </div>
+                  <div v-else-if="column.kind === 'systemName'" class="table-field-cell">
+                    <span class="table-field-cell__text">{{ record.systemName || '-' }}</span>
+                  </div>
+                  <div v-else-if="column.kind === 'accessEnvironment'" class="table-field-cell">
+                    <a-tag :color="getEnvironmentTagColor(record.accessEnvironment)">{{ getAccessEnvironmentLabel(record.accessEnvironment) }}</a-tag>
+                  </div>
+                  <div v-else-if="column.kind === 'clientTypes'" class="table-field-cell">
+                    <span class="table-field-cell__text">{{ getCompactClientSummary(record.clientTypes) }}</span>
+                  </div>
+                  <div v-else-if="column.kind === 'status'" class="table-field-cell">
+                    <a-tag :color="record.status === 1 ? 'green' : 'red'">{{ getStatusLabel(record.status) }}</a-tag>
+                  </div>
+                  <div v-else-if="column.kind === 'authorizedCount'" class="table-field-cell">
+                    <span class="table-field-cell__text">{{ record.authorizedApiCount || 0 }}</span>
+                  </div>
+                  <div v-else-if="column.kind === 'updateTime'" class="table-field-cell table-field-cell--time">
+                    <span class="table-field-cell__mono">{{ record.updateTime || '-' }}</span>
+                  </div>
+                  <div v-else-if="column.kind === 'actions'" class="table-row-actions" @click.stop @dblclick.stop>
+                    <a-button size="small" type="primary" class="table-action-button table-action-button--primary" @click="handleOpenAccountPreview(record)">详情</a-button>
+                    <a-button size="small" class="table-action-button" @click="handleAuthorizeAccount(record)">授权</a-button>
+                    <div class="table-action-more-wrapper">
+                      <a-dropdown trigger="click" position="br">
+                        <a-button size="small" class="table-action-button">更多</a-button>
+                        <template #content>
+                          <a-doption @click="handleEditAccount(record)">编辑</a-doption>
+                          <a-doption @click="handleCallbackLogAccount(record)">回调日志</a-doption>
+                          <a-doption @click="confirmResetSecret(record)">重置密钥</a-doption>
+                          <a-doption class="table-row-actions__danger" @click="confirmDeleteAccount(record)">删除账号</a-doption>
+                        </template>
+                      </a-dropdown>
+                    </div>
+                  </div>
+                  <span v-else>{{ getPlainText(record, column.dataIndex, '-') }}</span>
+                </template>
+              </a-table-column>
             </template>
-          </a-table-column>
-        </template>
-      </a-table>
+          </a-table>
+          <div
+            v-show="showAccountBottomScrollbar"
+            ref="accountTableBottomScrollbarRef"
+            class="table-shell__x-scrollbar"
+            @scroll="handleAccountBottomScrollbarScroll"
+          >
+            <div class="table-shell__x-scrollbar-track" :style="{ width: `${accountTableScrollX}px` }"></div>
+          </div>
+        </div>
+
+        <div class="table-shell__footer">
+          <a-pagination
+            v-bind="tablePaginationConfig"
+            size="small"
+            @change="handlePageChange"
+            @page-size-change="handlePageSizeChange"
+          />
+        </div>
+      </div>
     </GovernanceListStage>
 
     <ApiAccountPreviewModal
@@ -378,7 +469,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { Message, Modal } from '@arco-design/web-vue';
-import { IconClose, IconDown, IconFullscreen, IconFullscreenExit, IconPlus, IconSync, IconUp } from '@arco-design/web-vue/es/icon';
+import { IconClose, IconDown, IconDragArrow, IconFullscreen, IconFullscreenExit, IconPlus, IconSettings, IconSync, IconUp } from '@arco-design/web-vue/es/icon';
 import { createApiAccount, deleteApiAccount, fetchApiAccountDetail, fetchApiAccountPage, fetchApiCallbackLogs, fetchAuthorizationSnapshot, resetApiAccountSecret, retryApiCallbackLog, saveAuthorization, syncOpenApiRegistry, triggerApiAccountTestCallback, updateApiAccount } from '../../api/apiAccount';
 import ApiAuthorizationWorkbenchDrawer from '../../components/api-account/ApiAuthorizationWorkbenchDrawer.vue';
 import ApiCallbackLogWorkbenchDrawer from '../../components/api-account/ApiCallbackLogWorkbenchDrawer.vue';
@@ -396,6 +487,7 @@ import { useApiAccountFormSchema } from '../../composables/useApiAccountFormSche
 import { useApiAccountQuerySchema } from '../../composables/useApiAccountQuerySchema';
 import { splitGovernanceSectionsByPriority } from '../../composables/useGovernanceSectionPriority';
 import { defineTableColumns, useTableColumns } from '../../composables/useTableColumns';
+import { getCurrentUserIdentity } from '../../utils/auth';
 import type {
   AccessEnvironment,
   ApiAccountDetail,
@@ -415,10 +507,33 @@ type AccountModalMode = 'create' | 'edit';
 type ManageRouteAction = 'edit' | 'authorization' | 'callback' | 'reset-secret';
 type AuthorizationTreeNode = { key: string; title: string; nodeType: 'module' | 'controller' | 'api'; description?: string; httpMethod?: string; apiUrl?: string; disableCheckbox?: boolean; children?: AuthorizationTreeNode[] };
 type AuthorizationModuleCard = { moduleName: string; apiCount: number; controllerCount: number; selectedCount: number };
-type AccountColumnKind = 'account' | 'system' | 'access' | 'status' | 'updateTime' | 'actions';
+type AccountColumnKind =
+  | 'accountName'
+  | 'accountType'
+  | 'accountId'
+  | 'systemName'
+  | 'accessEnvironment'
+  | 'clientTypes'
+  | 'status'
+  | 'authorizedCount'
+  | 'updateTime'
+  | 'actions';
 type QueryTextMatchMode = 'fuzzy' | 'exact';
 type AccountModalResizeDirection = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw' | '';
 type AccountModalPointerAction = 'none' | 'drag' | 'resize';
+type AccountTableColumnLayout = {
+  width: number;
+  visible: boolean;
+  order: number;
+};
+type AccountTableColumnSettingItem = {
+  kind: AccountColumnKind;
+  title: string;
+  visible: boolean;
+  locked: boolean;
+  moveUpDisabled: boolean;
+  moveDownDisabled: boolean;
+};
 
 const accountTypeOptions = [{ label: '内部账号', value: 1 }, { label: '外部账号', value: 2 }];
 const clientTypeOptions = [{ label: 'Web前端', value: 'web' }, { label: 'H5页面', value: 'h5' }, { label: 'APP', value: 'app' }, { label: '小程序', value: 'mini_program' }, { label: '服务端', value: 'server' }, { label: '第三方系统', value: 'third_party' }, { label: '其他客户端', value: 'other' }];
@@ -484,6 +599,19 @@ const accountModalPointerState = reactive({
   startOffsetY: 0
 });
 const accountModalElement = ref<HTMLElement | null>(null);
+/**
+ * 底部横向滚动条同步状态：
+ * - list-region: 当前列表区域容器。
+ * - bodyScrollable: Arco 表格真实横向滚动容器（.arco-table-body）。
+ * - bottomScrollbar: 页面底部独立滚动条容器。
+ */
+const accountTableListRegionRef = ref<HTMLElement | null>(null);
+const accountTableBottomScrollbarRef = ref<HTMLElement | null>(null);
+const accountTableBodyScrollableRef = ref<HTMLElement | null>(null);
+const showAccountBottomScrollbar = ref(false);
+let accountTableBodyScrollHandler: ((event: Event) => void) | null = null;
+let accountBottomScrollbarSyncing = false;
+let accountBottomScrollbarRafId: number | null = null;
 // 列表只保留主信息，低频治理字段统一进入详情弹窗查看。
 const accountPreview = reactive({ visible: false, loading: false, accountId: 0, snapshot: null as ApiAccountDetail | null });
 const accountForm = reactive<ApiAccountFormModel>({ accountName: '', ownerName: '', ownerContact: '', systemName: '', systemCode: '', accountType: 2, clientTypes: [], accessEnvironment: 'production', signVersion: 'v1', environmentIpWhitelistText: createEmptyEnvironmentWhitelistText(), callbackUrl: '', rateLimit: 1000, expireTime: null, status: 1, remark: '' });
@@ -493,7 +621,14 @@ const authorizationFilters = reactive({ keyword: '', moduleName: '', method: '' 
 const callbackLogDrawer = reactive({ visible: false, loading: false, testing: false, retryingId: null as number | null, account: null as ApiAccountItem | null, logs: [] as ApiCallbackLogItem[], summary: createSummary(), pagination: { current: 1, pageSize: 10, total: 0 } });
 const callbackLogFilters = reactive<ApiCallbackLogFilterModel>({ callbackStatus: undefined });
 
-const paginationConfig = computed(() => ({ current: pagination.current, pageSize: pagination.pageSize, total: pagination.total, showTotal: true, showPageSize: true, pageSizeOptions: [10, 20, 50, 100] }));
+const tablePaginationConfig = computed(() => ({
+  current: pagination.current,
+  pageSize: pagination.pageSize,
+  total: pagination.total,
+  showTotal: true,
+  showPageSize: true,
+  pageSizeOptions: [10, 20, 50, 100]
+}));
 const callbackLogPaginationConfig = computed(() => ({ current: callbackLogDrawer.pagination.current, pageSize: callbackLogDrawer.pagination.pageSize, total: callbackLogDrawer.pagination.total, showTotal: true, showPageSize: true, pageSizeOptions: [10, 20, 50] }));
 const queryFormAsRecord = queryForm as unknown as Record<string, unknown>;
 const accountFormAsRecord = accountForm as unknown as Record<string, unknown>;
@@ -603,17 +738,365 @@ const accountPreviewGovernanceFacts = computed<FactCard[]>(() => {
     { label: '治理备注', value: account.remark?.trim() || '未填写', hint: account.createTime ? `创建时间：${account.createTime}` : '暂无创建时间记录' }
   ];
 });
-// 列配置改为模型驱动，后续新增或调整列时优先修改此配置，而不是直接改模板结构。
-// 列表回归“主信息单行 + 右侧操作”的工作台模式，其余低频字段通过双击弹窗查看。
-const accountTableColumnModel = defineTableColumns<AccountColumnKind>([
-  { key: 'account', title: '账号信息', kind: 'account', width: 260 },
-  { key: 'system', title: '业务系统 / 负责人', kind: 'system', width: 230 },
-  { key: 'access', title: '接入概览', kind: 'access', width: 230 },
-  { key: 'status', title: '状态 / 授权', kind: 'status', width: 150 },
-  { key: 'updateTime', title: '最近更新', kind: 'updateTime', width: 180 },
-  { key: 'actions', title: '操作', kind: 'actions', width: 240, fixed: 'right' }
+/**
+ * 列布局本地缓存版本号。
+ * 本次将“复合列”重构为“单字段列”，并改为按登录用户隔离，避免不同账号互相覆盖布局配置。
+ */
+const ACCOUNT_TABLE_LAYOUT_STORAGE_KEY_PREFIX = 'bml.api-account.manage.table-layout.v4';
+function getAccountTableLayoutStorageKey() {
+  const rawIdentity = getCurrentUserIdentity();
+  const normalizedIdentity = (rawIdentity || 'anonymous').trim().toLowerCase() || 'anonymous';
+  return `${ACCOUNT_TABLE_LAYOUT_STORAGE_KEY_PREFIX}:${encodeURIComponent(normalizedIdentity)}`;
+}
+const ACCOUNT_TABLE_LOCKED_COLUMN_KINDS = new Set<AccountColumnKind>(['actions']);
+const ACCOUNT_TABLE_COLUMN_MIN_WIDTH: Record<AccountColumnKind, number> = {
+  accountName: 160,
+  accountType: 110,
+  accountId: 170,
+  systemName: 180,
+  accessEnvironment: 120,
+  clientTypes: 150,
+  status: 100,
+  authorizedCount: 100,
+  updateTime: 190,
+  actions: 186
+};
+const ACCOUNT_TABLE_COLUMN_MAX_WIDTH: Record<AccountColumnKind, number> = {
+  accountName: 360,
+  accountType: 180,
+  accountId: 320,
+  systemName: 340,
+  accessEnvironment: 220,
+  clientTypes: 320,
+  status: 180,
+  authorizedCount: 220,
+  updateTime: 340,
+  actions: 320
+};
+// 列基础模型（默认顺序 + 默认宽度 + 固定信息）集中收口。
+// 按“一个单元格一个字段”组织高频字段，低频字段统一走详情弹窗查看，保证列表可扫读性。
+const accountTableColumnBaseModel = defineTableColumns<AccountColumnKind>([
+  { key: 'accountName', dataIndex: 'account_name', title: '账号名称', kind: 'accountName', width: 180 },
+  { key: 'accountType', dataIndex: 'account_type', title: '账号类型', kind: 'accountType', width: 112 },
+  { key: 'accountId', dataIndex: 'account_id', title: '账号ID', kind: 'accountId', width: 186 },
+  { key: 'systemName', dataIndex: 'system_name', title: '业务系统', kind: 'systemName', width: 190 },
+  { key: 'accessEnvironment', dataIndex: 'access_environment', title: '接入环境', kind: 'accessEnvironment', width: 120 },
+  { key: 'clientTypes', dataIndex: 'client_types', title: '客户端', kind: 'clientTypes', width: 170 },
+  { key: 'status', dataIndex: 'status', title: '状态', kind: 'status', width: 104 },
+  { key: 'authorizedCount', dataIndex: 'authorized_count', title: '授权数', kind: 'authorizedCount', width: 106 },
+  { key: 'updateTime', dataIndex: 'update_time', title: '最近更新', kind: 'updateTime', width: 190 },
+  { key: 'actions', dataIndex: 'actions', title: '操作', kind: 'actions', width: 192, fixed: 'right' }
 ]);
-const { columns: accountTableColumns, getPlainText } = useTableColumns(accountTableColumnModel);
+const accountTableColumnBaseMap = accountTableColumnBaseModel.reduce((accumulator, column) => {
+  accumulator[column.kind] = column;
+  return accumulator;
+}, {} as Record<AccountColumnKind, (typeof accountTableColumnBaseModel)[number]>);
+function createDefaultAccountTableColumnLayout(): Record<AccountColumnKind, AccountTableColumnLayout> {
+  return accountTableColumnBaseModel.reduce((accumulator, column, index) => {
+    accumulator[column.kind] = {
+      width: column.width,
+      visible: true,
+      order: index
+    };
+    return accumulator;
+  }, {} as Record<AccountColumnKind, AccountTableColumnLayout>);
+}
+const accountTableColumnLayout = reactive<Record<AccountColumnKind, AccountTableColumnLayout>>(createDefaultAccountTableColumnLayout());
+/**
+ * 列设置拖拽状态：
+ * 统一维护拖拽源、悬停目标与投放位置，避免在模板中散落临时变量。
+ */
+const columnSettingDragState = reactive({
+  draggingKind: '' as AccountColumnKind | '',
+  overKind: '' as AccountColumnKind | '',
+  dropPosition: '' as 'before' | 'after' | ''
+});
+function clampAccountColumnWidth(kind: AccountColumnKind, width: number) {
+  const min = ACCOUNT_TABLE_COLUMN_MIN_WIDTH[kind];
+  const max = ACCOUNT_TABLE_COLUMN_MAX_WIDTH[kind];
+  return Math.min(max, Math.max(min, Math.round(width)));
+}
+function normalizeAccountTableColumnOrder() {
+  const unlockedKinds = accountTableColumnBaseModel
+    .map(item => item.kind)
+    .filter(kind => !ACCOUNT_TABLE_LOCKED_COLUMN_KINDS.has(kind))
+    .sort((left, right) => accountTableColumnLayout[left].order - accountTableColumnLayout[right].order);
+  unlockedKinds.forEach((kind, index) => {
+    accountTableColumnLayout[kind].order = index;
+  });
+
+  let lockedOrderCursor = unlockedKinds.length;
+  accountTableColumnBaseModel.forEach(column => {
+    if (!ACCOUNT_TABLE_LOCKED_COLUMN_KINDS.has(column.kind)) return;
+    accountTableColumnLayout[column.kind].order = lockedOrderCursor;
+    accountTableColumnLayout[column.kind].visible = true;
+    lockedOrderCursor += 1;
+  });
+}
+function persistAccountTableColumnLayout() {
+  if (typeof window === 'undefined') return;
+  window.localStorage.setItem(getAccountTableLayoutStorageKey(), JSON.stringify(accountTableColumnLayout));
+}
+function restoreAccountTableColumnLayout() {
+  if (typeof window === 'undefined') return;
+  const storageKey = getAccountTableLayoutStorageKey();
+  try {
+    const raw = window.localStorage.getItem(storageKey);
+    if (!raw) return;
+    const parsed = JSON.parse(raw) as Partial<Record<AccountColumnKind, Partial<AccountTableColumnLayout>>>;
+    for (const kind of Object.keys(accountTableColumnLayout) as AccountColumnKind[]) {
+      const storedItem = parsed[kind];
+      if (!storedItem) continue;
+      if (typeof storedItem.width === 'number' && Number.isFinite(storedItem.width)) {
+        accountTableColumnLayout[kind].width = clampAccountColumnWidth(kind, storedItem.width);
+      }
+      if (typeof storedItem.visible === 'boolean' && !ACCOUNT_TABLE_LOCKED_COLUMN_KINDS.has(kind)) {
+        accountTableColumnLayout[kind].visible = storedItem.visible;
+      }
+      if (typeof storedItem.order === 'number' && Number.isFinite(storedItem.order)) {
+        accountTableColumnLayout[kind].order = Math.round(storedItem.order);
+      }
+    }
+    normalizeAccountTableColumnOrder();
+  } catch {
+    window.localStorage.removeItem(storageKey);
+  }
+}
+restoreAccountTableColumnLayout();
+const accountTableColumnSettingItems = computed<AccountTableColumnSettingItem[]>(() => {
+  const orderedKinds = Object.keys(accountTableColumnLayout)
+    .map(kind => kind as AccountColumnKind)
+    .sort((left, right) => accountTableColumnLayout[left].order - accountTableColumnLayout[right].order);
+  const movableKinds = orderedKinds.filter(kind => !ACCOUNT_TABLE_LOCKED_COLUMN_KINDS.has(kind));
+
+  return orderedKinds.map(kind => {
+    const movableIndex = movableKinds.indexOf(kind);
+    const locked = ACCOUNT_TABLE_LOCKED_COLUMN_KINDS.has(kind);
+    return {
+      kind,
+      title: accountTableColumnBaseMap[kind].title,
+      visible: accountTableColumnLayout[kind].visible,
+      locked,
+      moveUpDisabled: locked || movableIndex <= 0,
+      moveDownDisabled: locked || movableIndex < 0 || movableIndex >= movableKinds.length - 1
+    };
+  });
+});
+function moveAccountTableColumn(kind: AccountColumnKind, direction: -1 | 1) {
+  if (ACCOUNT_TABLE_LOCKED_COLUMN_KINDS.has(kind)) return;
+  const movableKinds = accountTableColumnSettingItems.value
+    .filter(item => !item.locked)
+    .map(item => item.kind);
+  const currentIndex = movableKinds.indexOf(kind);
+  const targetIndex = currentIndex + direction;
+  if (currentIndex < 0 || targetIndex < 0 || targetIndex >= movableKinds.length) return;
+  const targetKind = movableKinds[targetIndex];
+  if (!targetKind) return;
+  const currentOrder = accountTableColumnLayout[kind].order;
+  accountTableColumnLayout[kind].order = accountTableColumnLayout[targetKind].order;
+  accountTableColumnLayout[targetKind].order = currentOrder;
+  normalizeAccountTableColumnOrder();
+  persistAccountTableColumnLayout();
+}
+function resetColumnSettingDragState() {
+  columnSettingDragState.draggingKind = '';
+  columnSettingDragState.overKind = '';
+  columnSettingDragState.dropPosition = '';
+}
+function handleColumnSettingDragStart(kind: AccountColumnKind, event: DragEvent) {
+  if (ACCOUNT_TABLE_LOCKED_COLUMN_KINDS.has(kind)) return;
+  if (!event.dataTransfer) return;
+  event.dataTransfer.effectAllowed = 'move';
+  event.dataTransfer.setData('text/plain', kind);
+  columnSettingDragState.draggingKind = kind;
+  columnSettingDragState.overKind = '';
+  columnSettingDragState.dropPosition = '';
+}
+function handleColumnSettingDragOver(targetKind: AccountColumnKind, event: DragEvent) {
+  if (ACCOUNT_TABLE_LOCKED_COLUMN_KINDS.has(targetKind)) return;
+  const draggingKind = columnSettingDragState.draggingKind;
+  if (!draggingKind || draggingKind === targetKind) return;
+  if (ACCOUNT_TABLE_LOCKED_COLUMN_KINDS.has(draggingKind)) return;
+
+  event.preventDefault();
+  if (event.dataTransfer) {
+    event.dataTransfer.dropEffect = 'move';
+  }
+
+  const container = event.currentTarget as HTMLElement | null;
+  if (!container) return;
+  const rect = container.getBoundingClientRect();
+  const offsetY = event.clientY - rect.top;
+  columnSettingDragState.overKind = targetKind;
+  columnSettingDragState.dropPosition = offsetY >= rect.height / 2 ? 'after' : 'before';
+}
+function handleColumnSettingDrop(targetKind: AccountColumnKind, event: DragEvent) {
+  event.preventDefault();
+  const draggingKind = columnSettingDragState.draggingKind;
+  const dropPosition = columnSettingDragState.dropPosition;
+  if (!draggingKind || !dropPosition || draggingKind === targetKind) {
+    resetColumnSettingDragState();
+    return;
+  }
+  if (ACCOUNT_TABLE_LOCKED_COLUMN_KINDS.has(draggingKind) || ACCOUNT_TABLE_LOCKED_COLUMN_KINDS.has(targetKind)) {
+    resetColumnSettingDragState();
+    return;
+  }
+
+  const movableKinds = accountTableColumnSettingItems.value
+    .filter(item => !item.locked)
+    .map(item => item.kind);
+  const dragIndex = movableKinds.indexOf(draggingKind);
+  const targetIndex = movableKinds.indexOf(targetKind);
+  if (dragIndex < 0 || targetIndex < 0) {
+    resetColumnSettingDragState();
+    return;
+  }
+
+  const [draggingItem] = movableKinds.splice(dragIndex, 1);
+  if (!draggingItem) {
+    resetColumnSettingDragState();
+    return;
+  }
+
+  let insertIndex = targetIndex;
+  if (dragIndex < targetIndex) {
+    insertIndex = dropPosition === 'after' ? targetIndex : targetIndex - 1;
+  } else {
+    insertIndex = dropPosition === 'after' ? targetIndex + 1 : targetIndex;
+  }
+  insertIndex = Math.max(0, Math.min(insertIndex, movableKinds.length));
+  movableKinds.splice(insertIndex, 0, draggingItem);
+
+  movableKinds.forEach((kind, index) => {
+    accountTableColumnLayout[kind].order = index;
+  });
+  normalizeAccountTableColumnOrder();
+  persistAccountTableColumnLayout();
+  resetColumnSettingDragState();
+}
+function handleColumnSettingDragEnd() {
+  resetColumnSettingDragState();
+}
+function handleAccountColumnVisibilityChange(kind: AccountColumnKind, visible: boolean) {
+  if (ACCOUNT_TABLE_LOCKED_COLUMN_KINDS.has(kind)) return;
+  const activeCount = accountTableColumnSettingItems.value.filter(item => !item.locked && item.visible).length;
+  if (!visible && accountTableColumnLayout[kind].visible && activeCount <= 1) {
+    Message.warning('至少保留一列业务字段');
+    return;
+  }
+  accountTableColumnLayout[kind].visible = visible;
+  persistAccountTableColumnLayout();
+}
+function resetAccountTableColumnLayout() {
+  const defaults = createDefaultAccountTableColumnLayout();
+  for (const kind of Object.keys(defaults) as AccountColumnKind[]) {
+    accountTableColumnLayout[kind] = defaults[kind];
+  }
+  normalizeAccountTableColumnOrder();
+  persistAccountTableColumnLayout();
+  Message.success('列宽、顺序与显示列已恢复默认');
+}
+function handleAccountColumnResize(dataIndex: string, width: number) {
+  const hitColumn = accountTableColumnBaseModel.find(column => column.dataIndex === dataIndex);
+  if (!hitColumn || !Number.isFinite(width)) return;
+  const kind = hitColumn.kind;
+  accountTableColumnLayout[kind].width = clampAccountColumnWidth(kind, width);
+  persistAccountTableColumnLayout();
+}
+const accountTableColumnModel = computed(() => accountTableColumnSettingItems.value
+  .filter(item => item.visible || item.locked)
+  .map(item => ({
+    ...accountTableColumnBaseMap[item.kind],
+    width: accountTableColumnLayout[item.kind].width,
+    fixed: item.kind === 'actions' ? 'right' : accountTableColumnBaseMap[item.kind].fixed
+  })));
+const accountTableScrollX = computed(() => accountTableColumnModel.value.reduce((sum, item) => sum + item.width, 0) + 28);
+const { columns: accountTableColumns, getPlainText } = useTableColumns(() => accountTableColumnModel.value);
+function clearAccountBottomScrollbarRaf() {
+  if (accountBottomScrollbarRafId == null) return;
+  window.cancelAnimationFrame(accountBottomScrollbarRafId);
+  accountBottomScrollbarRafId = null;
+}
+function syncAccountBottomScrollbarState() {
+  const body = accountTableBodyScrollableRef.value;
+  const bottom = accountTableBottomScrollbarRef.value;
+  if (!body || !bottom) {
+    showAccountBottomScrollbar.value = false;
+    return;
+  }
+
+  const hasOverflow = body.scrollWidth - body.clientWidth > 1;
+  showAccountBottomScrollbar.value = hasOverflow;
+  if (!hasOverflow) {
+    bottom.scrollLeft = 0;
+    return;
+  }
+
+  if (Math.abs(bottom.scrollLeft - body.scrollLeft) > 1) {
+    bottom.scrollLeft = body.scrollLeft;
+  }
+}
+function scheduleAccountBottomScrollbarSync() {
+  clearAccountBottomScrollbarRaf();
+  accountBottomScrollbarRafId = window.requestAnimationFrame(() => {
+    accountBottomScrollbarRafId = null;
+    syncAccountBottomScrollbarState();
+  });
+}
+function unbindAccountTableBodyScrollSync() {
+  if (accountTableBodyScrollableRef.value && accountTableBodyScrollHandler) {
+    accountTableBodyScrollableRef.value.removeEventListener('scroll', accountTableBodyScrollHandler);
+  }
+  accountTableBodyScrollHandler = null;
+  accountTableBodyScrollableRef.value = null;
+}
+function bindAccountTableBodyScrollSync() {
+  const listRegion = accountTableListRegionRef.value;
+  const hitBody = listRegion?.querySelector('.arco-table-body') as HTMLElement | null;
+  if (!hitBody) {
+    unbindAccountTableBodyScrollSync();
+    showAccountBottomScrollbar.value = false;
+    return;
+  }
+  /**
+   * Arco 在 scrollbar 模式下，真实滚动节点是 `.arco-scrollbar-container`。
+   * 这里优先命中该节点；若未启用则回退到 `.arco-table-body`。
+   */
+  const scrollHost = (hitBody.querySelector('.arco-scrollbar-container') as HTMLElement | null) || hitBody;
+  if (accountTableBodyScrollableRef.value === scrollHost && accountTableBodyScrollHandler) {
+    scheduleAccountBottomScrollbarSync();
+    return;
+  }
+
+  unbindAccountTableBodyScrollSync();
+  accountTableBodyScrollableRef.value = scrollHost;
+  accountTableBodyScrollHandler = () => {
+    const bottom = accountTableBottomScrollbarRef.value;
+    const body = accountTableBodyScrollableRef.value;
+    if (!bottom || !body) return;
+    if (accountBottomScrollbarSyncing) return;
+    accountBottomScrollbarSyncing = true;
+    bottom.scrollLeft = body.scrollLeft;
+    window.requestAnimationFrame(() => {
+      accountBottomScrollbarSyncing = false;
+      syncAccountBottomScrollbarState();
+    });
+  };
+  scrollHost.addEventListener('scroll', accountTableBodyScrollHandler, { passive: true });
+  scheduleAccountBottomScrollbarSync();
+}
+function handleAccountBottomScrollbarScroll(event: Event) {
+  const body = accountTableBodyScrollableRef.value;
+  if (!body) return;
+  if (accountBottomScrollbarSyncing) return;
+  const target = event.target as HTMLElement;
+  accountBottomScrollbarSyncing = true;
+  body.scrollLeft = target.scrollLeft;
+  window.requestAnimationFrame(() => {
+    accountBottomScrollbarSyncing = false;
+  });
+}
 const moduleOptions = computed(() => authorizationDrawer.snapshot?.groups.map(item => ({ label: item.moduleName, value: item.moduleName })) || []);
 const filteredAuthorizationGroups = computed(() => { const groups = authorizationDrawer.snapshot?.groups || []; const keyword = authorizationFilters.keyword.trim().toLowerCase(); return groups.filter(group => !authorizationFilters.moduleName || group.moduleName === authorizationFilters.moduleName).map(group => ({ ...group, controllers: group.controllers.map(controller => ({ ...controller, apis: controller.apis.filter(api => { const keywordMatched = !keyword || api.apiName.toLowerCase().includes(keyword) || api.apiUrl.toLowerCase().includes(keyword) || (api.description || '').toLowerCase().includes(keyword) || controller.controllerName.toLowerCase().includes(keyword) || group.moduleName.toLowerCase().includes(keyword); const methodMatched = !authorizationFilters.method || api.httpMethod === authorizationFilters.method; return keywordMatched && methodMatched; }) })).filter(controller => controller.apis.length > 0) })).filter(group => group.controllers.length > 0); });
 const authorizationTreeData = computed<AuthorizationTreeNode[]>(() => filteredAuthorizationGroups.value.map(group => ({ key: `module:${group.moduleName}`, title: group.moduleName, nodeType: 'module', description: `${countApisInGroup(group)} 个可授权接口`, disableCheckbox: true, children: group.controllers.map(controller => ({ key: `controller:${group.moduleName}:${controller.controllerName}`, title: controller.controllerName, nodeType: 'controller', description: `${controller.apis.length} 个接口`, disableCheckbox: true, children: controller.apis.map(api => ({ key: buildApiKey(api.id), title: api.apiName, nodeType: 'api', httpMethod: api.httpMethod, apiUrl: api.apiUrl })) })) })));
@@ -1202,17 +1685,14 @@ function isEnabledApiId(apiId: number, groups: OpenApiGroupNode[]) { return grou
 function getAccountTypeLabel(value: number) { return accountTypeOptions.find(item => item.value === value)?.label || '未知类型'; }
 function getAccountTypeTagColor(value: number) { return value === 1 ? 'arcoblue' : 'purple'; }
 function getClientTypeLabels(values?: string[]) { return (values || []).map(value => clientTypeOptions.find(item => item.value === value)?.label || value); }
-function getCompactClientCountLabel(values?: string[]) { return values?.length ? `${values.length}类客户端` : '未配客户端'; }
 function getCompactClientSummary(values?: string[]) {
   const labels = getClientTypeLabels(values);
-  if (!labels.length) return '当前账号未声明调用客户端';
+  if (!labels.length) return '未配置';
   return labels.length <= 2 ? labels.join('、') : `${labels.slice(0, 2).join('、')} +${labels.length - 2}`;
 }
 function getAccessEnvironmentLabel(value?: string | null) { return environmentOptions.find(item => item.value === value)?.label || '未设置环境'; }
 function getEnvironmentTagColor(value?: string | null) { return ({ test: 'arcoblue', staging: 'orange', production: 'green' } as Record<string, string>)[value || ''] || 'gray'; }
 function getStatusLabel(value: number) { return value === 1 ? '启用' : '停用'; }
-function getCallbackConfigLabel(value?: string | null) { return value?.trim() ? '已配置回调' : '未配置回调'; }
-function getExpireTimeLabel(value?: string | null) { return value || '永久有效'; }
 function getEnvironmentWhitelistArrayCountLabel(values?: string[]) { return values?.length ? `${values.length} 条来源` : '未限制'; }
 function isCallbackRetryable(status: number) { return status === 1 || status === 3; }
 function formatIpWhitelistInput(values?: string[]) { return (values || []).join('\n'); }
@@ -1248,7 +1728,27 @@ async function initializePage() {
   await refreshPage();
   await handleManageRouteAction();
 }
-onMounted(initializePage);
+onMounted(async () => {
+  await initializePage();
+  await nextTick();
+  bindAccountTableBodyScrollSync();
+  scheduleAccountBottomScrollbarSync();
+  window.addEventListener('resize', scheduleAccountBottomScrollbarSync);
+});
+watch(
+  () => ({
+    loading: tableLoading.value,
+    size: accountList.value.length,
+    columnSignature: accountTableColumns.value.map(column => `${column.key}:${column.width}`).join('|')
+  }),
+  () => {
+    void nextTick(() => {
+      bindAccountTableBodyScrollSync();
+      scheduleAccountBottomScrollbarSync();
+    });
+  },
+  { flush: 'post' }
+);
 watch(() => [route.query.action, route.query.accountId], async () => {
   if (route.path === '/admin/api/account') {
     await handleManageRouteAction();
@@ -1277,6 +1777,9 @@ watch(() => accountModal.visible, async visible => {
   window.removeEventListener('resize', handleAccountModalWindowResize);
 });
 onBeforeUnmount(() => {
+  clearAccountBottomScrollbarRaf();
+  unbindAccountTableBodyScrollSync();
+  window.removeEventListener('resize', scheduleAccountBottomScrollbarSync);
   syncAccountModalPageScrollLock(false);
   stopAccountModalPointerAction();
   unbindAccountModalInteractiveListeners();
@@ -1357,7 +1860,10 @@ onBeforeUnmount(() => {
 }
 
 .query-panel {
-  /* 查询区超紧凑变量覆盖：基于通用组件变量二次收口，避免散落硬编码。 */
+  /**
+   * API 账号页查询区主题变量。
+   * 采用“冰川玻璃”视觉：弱化炫光、强化层次，保证长时间查看仍然耐看。
+   */
   --query-panel-padding: 6px;
   --query-panel-radius: 14px;
   --query-panel-body-margin-top: 4px;
@@ -1372,32 +1878,59 @@ onBeforeUnmount(() => {
   --query-panel-button-min-width: 78px;
   --query-panel-button-height: 28px;
   --query-panel-button-padding-inline: 8px;
+  --query-panel-shell-border-color: rgba(150, 182, 214, 0.74);
+  --query-panel-shell-background:
+    radial-gradient(circle at 3% -10%, rgba(88, 152, 228, 0.2), transparent 40%),
+    radial-gradient(circle at 100% 110%, rgba(32, 177, 162, 0.16), transparent 42%),
+    linear-gradient(148deg, rgba(253, 255, 255, 0.95), rgba(242, 249, 255, 0.9));
+  --query-panel-shell-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    0 16px 36px rgba(19, 58, 108, 0.13),
+    0 1px 0 rgba(255, 255, 255, 0.9);
+  --query-panel-accent-bar-background: linear-gradient(90deg, #2b7de6 0%, #3f9be7 46%, #22b5a5 100%);
+  --query-panel-accent-bar-opacity: 0.84;
+  --query-panel-orb-background:
+    radial-gradient(circle at 34% 30%, rgba(140, 205, 255, 0.3), rgba(140, 205, 255, 0.04) 58%, transparent 82%);
+  --query-panel-orb-top: -70px;
+  --query-panel-orb-right: -62px;
+  --query-panel-orb-size: 166px;
+  --query-panel-orb-opacity: 0.55;
+  --query-panel-orb-filter: blur(2px);
+  --query-panel-body-border-color: rgba(158, 190, 224, 0.56);
+  --query-panel-body-background:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.84), rgba(241, 248, 255, 0.8)),
+    linear-gradient(0deg, rgba(255, 255, 255, 0.34), rgba(255, 255, 255, 0.34));
+  --query-panel-body-overlay:
+    linear-gradient(126deg, rgba(255, 255, 255, 0.44), rgba(255, 255, 255, 0.03) 42%),
+    repeating-linear-gradient(135deg, rgba(132, 166, 201, 0.14) 0 1px, transparent 1px 9px);
+  --query-panel-body-overlay-opacity: 0.24;
+  --query-panel-body-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    0 10px 20px rgba(23, 67, 124, 0.1);
+  --query-panel-input-border-color: rgba(160, 186, 216, 0.76);
+  --query-panel-input-background: rgba(255, 255, 255, 0.82);
+  --query-panel-input-hover-border-color: rgba(71, 136, 219, 0.6);
+  --query-panel-input-hover-background: rgba(255, 255, 255, 0.9);
+  --query-panel-input-focus-border-color: rgba(56, 124, 214, 0.82);
+  --query-panel-input-focus-shadow: 0 0 0 4px rgba(72, 139, 225, 0.12);
+  --query-panel-muted-button-border: rgba(155, 185, 216, 0.72);
+  --query-panel-muted-button-background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(242, 248, 255, 0.9));
+  --query-panel-muted-button-color: #3b5a7b;
+  --query-panel-muted-button-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.94),
+    0 6px 14px rgba(36, 102, 169, 0.08);
   margin-top: var(--api-account-query-offset-y);
 }
 
 .query-panel__advanced {
-  margin-top: 4px;
-}
-
-.query-panel__advanced-shell {
-  padding: 6px 8px 0;
-  border-radius: 10px;
-  border: 1px dashed rgba(186, 200, 218, 0.9);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(246, 250, 255, 0.94));
-}
-
-.query-panel__advanced-heading {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 4px;
-}
-
-.query-panel__advanced-heading span {
-  color: var(--text-primary);
-  font-size: 11px;
-  font-weight: 700;
+  /**
+   * 查询区改为两层结构：
+   * 扩展条件并入主字段层（第②层），仅在展开时追加渲染，
+   * 不再使用第③层独立边框盒，避免视觉割裂。
+   */
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px dashed rgba(159, 187, 217, 0.56);
 }
 
 .query-panel__toggle-btn {
@@ -1405,12 +1938,21 @@ onBeforeUnmount(() => {
   height: 28px;
   padding: 0 8px;
   border-radius: 999px;
-  border-color: rgba(211, 221, 234, 0.96);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(246, 250, 255, 0.96));
-  color: #475569;
+  border-color: rgba(153, 186, 219, 0.72);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(242, 248, 255, 0.9));
+  color: #39597b;
   font-weight: 700;
   font-size: 11px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.94);
+  transition: all 0.2s ease;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.94),
+    0 6px 12px rgba(35, 100, 167, 0.08);
+}
+
+.query-panel__toggle-btn:hover {
+  border-color: rgba(96, 146, 205, 0.76);
+  color: #2d4d71;
+  transform: translateY(-1px);
 }
 
 .query-panel__mode-actions {
@@ -1426,15 +1968,22 @@ onBeforeUnmount(() => {
   border-radius: 999px;
   font-size: 11px;
   font-weight: 700;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease, filter 0.2s ease;
+  box-shadow: 0 7px 14px rgba(22, 97, 186, 0.16);
+}
+
+.query-panel__mode-btn:hover {
+  transform: translateY(-1px);
 }
 
 .query-panel__mode-btn.is-active {
   opacity: 1;
+  filter: saturate(1.03) contrast(1.02);
 }
 
 .query-panel__mode-btn.is-inactive {
   opacity: 0.72;
-  box-shadow: none;
+  box-shadow: 0 4px 8px rgba(56, 116, 181, 0.08);
 }
 
 .query-advanced-fold-enter-active,
@@ -1509,90 +2058,347 @@ onBeforeUnmount(() => {
 }
 
 .table-shell {
+  /**
+   * 列表舞台高度策略：
+   * 在首屏下给列表区一个稳定的最小高度，配合 body-fill 与表格 flex 伸展，
+   * 让卡片始终铺满列表区域，避免底部出现大块空白。
+   */
   margin-top: var(--api-account-stage-gap-y);
+  min-height: clamp(420px, calc(100vh - 250px), 860px);
 }
 
-.table-account-main {
+.table-shell :deep(.governance-list-stage__body) {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 4px;
+  flex: 1;
+  min-height: 0;
+}
+
+.table-shell__split {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.table-shell__list-region {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+/**
+ * 明确约束列表组件高度继承：
+ * list-region 作为“可伸缩主区域”时，account-table 默认撑满 100%，
+ * 让上方列表始终占满“除分页外”的全部可用高度。
+ */
+.table-shell__list-region > .account-table {
+  height: 100%;
+}
+
+.table-shell__x-scrollbar {
+  flex-shrink: 0;
+  height: 12px;
+  margin-top: 8px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  border-radius: 999px;
+}
+
+.table-shell__x-scrollbar-track {
+  height: 1px;
+}
+
+.table-shell__x-scrollbar::-webkit-scrollbar {
+  height: 10px;
+}
+
+.table-shell__x-scrollbar::-webkit-scrollbar-track {
+  background: rgba(226, 232, 240, 0.84);
+  border-radius: 999px;
+}
+
+.table-shell__x-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.92);
+  border-radius: 999px;
+}
+
+.table-shell__x-scrollbar {
+  scrollbar-color: rgba(148, 163, 184, 0.92) rgba(226, 232, 240, 0.84);
+  scrollbar-width: thin;
+}
+
+.table-shell__footer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  flex-shrink: 0;
+  margin-top: 8px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(214, 225, 239, 0.82);
+}
+
+.table-shell__footer :deep(.arco-pagination) {
+  margin-left: auto;
+}
+
+.table-shell__footer :deep(.arco-pagination-item),
+.table-shell__footer :deep(.arco-pagination-jumper-input),
+.table-shell__footer :deep(.arco-pagination-btn) {
+  border-radius: 999px;
+}
+
+.table-column-setting-btn {
+  min-width: 88px;
+}
+
+/**
+ * 列设置面板：
+ * 在列表第①层右上角提供字段显隐、排序和恢复默认入口，
+ * 支持业务用户按场景自定义列表信息密度。
+ */
+.table-column-setting-panel {
+  width: 312px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(209, 220, 235, 0.9);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(245, 250, 255, 0.96));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.96),
+    0 12px 24px rgba(16, 43, 82, 0.12);
+}
+
+.table-column-setting-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.table-column-setting-panel__head strong {
+  color: #1e293b;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.table-column-setting-panel__list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 280px;
+  overflow: auto;
+}
+
+.table-column-setting-panel__item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(220, 230, 243, 0.92);
+  background: rgba(255, 255, 255, 0.92);
+  transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+}
+
+.table-column-setting-panel__item.is-draggable {
+  cursor: default;
+}
+
+.table-column-setting-panel__item.is-drag-source {
+  opacity: 0.65;
+  border-color: rgba(96, 146, 205, 0.5);
+}
+
+.table-column-setting-panel__item.is-drag-over-before::before,
+.table-column-setting-panel__item.is-drag-over-after::after {
+  content: '';
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #2f80ed, #22b5a5);
+}
+
+.table-column-setting-panel__item.is-drag-over-before::before {
+  top: -1px;
+}
+
+.table-column-setting-panel__item.is-drag-over-after::after {
+  bottom: -1px;
+}
+
+.table-column-setting-panel__label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   min-width: 0;
 }
 
-.table-account-main__meta {
-  display: flex;
-  flex-wrap: wrap;
+.table-column-setting-panel__drag-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  color: #94a3b8;
+  cursor: grab;
+  user-select: none;
+  flex: 0 0 auto;
+  transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+.table-column-setting-panel__drag-handle:hover {
+  color: #2563eb;
+  background: rgba(37, 99, 235, 0.12);
+}
+
+.table-column-setting-panel__drag-handle:active {
+  cursor: grabbing;
+}
+
+.table-column-setting-panel__label span {
+  color: #334155;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.table-column-setting-panel__label small {
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(226, 232, 240, 0.9);
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.table-column-setting-panel__actions {
+  display: inline-flex;
   align-items: center;
   gap: 6px;
 }
 
-.table-compact-cell {
+.table-column-setting-panel__order-btn {
+  width: 24px;
+  min-width: 24px;
+  height: 24px;
+  padding: 0;
+  border-radius: 8px;
+}
+
+.account-table {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  /**
+   * 列表内容保持顶部展示，同时让底部分页区稳定贴底。
+   * 通过 flex:1 占满可用高度，横向滚动条与分页自然沉到底部。
+   */
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+}
+
+/**
+ * 列表字段单元格样式：
+ * 每个单元格仅承载一个字段值，遵循“可扫读、可对比、可拖拽调宽”的数据表规范。
+ */
+.table-field-cell {
+  display: flex;
+  align-items: center;
+  width: 100%;
   min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
 }
 
-.table-compact-cell--inline {
-  gap: 4px;
+.table-field-cell__primary,
+.table-field-cell__text {
+  min-width: 0;
+  color: #1e293b;
+  font-size: 14px;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.table-tag-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+.table-field-cell__primary {
+  font-weight: 700;
 }
 
-.table-status-cell {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  align-items: flex-start;
+.table-field-cell__text {
+  font-weight: 500;
 }
 
-.table-account-main strong,
-.table-compact-cell strong {
-  color: var(--text-primary);
+.table-field-cell__mono {
+  min-width: 0;
+  color: #334155;
+  font-family: 'SFMono-Regular', 'Consolas', 'Menlo', 'Monaco', monospace;
+  font-size: 13px;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.table-account-main strong {
-  font-size: 16px;
-  line-height: 1.2;
+/**
+ * 最近更新时间按要求保持完整展示：
+ * 单行展示且不省略，列宽不足时由整体横向滚动承接。
+ */
+.table-field-cell--time {
+  overflow: visible;
 }
 
-.table-status-cell strong {
-  color: var(--text-primary);
+.table-field-cell--time .table-field-cell__mono {
+  overflow: visible;
+  text-overflow: clip;
 }
 
-.table-account-main small,
-.table-compact-cell small,
-.table-status-cell small {
-  color: var(--text-secondary);
-  font-size: 11px;
-  line-height: 1.5;
-}
-
+/**
+ * 操作列改为单行紧凑布局，避免多行堆叠导致单条记录高度被拉高。
+ */
 .table-row-actions {
   display: flex;
-  flex-wrap: wrap;
+  align-items: center;
   justify-content: flex-end;
-  gap: 6px;
+  flex-wrap: nowrap;
+  gap: 4px;
+  width: 100%;
+  min-width: 0;
+  margin-left: 0;
+  padding-right: 2px;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .table-action-button {
-  min-width: 56px;
-  height: 26px;
-  padding: 0 9px;
+  flex: 0 0 auto;
+  min-width: 40px;
+  height: 22px;
+  padding: 0 8px;
   border-radius: 999px;
   font-weight: 700;
-  font-size: 12px;
+  font-size: 11px;
+  line-height: 1;
+  letter-spacing: 0.015em;
 }
 
 .table-action-button--primary {
   border: 0;
   background: linear-gradient(135deg, #1769ff, #12b8a6);
-  box-shadow: 0 12px 24px rgba(23, 105, 255, 0.14);
+  box-shadow: 0 6px 12px rgba(23, 105, 255, 0.14);
+}
+
+.table-action-more-wrapper {
+  flex: 0 0 auto;
+}
+
+.table-action-more-wrapper :deep(.arco-btn) {
+  min-width: 40px;
 }
 
 .table-row-actions__danger {
@@ -1600,6 +2406,11 @@ onBeforeUnmount(() => {
 }
 
 .account-table :deep(.arco-table-container) {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
   border-radius: 12px;
   border: 1px solid rgba(220, 229, 240, 0.94);
   overflow: hidden;
@@ -1608,7 +2419,62 @@ onBeforeUnmount(() => {
 }
 
 .account-table :deep(.arco-table) {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
   background: transparent;
+}
+
+/**
+ * 列表区使用“上表格 + 下分页”两段式结构：
+ * 表格本体只负责吃满可用高度（滚动条随内容区沉底），
+ * 分页独立放在外层 footer 中固定贴底并右对齐。
+ */
+.account-table :deep(.arco-spin),
+.account-table :deep(.arco-spin-children) {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.account-table :deep(.arco-spin-children > .arco-table-container) {
+  flex: 1;
+  min-height: 0;
+}
+
+.account-table :deep(.arco-table-content) {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+}
+
+.account-table :deep(.arco-table-body) {
+  /**
+   * 表体保持垂直滚动，横向滚动由底部独立滚动条代理并同步。
+   * 这样可以稳定把“左右滚动条”固定在分页上方底部区域。
+   */
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden !important;
+  overflow-y: auto;
+}
+
+/**
+ * 只保留底部独立横向滚动条：
+ * 隐藏表格内置的水平滚动轨道与滑块，避免出现“两条横向滚动条”。
+ */
+.account-table :deep(.arco-table-body .arco-scrollbar-track-direction-horizontal),
+.account-table :deep(.arco-table-body .arco-scrollbar-thumb-direction-horizontal) {
+  display: none !important;
+}
+
+.account-table :deep(.arco-table-body::-webkit-scrollbar:horizontal) {
+  display: none;
+  height: 0;
 }
 
 .account-table :deep(.arco-table-th) {
@@ -1618,6 +2484,56 @@ onBeforeUnmount(() => {
   color: #334155;
   font-weight: 700;
   font-size: 12px;
+}
+
+.account-table :deep(.arco-table-th),
+.account-table :deep(.arco-table-td) {
+  position: relative;
+}
+
+/**
+ * 列分割线与拖拽手柄视觉增强：
+ * 让“表头拖拽调间距（列宽）”的交互意图更明显，贴近电子表格操作体验。
+ */
+.account-table :deep(.arco-table-th:not(:last-child)::after),
+.account-table :deep(.arco-table-td:not(:last-child)::after) {
+  content: '';
+  position: absolute;
+  top: 12%;
+  bottom: 12%;
+  right: 0;
+  width: 1px;
+  background: linear-gradient(180deg, rgba(186, 201, 220, 0.24), rgba(186, 201, 220, 0.66), rgba(186, 201, 220, 0.24));
+  pointer-events: none;
+}
+
+.account-table :deep(.arco-table-column-handle) {
+  position: absolute;
+  top: 0;
+  right: -4px;
+  width: 9px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 6;
+}
+
+.account-table :deep(.arco-table-column-handle::before) {
+  content: '';
+  position: absolute;
+  top: 16%;
+  bottom: 16%;
+  left: 50%;
+  width: 2px;
+  border-radius: 2px;
+  transform: translateX(-50%);
+  background: rgba(122, 147, 178, 0.32);
+  transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.account-table :deep(.arco-table-th:hover .arco-table-column-handle::before),
+.account-table :deep(.arco-table-th.arco-table-th-resizing .arco-table-column-handle::before) {
+  background: linear-gradient(180deg, #2f80ed, #2ac8bf);
+  box-shadow: 0 0 0 1px rgba(47, 128, 237, 0.16);
 }
 
 .account-table :deep(.arco-table-tr) {
@@ -1643,8 +2559,42 @@ onBeforeUnmount(() => {
   background: rgba(255, 255, 255, 0.76);
 }
 
+/**
+ * 表格横向节奏统一：
+ * 普通列使用较舒展的左右内边距，操作列单独收窄，保证信息列可读性的同时压缩操作占位。
+ */
+.account-table :deep(.arco-table-th),
+.account-table :deep(.arco-table-td) {
+  padding-left: 14px;
+  padding-right: 14px;
+}
+
+.account-table :deep(.arco-table-th:last-child),
+.account-table :deep(.arco-table-td:last-child) {
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
 .account-table :deep(.arco-table-fixed-right) {
   box-shadow: -8px 0 18px rgba(148, 163, 184, 0.08);
+}
+
+/**
+ * 操作列固定在最右侧：
+ * 提升固定列层级并补齐背景，避免横向滚动时出现穿透或遮挡。
+ */
+.account-table :deep(.arco-table-th.arco-table-col-fixed-right),
+.account-table :deep(.arco-table-td.arco-table-col-fixed-right) {
+  position: sticky;
+  right: 0 !important;
+  z-index: 13;
+  text-align: right;
+  background: #f8fcff;
+}
+
+.account-table :deep(.arco-table-th.arco-table-col-fixed-right-first::after),
+.account-table :deep(.arco-table-td.arco-table-col-fixed-right-first::after) {
+  box-shadow: inset -8px 0 12px -8px rgba(71, 85, 105, 0.28);
 }
 
 .account-table :deep(.arco-tag) {
@@ -1652,16 +2602,6 @@ onBeforeUnmount(() => {
   line-height: 20px;
   padding: 0 7px;
   font-size: 11px;
-}
-
-.account-table :deep(.arco-pagination-item),
-.account-table :deep(.arco-pagination-jumper-input),
-.account-table :deep(.arco-pagination-btn) {
-  border-radius: 999px;
-}
-
-.account-table :deep(.arco-pagination) {
-  padding-top: 8px;
 }
 
 .stack {
@@ -3546,20 +4486,11 @@ onBeforeUnmount(() => {
     padding: 20px;
   }
 
-  .query-panel__advanced-heading {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
   .authorization-summary-grid,
   .authorization-hero__stats,
   .callback-summary-grid,
   .callback-hero__stats {
     grid-template-columns: 1fr;
-  }
-
-  .table-account-main {
-    align-items: flex-start;
   }
 
   .actions,

@@ -1,7 +1,7 @@
 <template>
   <section
     class="governance-compact-query-panel"
-    :class="[`align-${align}`, `density-${density}`, { 'is-minimal': !hasHeader, 'has-footer': hasFooter }]"
+    :class="[`align-${align}`, `density-${density}`, `theme-${theme}`, { 'is-minimal': !hasHeader, 'has-footer': hasFooter }]"
     :style="{ '--query-panel-max-width': maxWidth || '100%' }"
   >
     <header v-if="hasHeader" class="governance-compact-query-panel__header">
@@ -73,6 +73,7 @@ const props = withDefaults(
     maxWidth?: string;
     align?: 'start' | 'center';
     density?: 'regular' | 'compact' | 'ultra';
+    theme?: 'default' | 'aurora';
   }>(),
   {
     eyebrow: '',
@@ -84,7 +85,9 @@ const props = withDefaults(
     maxWidth: '',
     align: 'center',
     // 默认使用常规密度，业务页可按需切换为 compact 或 ultra。
-    density: 'regular'
+    density: 'regular',
+    // 默认保持经典蓝青配色，页面可按需切换到 aurora 等主题皮肤。
+    theme: 'default'
   }
 );
 
@@ -114,19 +117,52 @@ const hasFooter = computed(() => Boolean(props.noteTitle || props.noteText || sl
   --query-panel-button-min-width: 104px;
   --query-panel-button-height: 36px;
   --query-panel-button-padding-inline: 14px;
+  /**
+   * 查询面板主题变量（默认主题）。
+   * 统一沉淀背景、边框、光晕和输入框状态色，业务页可通过 class/变量覆写形成新皮肤。
+   */
+  --query-panel-shell-border-color: rgba(218, 228, 240, 0.95);
+  --query-panel-shell-background:
+    radial-gradient(circle at top left, rgba(37, 99, 235, 0.08), transparent 28%),
+    radial-gradient(circle at bottom right, rgba(45, 212, 191, 0.08), transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(246, 250, 255, 0.96));
+  --query-panel-shell-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    0 12px 30px rgba(15, 23, 42, 0.05);
+  --query-panel-accent-bar-background: linear-gradient(90deg, #1769ff, #11c5b7);
+  --query-panel-accent-bar-opacity: 0.84;
+  --query-panel-orb-background: radial-gradient(circle, rgba(14, 165, 233, 0.1), transparent 72%);
+  --query-panel-orb-top: -56px;
+  --query-panel-orb-right: -44px;
+  --query-panel-orb-size: 156px;
+  --query-panel-orb-opacity: 1;
+  --query-panel-orb-filter: blur(0);
+  --query-panel-orb-animation: none;
+  --query-panel-body-border-color: rgba(216, 226, 238, 0.96);
+  --query-panel-body-background: linear-gradient(180deg, rgba(252, 254, 255, 0.98), rgba(245, 249, 255, 0.96));
+  --query-panel-body-overlay: none;
+  --query-panel-body-overlay-opacity: 0;
+  --query-panel-body-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.94),
+    0 8px 18px rgba(15, 23, 42, 0.03);
+  --query-panel-input-border-color: #d7e2ef;
+  --query-panel-input-background: rgba(255, 255, 255, 0.92);
+  --query-panel-input-hover-border-color: rgba(23, 105, 255, 0.28);
+  --query-panel-input-hover-background: #ffffff;
+  --query-panel-input-focus-border-color: rgba(23, 105, 255, 0.44);
+  --query-panel-input-focus-shadow: 0 0 0 4px rgba(23, 105, 255, 0.08);
+  --query-panel-muted-button-border: rgba(217, 226, 237, 0.96);
+  --query-panel-muted-button-background: rgba(255, 255, 255, 0.92);
+  --query-panel-muted-button-color: #475569;
+  --query-panel-muted-button-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.92);
   position: relative;
   overflow: hidden;
   width: min(100%, var(--query-panel-max-width));
   padding: var(--query-panel-padding);
-  border: 1px solid rgba(218, 228, 240, 0.95);
+  border: 1px solid var(--query-panel-shell-border-color);
   border-radius: var(--query-panel-radius);
-  background:
-    radial-gradient(circle at top left, rgba(37, 99, 235, 0.08), transparent 28%),
-    radial-gradient(circle at bottom right, rgba(45, 212, 191, 0.08), transparent 34%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(246, 250, 255, 0.96));
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.92),
-    0 12px 30px rgba(15, 23, 42, 0.05);
+  background: var(--query-panel-shell-background);
+  box-shadow: var(--query-panel-shell-shadow);
 }
 
 .governance-compact-query-panel::before {
@@ -137,19 +173,22 @@ const hasFooter = computed(() => Boolean(props.noteTitle || props.noteText || sl
   width: 120px;
   height: 3px;
   border-radius: 999px;
-  background: linear-gradient(90deg, #1769ff, #11c5b7);
-  opacity: 0.84;
+  background: var(--query-panel-accent-bar-background);
+  opacity: var(--query-panel-accent-bar-opacity);
 }
 
 .governance-compact-query-panel::after {
   content: '';
   position: absolute;
-  top: -56px;
-  right: -44px;
-  width: 156px;
-  height: 156px;
+  top: var(--query-panel-orb-top);
+  right: var(--query-panel-orb-right);
+  width: var(--query-panel-orb-size);
+  height: var(--query-panel-orb-size);
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(14, 165, 233, 0.1), transparent 72%);
+  background: var(--query-panel-orb-background);
+  opacity: var(--query-panel-orb-opacity);
+  filter: var(--query-panel-orb-filter);
+  animation: var(--query-panel-orb-animation);
   pointer-events: none;
 }
 
@@ -204,7 +243,54 @@ const hasFooter = computed(() => Boolean(props.noteTitle || props.noteText || sl
 }
 
 .governance-compact-query-panel.density-ultra::after {
-  display: none;
+  top: -42px;
+  right: -32px;
+  width: 130px;
+  height: 130px;
+}
+
+.governance-compact-query-panel.theme-aurora {
+  --query-panel-shell-border-color: rgba(143, 177, 211, 0.72);
+  --query-panel-shell-background:
+    radial-gradient(circle at 0% 2%, rgba(66, 140, 232, 0.18), transparent 42%),
+    radial-gradient(circle at 100% 100%, rgba(41, 186, 162, 0.14), transparent 40%),
+    linear-gradient(148deg, rgba(252, 255, 255, 0.96), rgba(241, 248, 255, 0.92));
+  --query-panel-shell-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    0 18px 44px rgba(21, 63, 114, 0.14),
+    0 2px 0 rgba(255, 255, 255, 0.86);
+  --query-panel-accent-bar-background: linear-gradient(90deg, #1a77f8 0%, #2e9de8 48%, #1ab7a6 100%);
+  --query-panel-accent-bar-opacity: 0.88;
+  --query-panel-orb-background:
+    radial-gradient(circle at 30% 30%, rgba(123, 195, 255, 0.32), rgba(123, 195, 255, 0.06) 56%, transparent 76%);
+  --query-panel-orb-top: -68px;
+  --query-panel-orb-right: -58px;
+  --query-panel-orb-size: 172px;
+  --query-panel-orb-opacity: 0.64;
+  --query-panel-orb-filter: blur(2px);
+  --query-panel-body-border-color: rgba(158, 191, 224, 0.56);
+  --query-panel-body-background:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.84), rgba(241, 248, 255, 0.8)),
+    linear-gradient(0deg, rgba(255, 255, 255, 0.34), rgba(255, 255, 255, 0.34));
+  --query-panel-body-overlay:
+    linear-gradient(128deg, rgba(255, 255, 255, 0.46), rgba(255, 255, 255, 0.04) 42%),
+    repeating-linear-gradient(135deg, rgba(132, 169, 207, 0.16) 0 1px, transparent 1px 8px);
+  --query-panel-body-overlay-opacity: 0.28;
+  --query-panel-body-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    0 10px 22px rgba(19, 58, 110, 0.1);
+  --query-panel-input-border-color: rgba(155, 183, 216, 0.76);
+  --query-panel-input-background: rgba(255, 255, 255, 0.84);
+  --query-panel-input-hover-border-color: rgba(67, 134, 220, 0.62);
+  --query-panel-input-hover-background: rgba(255, 255, 255, 0.92);
+  --query-panel-input-focus-border-color: rgba(54, 124, 217, 0.82);
+  --query-panel-input-focus-shadow: 0 0 0 4px rgba(69, 138, 226, 0.13);
+  --query-panel-muted-button-border: rgba(153, 185, 219, 0.74);
+  --query-panel-muted-button-background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(242, 248, 255, 0.9));
+  --query-panel-muted-button-color: #395679;
+  --query-panel-muted-button-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.94),
+    0 6px 14px rgba(37, 104, 172, 0.08);
 }
 
 .governance-compact-query-panel__header {
@@ -314,11 +400,19 @@ const hasFooter = computed(() => Boolean(props.noteTitle || props.noteText || sl
   margin-top: var(--query-panel-body-margin-top);
   padding: var(--query-panel-body-padding);
   border-radius: var(--query-panel-body-radius);
-  border: 1px solid rgba(216, 226, 238, 0.96);
-  background: linear-gradient(180deg, rgba(252, 254, 255, 0.98), rgba(245, 249, 255, 0.96));
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.94),
-    0 8px 18px rgba(15, 23, 42, 0.03);
+  border: 1px solid var(--query-panel-body-border-color);
+  background: var(--query-panel-body-background);
+  box-shadow: var(--query-panel-body-shadow);
+}
+
+.governance-compact-query-panel__body::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--query-panel-body-overlay);
+  opacity: var(--query-panel-body-overlay-opacity);
+  pointer-events: none;
 }
 
 .governance-compact-query-panel__body.no-header {
@@ -365,6 +459,8 @@ const hasFooter = computed(() => Boolean(props.noteTitle || props.noteText || sl
   justify-content: flex-end;
   gap: var(--query-panel-footer-gap);
   margin-left: auto;
+  position: relative;
+  z-index: 1;
 }
 
 .governance-compact-query-panel__footer-actions :deep(.arco-btn) {
@@ -382,13 +478,15 @@ const hasFooter = computed(() => Boolean(props.noteTitle || props.noteText || sl
 }
 
 .governance-compact-query-panel__footer-actions :deep(.arco-btn:not(.arco-btn-primary)) {
-  border-color: rgba(217, 226, 237, 0.96);
-  background: rgba(255, 255, 255, 0.92);
-  color: #475569;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.92);
+  border-color: var(--query-panel-muted-button-border);
+  background: var(--query-panel-muted-button-background);
+  color: var(--query-panel-muted-button-color);
+  box-shadow: var(--query-panel-muted-button-shadow);
 }
 
 .governance-compact-query-panel__body :deep(.governance-form-sections) {
+  position: relative;
+  z-index: 1;
   gap: 0;
 }
 
@@ -429,22 +527,22 @@ const hasFooter = computed(() => Boolean(props.noteTitle || props.noteText || sl
 .governance-compact-query-panel__body :deep(.arco-select-view) {
   min-height: var(--query-panel-input-min-height);
   border-radius: 12px;
-  border-color: #d7e2ef;
-  background: rgba(255, 255, 255, 0.92);
+  border-color: var(--query-panel-input-border-color);
+  background: var(--query-panel-input-background);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.94);
   transition: all 0.2s ease;
 }
 
 .governance-compact-query-panel__body :deep(.arco-input-wrapper:hover),
 .governance-compact-query-panel__body :deep(.arco-select-view:hover) {
-  border-color: rgba(23, 105, 255, 0.28);
-  background: #ffffff;
+  border-color: var(--query-panel-input-hover-border-color);
+  background: var(--query-panel-input-hover-background);
 }
 
 .governance-compact-query-panel__body :deep(.arco-input-wrapper.arco-input-focus),
 .governance-compact-query-panel__body :deep(.arco-select-view.arco-select-view-focus) {
-  border-color: rgba(23, 105, 255, 0.44);
-  box-shadow: 0 0 0 4px rgba(23, 105, 255, 0.08);
+  border-color: var(--query-panel-input-focus-border-color);
+  box-shadow: var(--query-panel-input-focus-shadow);
 }
 
 .governance-compact-query-panel__body :deep(.arco-input),

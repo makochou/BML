@@ -78,7 +78,8 @@ const handleSubmit = async ({ errors }: { errors?: unknown }) => {
     });
     setAuthTokens({
       accessToken: data.accessToken,
-      refreshToken: data.refreshToken
+      refreshToken: data.refreshToken,
+      userIdentity: form.username
     });
     Message.success('登录成功');
     router.push('/admin');

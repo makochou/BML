@@ -1,5 +1,9 @@
 <template>
-  <div class="governance-form-sections">
+  <div
+    class="governance-form-sections"
+    :class="`label-layout-${labelLayout}`"
+    :style="sectionRootStyle"
+  >
     <section
       v-for="section in sections"
       :key="section.key"
@@ -42,6 +46,7 @@
 </template>
 
 <script lang="ts" setup>
+import { computed } from 'vue';
 import type {
   GovernanceFieldKind,
   GovernanceFormSectionSchema
@@ -51,8 +56,26 @@ const props = withDefaults(defineProps<{
   model: Record<string, unknown>;
   sections: GovernanceFormSectionSchema[];
   variant?: 'card' | 'embedded';
+  labelLayout?: 'stacked' | 'inline';
+  inlineLabelWidth?: string;
 }>(), {
-  variant: 'card'
+  variant: 'card',
+  labelLayout: 'stacked',
+  inlineLabelWidth: '108px'
+});
+
+/**
+ * 通过 CSS 变量暴露行内标签宽度，业务页可按场景细调，
+ * 同时保持组件内部布局规则不变，减少重复样式代码。
+ */
+const sectionRootStyle = computed(() => {
+  if (props.labelLayout !== 'inline') {
+    return undefined;
+  }
+
+  return {
+    '--governance-inline-label-width': props.inlineLabelWidth
+  };
 });
 
 /**
@@ -97,6 +120,11 @@ function resolveFieldGridClass(section: GovernanceFormSectionSchema) {
   display: flex;
   flex-direction: column;
   gap: 18px;
+}
+
+.governance-form-sections.label-layout-inline {
+  --governance-inline-label-width: 108px;
+  --governance-inline-label-gap: 10px;
 }
 
 .governance-form-panel {
@@ -194,6 +222,35 @@ function resolveFieldGridClass(section: GovernanceFormSectionSchema) {
   font-weight: 600;
 }
 
+.governance-form-sections.label-layout-inline :deep(.arco-form-item.arco-form-item-layout-vertical) {
+  display: flex;
+  align-items: center;
+  gap: var(--governance-inline-label-gap);
+}
+
+.governance-form-sections.label-layout-inline :deep(.arco-form-item-layout-vertical > .arco-form-item-label-col) {
+  width: var(--governance-inline-label-width);
+  max-width: var(--governance-inline-label-width);
+  margin-bottom: 0;
+  padding: 0;
+  justify-content: flex-end;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.governance-form-sections.label-layout-inline :deep(.arco-form-item-label-col > label) {
+  display: inline-flex;
+  justify-content: flex-end;
+  width: 100%;
+  white-space: nowrap;
+}
+
+.governance-form-sections.label-layout-inline :deep(.arco-form-item-wrapper-col) {
+  flex: 1;
+  width: auto;
+  min-width: 0;
+}
+
 .governance-form-panel :deep(.arco-input-wrapper),
 .governance-form-panel :deep(.arco-textarea-wrapper),
 .governance-form-panel :deep(.arco-select-view),
@@ -276,6 +333,11 @@ function resolveFieldGridClass(section: GovernanceFormSectionSchema) {
   .governance-form-panel__heading {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .governance-form-sections.label-layout-inline {
+    --governance-inline-label-width: 96px;
+    --governance-inline-label-gap: 8px;
   }
 }
 </style>

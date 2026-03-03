@@ -1,5 +1,16 @@
 <template>
-  <section class="governance-list-stage" :class="[`density-${density}`, { 'governance-list-stage--headless': !hasHeadContent }]" :style="stageStyle">
+  <section
+    class="governance-list-stage"
+    :class="[
+      `density-${density}`,
+      {
+        'governance-list-stage--headless': !hasHeadContent,
+        'governance-list-stage--body-fill': bodyFill,
+        'governance-list-stage--body-align-end': bodyAlign === 'end'
+      }
+    ]"
+    :style="stageStyle"
+  >
     <div class="governance-list-stage__glow" aria-hidden="true" />
 
     <header
@@ -57,6 +68,8 @@ const props = withDefaults(
     metaItems?: GovernanceCompactMetaItem[];
     maxWidth?: string;
     density?: 'regular' | 'compact' | 'ultra';
+    bodyFill?: boolean;
+    bodyAlign?: 'start' | 'end';
   }>(),
   {
     eyebrow: '',
@@ -64,7 +77,11 @@ const props = withDefaults(
     metaItems: () => [],
     maxWidth: '1260px',
     // 默认常规密度，页面可按需切换 ultra 获得极致紧凑布局。
-    density: 'regular'
+    density: 'regular',
+    // 默认保持内容自适应高度；需要“列表区铺满”时页面可显式打开。
+    bodyFill: false,
+    // 默认顶部对齐；需要“卡片贴底”时可切换为 end。
+    bodyAlign: 'start'
   }
 );
 
@@ -298,6 +315,33 @@ const hasHeadContent = computed(() => Boolean(hasIntroContent.value || slots.act
 
 .governance-list-stage--headless .governance-list-stage__body {
   border-radius: var(--stage-body-radius);
+}
+
+/**
+ * 列表铺满模式：
+ * 统一让 stage/body 进入纵向弹性布局，使槽位内表格能够通过 flex:1 吃满可用高度，
+ * 避免出现“列表卡片贴顶、下方留白”的视觉割裂问题。
+ */
+.governance-list-stage--body-fill {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.governance-list-stage--body-fill .governance-list-stage__head {
+  flex-shrink: 0;
+}
+
+.governance-list-stage--body-fill .governance-list-stage__body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+/* 在铺满模式下支持底部对齐，用于“列表卡片贴底”场景。 */
+.governance-list-stage--body-fill.governance-list-stage--body-align-end .governance-list-stage__body {
+  justify-content: flex-end;
 }
 
 @media (max-width: 1280px) {
