@@ -95,6 +95,30 @@ export const getCurrentUserIdentity = () => {
     return identityFromToken;
 };
 
+/**
+ * 统一处理用户标识写入策略：
+ * 1) 登录时若显式传入 userIdentity，直接覆盖为登录账号；
+ * 2) 刷新 token 等未显式传入时，优先保留已有标识，避免列表布局等按账号配置被覆盖；
+ * 3) 本地尚无标识时，再从 token 尝试提取并持久化。
+ */
+const persistUserIdentity = (payload: { accessToken: string; userIdentity?: string }) => {
+    const explicitIdentity = payload.userIdentity?.trim();
+    if (explicitIdentity) {
+        localStorage.setItem(USER_IDENTITY_KEY, explicitIdentity);
+        return;
+    }
+
+    const existingIdentity = localStorage.getItem(USER_IDENTITY_KEY)?.trim();
+    if (existingIdentity) {
+        return;
+    }
+
+    const identityFromToken = resolveUserIdentityFromJwt(payload.accessToken);
+    if (identityFromToken) {
+        localStorage.setItem(USER_IDENTITY_KEY, identityFromToken);
+    }
+};
+
 export const setAuthTokens = (payload: { accessToken: string; refreshToken?: string; userIdentity?: string }) => {
     localStorage.setItem(ACCESS_TOKEN_KEY, payload.accessToken);
     localStorage.removeItem(LEGACY_TOKEN_KEY);
@@ -105,17 +129,9 @@ export const setAuthTokens = (payload: { accessToken: string; refreshToken?: str
     /**
      * 用户标识用于列表布局等“按账号隔离”的前端本地配置。
      * - 登录时优先落入传入的 userIdentity（通常为用户名）；
-     * - 刷新 token 时若未传入，则尝试从新 token 中提取，不覆盖已有有效值。
+     * - 刷新 token 时若未传入，优先沿用当前标识；仅在缺失时才从新 token 提取。
      */
-    const normalizedIdentity = payload.userIdentity?.trim();
-    if (normalizedIdentity) {
-        localStorage.setItem(USER_IDENTITY_KEY, normalizedIdentity);
-    } else {
-        const identityFromToken = resolveUserIdentityFromJwt(payload.accessToken);
-        if (identityFromToken) {
-            localStorage.setItem(USER_IDENTITY_KEY, identityFromToken);
-        }
-    }
+    persistUserIdentity(payload);
 };
 
 export const clearAuthTokens = () => {

@@ -11,7 +11,15 @@
       :class="`variant-${variant}`"
     >
       <div v-if="!section.hideHeader" class="governance-form-panel__heading">
-        <div>
+        <div class="governance-form-panel__heading-main">
+          <span
+            v-if="headingLevelMark"
+            class="governance-form-panel__heading-level"
+            :title="headingLevelText || undefined"
+          >
+            <span class="governance-form-panel__heading-level-index">{{ headingLevelMark }}</span>
+            <small v-if="headingLevelText" class="governance-form-panel__heading-level-text">{{ headingLevelText }}</small>
+          </span>
           <h3>{{ section.title }}</h3>
           <p>{{ section.description }}</p>
         </div>
@@ -58,10 +66,14 @@ const props = withDefaults(defineProps<{
   variant?: 'card' | 'embedded';
   labelLayout?: 'stacked' | 'inline';
   inlineLabelWidth?: string;
+  headingLevelMark?: string;
+  headingLevelText?: string;
 }>(), {
   variant: 'card',
   labelLayout: 'stacked',
-  inlineLabelWidth: '108px'
+  inlineLabelWidth: '108px',
+  headingLevelMark: '',
+  headingLevelText: ''
 });
 
 /**
@@ -113,6 +125,9 @@ function resolveFieldGridClass(section: GovernanceFormSectionSchema) {
 
   return ['layout-grid', `columns-${section.columns || 2}`];
 }
+
+const headingLevelMark = computed(() => props.headingLevelMark.trim());
+const headingLevelText = computed(() => props.headingLevelText.trim());
 </script>
 
 <style scoped>
@@ -151,6 +166,47 @@ function resolveFieldGridClass(section: GovernanceFormSectionSchema) {
   align-items: flex-start;
   gap: 16px;
   margin-bottom: 18px;
+}
+
+.governance-form-panel__heading-main {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.governance-form-panel__heading-level {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  max-width: 100%;
+  padding: 2px 10px 2px 8px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(23, 105, 255, 0.12), rgba(18, 184, 166, 0.16));
+  color: #0f5de2;
+}
+
+.governance-form-panel__heading-level-index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #0f5de2;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.governance-form-panel__heading-level-text {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #0f5de2;
+  white-space: nowrap;
 }
 
 .governance-form-panel.variant-embedded .governance-form-panel__heading {
@@ -333,6 +389,10 @@ function resolveFieldGridClass(section: GovernanceFormSectionSchema) {
   .governance-form-panel__heading {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .governance-form-panel__heading-level-text {
+    white-space: normal;
   }
 
   .governance-form-sections.label-layout-inline {

@@ -1,5 +1,5 @@
 ﻿<template>
-  <div class="page">
+  <div class="page api-account-page">
     <GovernanceCompactQueryPanel
       class="query-panel"
       max-width="1260px"
@@ -135,6 +135,7 @@
       <div class="table-shell__split">
         <div ref="accountTableListRegionRef" class="table-shell__list-region">
           <a-table
+            :key="`account-table-${accountTableRenderVersion}`"
             class="account-table"
             size="small"
             row-key="id"
@@ -152,22 +153,33 @@
               <a-table-column v-for="column in accountTableColumns" :key="column.key" :title="column.title" :data-index="column.dataIndex" :width="column.width" :fixed="column.kind === 'actions' ? 'right' : column.fixed" :ellipsis="column.ellipsis" :tooltip="column.tooltip">
                 <template #cell="{ record }">
                   <div v-if="column.kind === 'accountName'" class="table-field-cell">
-                    <strong class="table-field-cell__primary">{{ getPlainText(record, 'accountName', '-') }}</strong>
+                    <EllipsisTooltipText
+                      :text="getPlainText(record, 'accountName', '-')"
+                      variant="primary"
+                    />
                   </div>
                   <div v-else-if="column.kind === 'accountType'" class="table-field-cell">
                     <a-tag :color="getAccountTypeTagColor(record.accountType)">{{ getAccountTypeLabel(record.accountType) }}</a-tag>
                   </div>
                   <div v-else-if="column.kind === 'accountId'" class="table-field-cell">
-                    <span class="table-field-cell__mono">#{{ record.id }}</span>
+                    <EllipsisTooltipText
+                      :text="record.id ? `#${record.id}` : '-'"
+                      variant="mono"
+                    />
                   </div>
                   <div v-else-if="column.kind === 'systemName'" class="table-field-cell">
-                    <span class="table-field-cell__text">{{ record.systemName || '-' }}</span>
+                    <EllipsisTooltipText
+                      :text="record.systemName || '-'"
+                    />
                   </div>
                   <div v-else-if="column.kind === 'accessEnvironment'" class="table-field-cell">
                     <a-tag :color="getEnvironmentTagColor(record.accessEnvironment)">{{ getAccessEnvironmentLabel(record.accessEnvironment) }}</a-tag>
                   </div>
                   <div v-else-if="column.kind === 'clientTypes'" class="table-field-cell">
-                    <span class="table-field-cell__text">{{ getCompactClientSummary(record.clientTypes) }}</span>
+                    <EllipsisTooltipText
+                      :text="getCompactClientSummary(record.clientTypes)"
+                      :tooltip-text="getFullClientTypeSummary(record.clientTypes)"
+                    />
                   </div>
                   <div v-else-if="column.kind === 'status'" class="table-field-cell">
                     <a-tag :color="record.status === 1 ? 'green' : 'red'">{{ getStatusLabel(record.status) }}</a-tag>
@@ -238,6 +250,7 @@
     <a-modal
       v-model:visible="accountModal.visible"
       :fullscreen="accountModalViewport.fullscreen"
+      :render-to-body="true"
       :modal-style="accountModalStyle"
       :closable="false"
       :footer="false"
@@ -252,6 +265,16 @@
       <template #title>
         <div class="account-modal-title">
           <div class="account-modal-title__main">
+            <div class="account-modal-title__markers">
+              <div class="account-layer-marker account-layer-marker--lv3">
+                <span class="account-layer-marker__index">③</span>
+                <span class="account-layer-marker__text">三级：业务字段分组</span>
+              </div>
+              <div class="account-layer-marker account-layer-marker--lv1">
+                <span class="account-layer-marker__index">①</span>
+                <span class="account-layer-marker__text">一级：弹窗标题层</span>
+              </div>
+            </div>
             <p>{{ accountModalTitleCaption }}</p>
             <strong>{{ accountModalTitle }}</strong>
           </div>
@@ -290,70 +313,10 @@
         :class="{ 'account-modal-shell--create': isCreateMode }"
       >
         <div v-if="isCreateMode" class="account-create-viewport">
-          <div class="account-create-scroll-region">
-            <a-form :model="accountForm" layout="vertical" class="account-create-form">
-              <div class="account-create-stage">
-                <div class="account-create-layout">
-                  <div class="account-create-main">
-                    <section class="account-create-form-shell">
-                      <div class="account-create-form-shell__heading">
-                        <div>
-                          <p>Structured Fields</p>
-                          <h4>账号开通表单</h4>
-                          <span>字段仍然走统一 schema 驱动，方便后续扩展字段、校验规则与跨页面复用。</span>
-                        </div>
-                        <div class="account-create-form-shell__tags">
-                          <span>统一校验</span>
-                          <span>统一标准化</span>
-                          <span>统一返回凭证</span>
-                        </div>
-                      </div>
-
-                      <GovernanceFormSections :model="accountFormAsRecord" :sections="accountFormSections" />
-                    </section>
-
-                    <section class="account-create-form-shell account-create-form-shell--whitelist">
-                      <div class="account-create-form-shell__heading">
-                        <div>
-                          <p>Environment Isolation</p>
-                          <h4>环境白名单与调用边界</h4>
-                          <span>测试、预发、生产分开治理，系统会根据当前接入环境自动命中对应白名单。</span>
-                        </div>
-                        <div class="account-create-form-shell__status">
-                          <strong>{{ getAccessEnvironmentLabel(accountForm.accessEnvironment) }}</strong>
-                          <small>当前默认生效环境</small>
-                        </div>
-                      </div>
-
-                      <ApiEnvironmentWhitelistEditor
-                        v-model="accountWhitelistModel"
-                        :access-environment="accountForm.accessEnvironment"
-                        :environment-options="environmentOptions"
-                      />
-                    </section>
-
-                    <div class="account-create-footer">
-                      <div class="account-create-footer__intro">
-                        <strong>交付说明</strong>
-                        <p>提交时会统一校验字段、标准化业务系统编码、去重白名单，并在创建成功后交付首份 AccessKey / SecretKey。</p>
-                        <ul class="account-create-footer__list">
-                          <li v-for="item in accountCreateFooterTips" :key="item">{{ item }}</li>
-                        </ul>
-                      </div>
-
-                      <div class="account-create-footer__actions">
-                        <a-button @click="resetAccountForm">重置表单</a-button>
-                        <a-button @click="closeAccountModal">取消</a-button>
-                        <a-button type="primary" :loading="accountModal.submitting" @click="submitAccountForm">
-                          {{ accountModalSubmitText }}
-                        </a-button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </a-form>
-          </div>
+          <EmptyWorkbenchCanvas
+            class="account-create-blank-page"
+            pure
+          />
         </div>
 
         <a-form v-else :model="accountForm" layout="vertical">
@@ -482,12 +445,14 @@ import GovernanceListStage from '../../components/governance/GovernanceListStage
 import GovernancePanel from '../../components/governance/GovernancePanel.vue';
 import GovernanceStatGrid from '../../components/governance/GovernanceStatGrid.vue';
 import GovernanceWorkbenchShell from '../../components/governance/GovernanceWorkbenchShell.vue';
+import EllipsisTooltipText from '../../components/common/EllipsisTooltipText.vue';
+import EmptyWorkbenchCanvas from '../../components/common/EmptyWorkbenchCanvas.vue';
 import { useApiAccountFormValidation } from '../../composables/useApiAccountFormValidation';
 import { useApiAccountFormSchema } from '../../composables/useApiAccountFormSchema';
 import { useApiAccountQuerySchema } from '../../composables/useApiAccountQuerySchema';
 import { splitGovernanceSectionsByPriority } from '../../composables/useGovernanceSectionPriority';
 import { defineTableColumns, useTableColumns } from '../../composables/useTableColumns';
-import { getCurrentUserIdentity } from '../../utils/auth';
+import { buildUserScopedStorageKey } from '../../utils/userScopedStorage';
 import type {
   AccessEnvironment,
   ApiAccountDetail,
@@ -609,6 +574,12 @@ const accountTableListRegionRef = ref<HTMLElement | null>(null);
 const accountTableBottomScrollbarRef = ref<HTMLElement | null>(null);
 const accountTableBodyScrollableRef = ref<HTMLElement | null>(null);
 const showAccountBottomScrollbar = ref(false);
+/**
+ * 表格渲染版本号：
+ * Arco 的列拖拽改宽会保留内部宽度状态，恢复默认时需要强制重建实例，
+ * 才能确保默认列宽立即回显到页面。
+ */
+const accountTableRenderVersion = ref(0);
 let accountTableBodyScrollHandler: ((event: Event) => void) | null = null;
 let accountBottomScrollbarSyncing = false;
 let accountBottomScrollbarRafId: number | null = null;
@@ -663,11 +634,6 @@ const { parseIpWhitelistInput, validateAndBuildPayload } = useApiAccountFormVali
 // 新建/编辑弹窗的概览与指引均使用配置化数据，便于后续治理页复用同一套信息架构。
 const accountHeroTags = ['账号主体统一纳管', '环境白名单自动生效', '签名与限流统一治理', '保存后配置即时生效'];
 const accountGuideItems = ['业务系统编码仅支持 2-64 位字母、数字、下划线和中划线，保存时会自动转为大写。', '建议在联系方式中填写手机号、邮箱或企业微信，方便授权工单与异常联络。', '环境白名单建议按测试、预发、生产分开维护，避免不同环境来源 IP 相互污染。', '创建成功或重置密钥后，SecretKey 只会展示一次，请在首次返回时立即保存。'];
-const accountCreateFooterTips = [
-  '保存时自动完成业务系统编码标准化与白名单去重。',
-  '当前接入环境会自动回填对应生效白名单条目。',
-  '创建成功后请立即保存首份返回的 SecretKey，后续不会重复展示。'
-] as const;
 const accountModalTitle = computed(() => accountModal.mode === 'create' ? '新建API账号' : '编辑API账号');
 const accountModalTitleCaption = computed(() => accountModal.mode === 'create' ? 'Open API Account Provisioning Workspace' : 'Open API Account Governance Workspace');
 const accountModalTitleBadge = computed(() => accountModal.mode === 'create' ? '创建后将返回首份凭证' : '保存后配置即时生效');
@@ -744,9 +710,7 @@ const accountPreviewGovernanceFacts = computed<FactCard[]>(() => {
  */
 const ACCOUNT_TABLE_LAYOUT_STORAGE_KEY_PREFIX = 'bml.api-account.manage.table-layout.v4';
 function getAccountTableLayoutStorageKey() {
-  const rawIdentity = getCurrentUserIdentity();
-  const normalizedIdentity = (rawIdentity || 'anonymous').trim().toLowerCase() || 'anonymous';
-  return `${ACCOUNT_TABLE_LAYOUT_STORAGE_KEY_PREFIX}:${encodeURIComponent(normalizedIdentity)}`;
+  return buildUserScopedStorageKey(ACCOUNT_TABLE_LAYOUT_STORAGE_KEY_PREFIX);
 }
 const ACCOUNT_TABLE_LOCKED_COLUMN_KINDS = new Set<AccountColumnKind>(['actions']);
 const ACCOUNT_TABLE_COLUMN_MIN_WIDTH: Record<AccountColumnKind, number> = {
@@ -858,6 +822,7 @@ function restoreAccountTableColumnLayout() {
       }
     }
     normalizeAccountTableColumnOrder();
+    accountTableRenderVersion.value += 1;
   } catch {
     window.localStorage.removeItem(storageKey);
   }
@@ -995,6 +960,7 @@ function resetAccountTableColumnLayout() {
   }
   normalizeAccountTableColumnOrder();
   persistAccountTableColumnLayout();
+  accountTableRenderVersion.value += 1;
   Message.success('列宽、顺序与显示列已恢复默认');
 }
 function handleAccountColumnResize(dataIndex: string, width: number) {
@@ -1690,6 +1656,15 @@ function getCompactClientSummary(values?: string[]) {
   if (!labels.length) return '未配置';
   return labels.length <= 2 ? labels.join('、') : `${labels.slice(0, 2).join('、')} +${labels.length - 2}`;
 }
+/**
+ * 客户端完整文本：
+ * 列内仍保持紧凑摘要，悬浮时显示完整客户端集合，兼顾可读性与信息完整度。
+ */
+function getFullClientTypeSummary(values?: string[]) {
+  const labels = getClientTypeLabels(values);
+  if (!labels.length) return '未配置';
+  return labels.join('、');
+}
 function getAccessEnvironmentLabel(value?: string | null) { return environmentOptions.find(item => item.value === value)?.label || '未设置环境'; }
 function getEnvironmentTagColor(value?: string | null) { return ({ test: 'arcoblue', staging: 'orange', production: 'green' } as Record<string, string>)[value || ''] || 'gray'; }
 function getStatusLabel(value: number) { return value === 1 ? '启用' : '停用'; }
@@ -1791,6 +1766,14 @@ onBeforeUnmount(() => {
 :global(html.account-modal-page-lock),
 :global(body.account-modal-page-lock) {
   overflow: hidden;
+}
+
+:global(body.account-modal-page-lock) .api-account-page {
+  /**
+   * 弹窗打开时，仅锁定当前页面容器滚动，防止右侧全局滚动条继续出现。
+   * 滚动统一由弹窗内部承载区处理，确保第①层保持固定不动。
+   */
+  overflow: hidden !important;
 }
 
 .page {
@@ -2645,6 +2628,61 @@ onBeforeUnmount(() => {
   gap: 4px;
 }
 
+.account-modal-title__markers {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 6px;
+  width: fit-content;
+}
+
+.account-layer-marker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  max-width: 100%;
+  padding: 3px 10px 3px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.account-layer-marker__index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: #ffffff;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.account-layer-marker__text {
+  white-space: nowrap;
+}
+
+.account-layer-marker--lv1 {
+  background: linear-gradient(135deg, rgba(23, 105, 255, 0.14), rgba(18, 184, 166, 0.16));
+  color: #0f5de2;
+}
+
+.account-layer-marker--lv1 .account-layer-marker__index {
+  color: #0f5de2;
+}
+
+.account-layer-marker--lv3 {
+  background: linear-gradient(135deg, rgba(217, 119, 6, 0.14), rgba(249, 115, 22, 0.16));
+  color: #b45309;
+}
+
+.account-layer-marker--lv3 .account-layer-marker__index {
+  color: #b45309;
+}
+
 .account-modal-title__main p {
   margin: 0;
   font-size: 11px;
@@ -2735,6 +2773,13 @@ onBeforeUnmount(() => {
   height: 100%;
   min-height: 0;
   overflow: hidden;
+}
+
+.account-create-blank-page {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  width: 100%;
 }
 
 /**
@@ -4474,6 +4519,19 @@ onBeforeUnmount(() => {
 
   .account-create-form-shell__status {
     align-items: flex-start;
+  }
+
+  .account-layer-marker {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .account-modal-title__markers {
+    width: 100%;
+  }
+
+  .account-layer-marker__text {
+    white-space: normal;
   }
 
   .authorization-hero h2,
