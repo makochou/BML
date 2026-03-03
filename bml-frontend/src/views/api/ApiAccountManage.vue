@@ -1,5 +1,5 @@
 ﻿<template>
-  <div class="page api-account-page">
+  <div ref="apiAccountPageRef" class="page api-account-page">
     <GovernanceCompactQueryPanel
       class="query-panel"
       max-width="1260px"
@@ -247,7 +247,275 @@
       @delete="handlePreviewDelete"
     />
 
+    <teleport to="body">
+      <div v-if="accountModal.visible && isCreateMode" class="account-modal-overlay">
+        <div class="account-modal-overlay__mask"></div>
+        <div class="account-modal-overlay__viewport" :class="{ 'is-fullscreen': accountModalViewport.fullscreen }">
+          <div
+            ref="accountModalCreateElementRef"
+            class="account-modal account-modal--create"
+            :class="{
+              'arco-modal-fullscreen': accountModalViewport.fullscreen,
+              'is-dragging': accountModalPointerState.action === 'drag' && accountModalPointerState.active,
+              'is-resizing': accountModalPointerState.action === 'resize' && accountModalPointerState.active
+            }"
+            :style="accountCreateModalStyle"
+            @mousemove="handleAccountModalMouseMove"
+            @mouseleave="resetAccountModalCursor"
+          >
+            <div class="arco-modal-header" @mousedown="handleAccountCreateHeaderMouseDown">
+              <div class="account-modal-title">
+                <div class="account-modal-title__main">
+                  <div class="account-modal-title__markers">
+                    <div class="account-layer-marker account-layer-marker--lv3">
+                      <span class="account-layer-marker__index">③</span>
+                      <span class="account-layer-marker__text">三级：业务字段分组</span>
+                    </div>
+                    <div class="account-layer-marker account-layer-marker--lv1">
+                      <span class="account-layer-marker__index">①</span>
+                      <span class="account-layer-marker__text">一级：弹窗标题层</span>
+                    </div>
+                  </div>
+                  <p>{{ accountModalTitleCaption }}</p>
+                  <strong>{{ accountModalTitle }}</strong>
+                </div>
+                <div class="account-modal-title__actions">
+                  <span class="account-modal-title__badge">{{ accountModalTitleBadge }}</span>
+                  <a-tooltip content="拖动标题栏可移动窗口，拖动边框可调整大小">
+                    <span class="account-modal-title__window-grip" aria-hidden="true">
+                      <icon-drag-arrow />
+                    </span>
+                  </a-tooltip>
+                  <div class="account-modal-title__action-group">
+                    <a-tooltip :content="accountModalViewport.fullscreen ? '退出全屏' : '全屏展示'">
+                      <a-button
+                        size="mini"
+                        class="account-modal-title__action-btn"
+                        @click.stop="toggleAccountModalFullscreen"
+                      >
+                        <template #icon>
+                          <component :is="accountModalViewport.fullscreen ? IconFullscreenExit : IconFullscreen" />
+                        </template>
+                      </a-button>
+                    </a-tooltip>
+                    <a-tooltip content="关闭窗口">
+                      <a-button
+                        size="mini"
+                        class="account-modal-title__action-btn account-modal-title__action-btn--close"
+                        @click.stop="closeAccountModal"
+                      >
+                        <template #icon>
+                          <icon-close />
+                        </template>
+                      </a-button>
+                    </a-tooltip>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="account-modal-body account-modal-body--create" @wheel.stop>
+              <div class="account-modal-shell account-modal-shell--create">
+                <div class="account-create-viewport" @wheel.stop>
+                  <EmptyWorkbenchCanvas class="account-create-blank-page" pure />
+                  <div class="account-create-content-shell" @wheel.stop>
+                    <a-form :model="accountForm" layout="vertical" class="account-create-form">
+                      <div class="account-create-stage">
+                        <section class="account-create-hero">
+                          <div class="account-create-hero__main">
+                            <p class="account-create-hero__eyebrow">Open API Delivery Studio</p>
+                            <h2>创建一套可立即交付的 API 账号凭证</h2>
+                            <p class="account-create-hero__description">
+                              统一录入账号主体、安全策略、环境白名单与回调配置，创建完成后系统立即交付首份 AccessKey / SecretKey，
+                              同时将当前配置纳入标准治理闭环。
+                            </p>
+                            <div class="account-create-hero__tags">
+                              <span v-for="tag in accountCreateHeroTags" :key="tag">{{ tag }}</span>
+                            </div>
+                          </div>
+
+                          <div class="account-create-hero__summary">
+                            <div class="account-create-hero__summary-head">
+                              <div>
+                                <strong>开通摘要</strong>
+                                <p>当前配置将直接决定首份凭证的交付形态与生效策略。</p>
+                              </div>
+                              <span class="account-create-hero__summary-badge">{{ accountModeLabel }}</span>
+                            </div>
+                            <GovernanceStatGrid
+                              class="account-create-hero__stats"
+                              card-class="account-create-hero__stat-card"
+                              :items="accountCreateOverviewStats"
+                            />
+                          </div>
+                        </section>
+
+                        <div class="account-create-layout">
+                          <aside class="account-create-side">
+                            <section class="account-create-side-card account-create-side-card--identity">
+                              <div class="account-create-side-card__heading">
+                                <div>
+                                  <p>身份与交付</p>
+                                  <h3>账号交付画像</h3>
+                                </div>
+                                <span class="account-create-side-card__badge">{{ accountModalTitleBadge }}</span>
+                              </div>
+                              <GovernanceFactGrid
+                                class="account-create-fact-grid"
+                                card-class="account-create-fact-card"
+                                :items="accountCreateIdentityFacts"
+                              />
+                            </section>
+
+                            <section class="account-create-side-card">
+                              <div class="account-create-side-card__heading">
+                                <div>
+                                  <p>开通节奏</p>
+                                  <h3>三步完成交付</h3>
+                                </div>
+                              </div>
+                              <div class="account-create-flow-list">
+                                <article
+                                  v-for="(step, index) in accountCreateFlowSteps"
+                                  :key="step.key"
+                                  class="account-create-flow-item"
+                                  :class="`tone-${step.tone}`"
+                                >
+                                  <span class="account-create-flow-item__index">0{{ index + 1 }}</span>
+                                  <div class="account-create-flow-item__content">
+                                    <strong>{{ step.title }}</strong>
+                                    <p>{{ step.description }}</p>
+                                  </div>
+                                </article>
+                              </div>
+                            </section>
+
+                            <section class="account-create-side-card">
+                              <div class="account-create-side-card__heading">
+                                <div>
+                                  <p>环境治理</p>
+                                  <h3>三环境白名单概览</h3>
+                                </div>
+                              </div>
+                              <div class="account-create-environment-list">
+                                <article
+                                  v-for="item in accountCreateEnvironmentCards"
+                                  :key="item.key"
+                                  class="account-create-environment-card"
+                                  :class="{ 'is-active': item.active }"
+                                >
+                                  <div class="account-create-environment-card__head">
+                                    <strong>{{ item.label }}</strong>
+                                    <span>{{ item.state }}</span>
+                                  </div>
+                                  <strong class="account-create-environment-card__value">{{ item.countLabel }}</strong>
+                                  <p>{{ item.hint }}</p>
+                                </article>
+                              </div>
+                            </section>
+                          </aside>
+
+                          <div class="account-create-main">
+                            <section class="account-create-form-shell">
+                              <div class="account-create-form-shell__heading">
+                                <div class="account-create-form-shell__heading-main">
+                                  <p class="account-create-form-shell__eyebrow">③ 业务字段分组</p>
+                                  <h3>接入资料与安全策略</h3>
+                                  <p>
+                                    该区域继续复用统一 Schema 渲染字段、统一校验规则与统一提交模型；
+                                    后续新增普通字段时优先修改配置，不直接侵入页面模板。
+                                  </p>
+                                </div>
+                                <div class="account-create-form-shell__summary">
+                                  <div class="account-create-form-shell__tags">
+                                    <span v-for="tag in accountCreateFormTags" :key="tag">{{ tag }}</span>
+                                  </div>
+                                  <div class="account-create-form-shell__status">
+                                    <strong>{{ accountCreateFormStatusTitle }}</strong>
+                                    <small>{{ accountCreateFormStatusHint }}</small>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <GovernanceFormSections
+                                :model="accountFormAsRecord"
+                                :sections="accountFormSections"
+                              />
+                            </section>
+
+                            <section class="account-create-form-shell">
+                              <div class="account-create-form-shell__heading">
+                                <div class="account-create-form-shell__heading-main">
+                                  <p class="account-create-form-shell__eyebrow">环境来源治理</p>
+                                  <h3>三环境白名单独立维护</h3>
+                                  <p>
+                                    测试、预发、生产来源 IP 分离管理，系统会按当前接入环境自动命中生效清单，
+                                    同时在保存时完成标准化、去重与当前环境白名单回填。
+                                  </p>
+                                </div>
+                                <div class="account-create-form-shell__summary">
+                                  <div class="account-create-form-shell__status">
+                                    <strong>{{ accountCreateWhitelistSummaryTitle }}</strong>
+                                    <small>{{ accountCreateWhitelistSummaryHint }}</small>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <ApiEnvironmentWhitelistEditor
+                                v-model="accountWhitelistModel"
+                                :access-environment="accountForm.accessEnvironment"
+                                :environment-options="environmentOptions"
+                              />
+                            </section>
+
+                            <div class="account-create-footer">
+                              <div class="account-create-footer__intro">
+                                <strong>保存后自动进入凭证交付</strong>
+                                <p>
+                                  创建动作继续复用统一校验与统一提交逻辑，不额外分叉接口契约；
+                                  校验通过后立即返回首份凭证，便于接入方直接保存与联调。
+                                </p>
+                                <ul class="account-create-footer__list">
+                                  <li v-for="item in accountCreateFooterTips" :key="item">{{ item }}</li>
+                                </ul>
+                              </div>
+                              <div class="account-create-footer__actions">
+                                <a-button @click="closeAccountModal">取消</a-button>
+                                <a-button @click="resetAccountForm">重置表单</a-button>
+                                <a-button
+                                  type="primary"
+                                  :loading="accountModal.submitting"
+                                  @click="submitAccountForm"
+                                >
+                                  {{ accountModalSubmitText }}
+                                </a-button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </a-form>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div
+              v-for="handle in accountModalResizeHandles"
+              :key="handle.key"
+              class="account-modal-resize-handle"
+              :class="`account-modal-resize-handle--${handle.direction}`"
+              :data-direction="handle.direction"
+              @mousedown.stop.prevent="handleAccountCreateResizeHandleMouseDown(handle.direction, $event)"
+              aria-hidden="true"
+            ></div>
+          </div>
+        </div>
+      </div>
+    </teleport>
+
     <a-modal
+      v-if="!isCreateMode"
       v-model:visible="accountModal.visible"
       :fullscreen="accountModalViewport.fullscreen"
       :render-to-body="true"
@@ -308,18 +576,8 @@
         </div>
       </template>
 
-      <div
-        class="account-modal-shell"
-        :class="{ 'account-modal-shell--create': isCreateMode }"
-      >
-        <div v-if="isCreateMode" class="account-create-viewport">
-          <EmptyWorkbenchCanvas
-            class="account-create-blank-page"
-            pure
-          />
-        </div>
-
-        <a-form v-else :model="accountForm" layout="vertical">
+      <div class="account-modal-shell">
+        <a-form :model="accountForm" layout="vertical">
           <GovernanceWorkbenchShell class="account-workbench" :eyebrow="accountModalTitleCaption" :title="accountWorkbenchTitle" :description="accountWorkbenchDescription" :tags="accountHeroTags" :stats="accountWorkbenchStats" theme="emerald" :hide-hero="isCreateMode">
             <template #titleBadge>{{ accountModalTitleBadge }}</template>
 
@@ -440,6 +698,7 @@ import ApiCredentialDeliveryModal from '../../components/api-account/ApiCredenti
 import ApiAccountPreviewModal from '../../components/api-account/ApiAccountPreviewModal.vue';
 import ApiEnvironmentWhitelistEditor from '../../components/api-account/ApiEnvironmentWhitelistEditor.vue';
 import GovernanceCompactQueryPanel from '../../components/governance/GovernanceCompactQueryPanel.vue';
+import GovernanceFactGrid from '../../components/governance/GovernanceFactGrid.vue';
 import GovernanceFormSections from '../../components/governance/GovernanceFormSections.vue';
 import GovernanceListStage from '../../components/governance/GovernanceListStage.vue';
 import GovernancePanel from '../../components/governance/GovernancePanel.vue';
@@ -491,6 +750,37 @@ type AccountTableColumnLayout = {
   visible: boolean;
   order: number;
 };
+type AccountCreateFlowStep = {
+  key: string;
+  title: string;
+  description: string;
+  tone: WorkbenchStatCard['tone'];
+};
+type AccountCreateEnvironmentCard = {
+  key: AccessEnvironment;
+  label: string;
+  state: string;
+  countLabel: string;
+  hint: string;
+  active: boolean;
+};
+type AccountModalScrollLockTargetState = {
+  element: HTMLElement;
+  scrollTop: number;
+  overflow: string;
+  overscrollBehavior: string;
+  scrollbarGutter: string;
+};
+type AccountModalWrapperLockState = {
+  element: HTMLElement;
+  scrollTop: number;
+  overflow: string;
+  overscrollBehavior: string;
+};
+type AccountModalResizeHandleMeta = {
+  key: string;
+  direction: Exclude<AccountModalResizeDirection, ''>;
+};
 type AccountTableColumnSettingItem = {
   kind: AccountColumnKind;
   title: string;
@@ -507,6 +797,7 @@ const signVersionOptions = [{ label: 'v1（当前正式版）', value: 'v1' }];
 const statusOptions = [{ label: '启用', value: 1 }, { label: '停用', value: 0 }];
 const route = useRoute();
 const router = useRouter();
+const apiAccountPageRef = ref<HTMLElement | null>(null);
 
 const queryForm = reactive({
   accountId: undefined as number | undefined,
@@ -544,10 +835,14 @@ const accountModal = reactive({ visible: false, mode: 'create' as AccountModalMo
 /**
  * 新建/编辑弹窗视口状态。
  * 统一管理宽高、位移和全屏状态，为后续其他治理弹窗复用“拖拽 + 缩放 + 全屏”能力提供基础。
+ * - left / top：创建态自定义弹层的绝对定位坐标，保证拖拽时可精准贴边。
+ * - offsetX / offsetY：编辑态 Arco 弹窗沿用中心点偏移模型，避免影响既有实现。
  */
 const accountModalViewport = reactive({
   width: 1160,
   height: 760,
+  left: 0,
+  top: 0,
   offsetX: 0,
   offsetY: 0,
   fullscreen: false
@@ -560,10 +855,27 @@ const accountModalPointerState = reactive({
   startClientY: 0,
   startWidth: 0,
   startHeight: 0,
+  startLeft: 0,
+  startTop: 0,
   startOffsetX: 0,
   startOffsetY: 0
 });
 const accountModalElement = ref<HTMLElement | null>(null);
+const accountModalCreateElementRef = ref<HTMLElement | null>(null);
+/**
+ * 创建态可视化缩放手柄配置。
+ * 统一由配置驱动渲染，便于后续在其他自定义治理弹层中直接复用同一套拖拽缩放骨架。
+ */
+const accountModalResizeHandles: AccountModalResizeHandleMeta[] = [
+  { key: 'north', direction: 'n' },
+  { key: 'south', direction: 's' },
+  { key: 'east', direction: 'e' },
+  { key: 'west', direction: 'w' },
+  { key: 'north-east', direction: 'ne' },
+  { key: 'north-west', direction: 'nw' },
+  { key: 'south-east', direction: 'se' },
+  { key: 'south-west', direction: 'sw' }
+];
 /**
  * 底部横向滚动条同步状态：
  * - list-region: 当前列表区域容器。
@@ -634,6 +946,11 @@ const { parseIpWhitelistInput, validateAndBuildPayload } = useApiAccountFormVali
 // 新建/编辑弹窗的概览与指引均使用配置化数据，便于后续治理页复用同一套信息架构。
 const accountHeroTags = ['账号主体统一纳管', '环境白名单自动生效', '签名与限流统一治理', '保存后配置即时生效'];
 const accountGuideItems = ['业务系统编码仅支持 2-64 位字母、数字、下划线和中划线，保存时会自动转为大写。', '建议在联系方式中填写手机号、邮箱或企业微信，方便授权工单与异常联络。', '环境白名单建议按测试、预发、生产分开维护，避免不同环境来源 IP 相互污染。', '创建成功或重置密钥后，SecretKey 只会展示一次，请在首次返回时立即保存。'];
+/**
+ * 新建工作台顶部标签。
+ * 该组标签只表达创建场景最核心的交付卖点，后续如需替换视觉主题，优先调整此处配置。
+ */
+const accountCreateHeroTags = ['首份凭证即时交付', '环境白名单独立治理', '签名与限流一次定标', '创建后立即纳入统一治理'];
 const accountModalTitle = computed(() => accountModal.mode === 'create' ? '新建API账号' : '编辑API账号');
 const accountModalTitleCaption = computed(() => accountModal.mode === 'create' ? 'Open API Account Provisioning Workspace' : 'Open API Account Governance Workspace');
 const accountModalTitleBadge = computed(() => accountModal.mode === 'create' ? '创建后将返回首份凭证' : '保存后配置即时生效');
@@ -654,7 +971,116 @@ const accountModalStyle = computed<Record<string, string>>(() => {
     transform: `translate(${accountModalViewport.offsetX}px, ${accountModalViewport.offsetY}px)`
   };
 });
+/**
+ * 创建态自定义弹层样式。
+ * 不再依赖“居中布局 + transform 偏移”去计算视觉位置，而是直接输出 left / top / width / height，
+ * 这样拖动过程会更顺畅，窗口也能精准贴合浏览器四边。
+ */
+const accountCreateModalStyle = computed<Record<string, string>>(() => {
+  if (accountModalViewport.fullscreen) {
+    return {
+      left: '0px',
+      top: '0px',
+      width: '100%',
+      height: '100%'
+    };
+  }
+
+  return {
+    left: `${accountModalViewport.left}px`,
+    top: `${accountModalViewport.top}px`,
+    width: `${accountModalViewport.width}px`,
+    height: `${accountModalViewport.height}px`
+  };
+});
 const accountWorkbenchStats = computed<WorkbenchStatCard[]>(() => [{ label: '账号类型', value: getAccountTypeLabel(accountForm.accountType), hint: '区分内外部接入主体', tone: 'blue' }, { label: '客户端范围', value: accountForm.clientTypes.length ? `${accountForm.clientTypes.length} 类` : '未选择', hint: accountForm.clientTypes.length ? getClientTypeLabels(accountForm.clientTypes).join('、') : '至少选择一个客户端类型', tone: 'green' }, { label: '当前环境', value: getAccessEnvironmentLabel(accountForm.accessEnvironment), hint: `${getEnvironmentWhitelistCountLabel(accountForm.environmentIpWhitelistText[accountForm.accessEnvironment])} 生效条目`, tone: 'teal' }, { label: '回调配置', value: accountForm.callbackUrl.trim() ? '已配置' : '未配置', hint: accountForm.callbackUrl.trim() || '支持 http / https，可按需留空', tone: 'gold' }]);
+/**
+ * 新建工作台顶部摘要卡。
+ * 与编辑态共享相同数据口径，但文案更聚焦“开通交付”，避免在创建场景展示过多存量治理术语。
+ */
+const accountCreateOverviewStats = computed<WorkbenchStatCard[]>(() => [
+  {
+    label: '接入环境',
+    value: getAccessEnvironmentLabel(accountForm.accessEnvironment),
+    hint: `${getEnvironmentWhitelistCountLabel(accountForm.environmentIpWhitelistText[accountForm.accessEnvironment])} 当前生效`,
+    tone: 'blue'
+  },
+  {
+    label: '客户端范围',
+    value: accountForm.clientTypes.length ? `${accountForm.clientTypes.length} 类` : '待选择',
+    hint: accountForm.clientTypes.length ? getClientTypeLabels(accountForm.clientTypes).join('、') : '至少选择一个调用终端',
+    tone: 'teal'
+  },
+  {
+    label: '限流阈值',
+    value: `${accountForm.rateLimit || 0}/min`,
+    hint: '统一分钟级流量治理',
+    tone: 'gold'
+  },
+  {
+    label: '回调交付',
+    value: accountForm.callbackUrl.trim() ? '已配置' : '按需配置',
+    hint: accountForm.callbackUrl.trim() || '支持 http / https，可留空',
+    tone: 'green'
+  }
+]);
+/**
+ * 新建左侧账号画像卡。
+ * 通过事实卡统一承载“交付后会得到什么、当前配置处于什么状态”这类高频信息。
+ */
+const accountCreateIdentityFacts = computed<FactCard[]>(() => [
+  { label: '系统账号ID', value: '保存后自动生成', hint: '创建成功后进入凭证交付弹窗' },
+  { label: '业务系统编码', value: accountForm.systemCode.trim() ? accountForm.systemCode.trim().toUpperCase() : '待填写', hint: '保存时统一转大写并校验格式' },
+  { label: '账号状态', value: getStatusLabel(accountForm.status), hint: '默认启用，可按需在创建阶段直接停用' },
+  { label: '签名版本', value: accountForm.signVersion || '待选择', hint: '首份凭证将遵循当前验签版本' }
+]);
+/**
+ * 新建工作台左侧流程卡。
+ * 使用配置化步骤而非写死模板文本，方便未来复用到其他“接入账号开通”类页面。
+ */
+const accountCreateFlowSteps = computed<AccountCreateFlowStep[]>(() => [
+  {
+    key: 'identity',
+    title: '账号身份建档',
+    description: accountForm.accountName.trim() ? `已录入账号名称“${accountForm.accountName.trim()}”` : '先定义账号名称、类型、业务系统与负责人信息',
+    tone: 'blue'
+  },
+  {
+    key: 'strategy',
+    title: '接入策略定标',
+    description: `${getAccessEnvironmentLabel(accountForm.accessEnvironment)} · ${accountForm.rateLimit || 0}/min · ${accountForm.clientTypes.length ? `${accountForm.clientTypes.length} 类客户端` : '待选客户端'}`,
+    tone: 'teal'
+  },
+  {
+    key: 'delivery',
+    title: '凭证与联调交付',
+    description: accountForm.callbackUrl.trim() ? '已维护业务回调地址，创建后可直接进入联调' : '创建后返回首份凭证，回调配置可按需维护',
+    tone: 'gold'
+  }
+]);
+/**
+ * 新建左侧环境概览卡。
+ * 统一从环境选项与白名单文本模型派生，避免环境卡与编辑器状态出现双维护偏差。
+ */
+const accountCreateEnvironmentCards = computed<AccountCreateEnvironmentCard[]>(() => environmentOptions.map(item => ({
+  key: item.value,
+  label: item.label,
+  state: accountForm.accessEnvironment === item.value ? '当前生效环境' : '待命环境',
+  countLabel: getEnvironmentWhitelistCountLabel(accountForm.environmentIpWhitelistText[item.value]),
+  hint: accountForm.accessEnvironment === item.value ? '保存时会同步回填为当前命中的生效清单' : '独立维护，避免不同环境来源相互污染',
+  active: accountForm.accessEnvironment === item.value
+})));
+const accountCreateFormTags = computed(() => [
+  getAccountTypeLabel(accountForm.accountType),
+  getAccessEnvironmentLabel(accountForm.accessEnvironment),
+  accountForm.clientTypes.length ? `${accountForm.clientTypes.length} 类客户端` : '待选客户端',
+  accountForm.callbackUrl.trim() ? '已配置回调' : '未配置回调'
+]);
+const accountCreateFormStatusTitle = computed(() => `${getAccessEnvironmentLabel(accountForm.accessEnvironment)} · ${getEnvironmentWhitelistCountLabel(accountForm.environmentIpWhitelistText[accountForm.accessEnvironment])}`);
+const accountCreateFormStatusHint = computed(() => accountForm.callbackUrl.trim() ? '回调地址已配置，创建后可直接进入联调交付。' : '当前未配置回调地址，可先完成账号开通，后续再补充联调地址。');
+const accountCreateWhitelistSummaryTitle = computed(() => getEnvironmentWhitelistCountLabel(accountForm.environmentIpWhitelistText[accountForm.accessEnvironment]));
+const accountCreateWhitelistSummaryHint = computed(() => `${getAccessEnvironmentLabel(accountForm.accessEnvironment)} 当前默认命中`);
+const accountCreateFooterTips = ['保存前系统会统一校验系统编码、回调地址与白名单格式。', 'SecretKey 只在首次创建成功后展示一次，请在返回时立即妥善保存。', '环境白名单支持换行、英文逗号、中文逗号和分号混输，提交时会自动标准化并去重。'];
 // 在超紧凑模式下使用短文本，降低按钮占位，让底部操作区更聚焦。
 const queryAdvancedToggleText = computed(() => queryAdvancedExpanded.value ? '收起条件' : '更多条件');
 // 详情弹窗中的内容仍然走配置化卡片模型，便于其他治理页复用相同的信息组织方式。
@@ -1175,6 +1601,29 @@ const ACCOUNT_MODAL_MIN_WIDTH = 900;
 const ACCOUNT_MODAL_MIN_HEIGHT = 520;
 const ACCOUNT_MODAL_DEFAULT_HEIGHT = 700;
 const ACCOUNT_MODAL_PAGE_LOCK_CLASS = 'account-modal-page-lock';
+/**
+ * 弹窗打开期间的页面滚动锁状态。
+ * - scrollTop：记录弹窗打开前页面滚动位置，关闭后用于精准恢复。
+ * - locked：避免重复加锁/解锁时反复覆盖 body 定位样式。
+ *
+ * 这样处理后，背景页会被真正固定在原位置，第①层标题栏也不会因为页面滚动而发生位移。
+ */
+const accountModalPageLockState = reactive({
+  scrollTop: 0,
+  locked: false
+});
+/**
+ * 当前页面级滚动容器锁定快照。
+ * 除了浏览器窗口本身，布局内容区与业务页根容器也可能承担滚动；
+ * 因此需要统一记录并在弹窗关闭后恢复，避免“标题层跟着页面容器一起跑”的问题再次出现。
+ */
+const accountModalScrollLockTargets = ref<AccountModalScrollLockTargetState[]>([]);
+/**
+ * Arco Modal 外层 wrapper 锁定快照。
+ * 真正显示在最右侧的滚动条来自 `.arco-modal-wrapper`；
+ * 如果不把这一层关掉，鼠标滚轮会推动整个弹窗壳体一起上移，导致第①层标题栏看起来“仍在动”。
+ */
+const accountModalWrapperLockState = ref<AccountModalWrapperLockState | null>(null);
 const ACCOUNT_MODAL_RESIZE_CURSOR_MAP: Record<AccountModalResizeDirection, string> = {
   n: 'ns-resize',
   s: 'ns-resize',
@@ -1206,6 +1655,82 @@ function getAccountModalHeightBounds() {
 function clampValue(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
+function pushUniqueScrollLockElement(elements: HTMLElement[], element: HTMLElement | null | undefined) {
+  if (!element) return;
+  if (elements.includes(element)) return;
+  elements.push(element);
+}
+/**
+ * 解析当前页实际参与滚动的容器链。
+ * 之所以不只锁 body，是因为当前系统布局采用“内容区内部滚动”模式，
+ * 真正可滚动的节点可能是业务页根容器、`page-container` 或 Arco Layout 内容区。
+ */
+function resolveAccountModalScrollLockElements() {
+  const elements: HTMLElement[] = [];
+  const pageElement = apiAccountPageRef.value;
+  pushUniqueScrollLockElement(elements, pageElement);
+  pushUniqueScrollLockElement(elements, pageElement?.closest('.page-container') as HTMLElement | null);
+  pushUniqueScrollLockElement(elements, pageElement?.closest('.arco-layout-content') as HTMLElement | null);
+  return elements;
+}
+/**
+ * 锁定当前页所有可能参与滚动的容器。
+ * 使用内联样式直接覆盖，避免仅依赖 scoped CSS 时因为层级或容器变化导致锁定失效。
+ */
+function syncAccountModalContainerScrollLock(locked: boolean) {
+  if (locked) {
+    if (accountModalScrollLockTargets.value.length) return;
+    accountModalScrollLockTargets.value = resolveAccountModalScrollLockElements().map(element => ({
+      element,
+      scrollTop: element.scrollTop,
+      overflow: element.style.overflow,
+      overscrollBehavior: element.style.overscrollBehavior,
+      scrollbarGutter: element.style.scrollbarGutter
+    }));
+    accountModalScrollLockTargets.value.forEach(target => {
+      target.element.style.overflow = 'hidden';
+      target.element.style.overscrollBehavior = 'none';
+      target.element.style.scrollbarGutter = 'stable';
+    });
+    return;
+  }
+
+  accountModalScrollLockTargets.value.forEach(target => {
+    target.element.style.overflow = target.overflow;
+    target.element.style.overscrollBehavior = target.overscrollBehavior;
+    target.element.style.scrollbarGutter = target.scrollbarGutter;
+    target.element.scrollTop = target.scrollTop;
+  });
+  accountModalScrollLockTargets.value = [];
+}
+/**
+ * 锁定 Arco Modal 外层滚动壳。
+ * 该层默认 `overflow: auto`，需要显式关闭，才能保证滚轮只作用于弹窗内部内容区。
+ */
+function syncAccountModalWrapperScrollLock(locked: boolean) {
+  const modalElement = accountModalElement.value;
+  const wrapperElement = modalElement?.closest('.arco-modal-wrapper') as HTMLElement | null;
+  if (locked) {
+    if (!wrapperElement || accountModalWrapperLockState.value) return;
+    accountModalWrapperLockState.value = {
+      element: wrapperElement,
+      scrollTop: wrapperElement.scrollTop,
+      overflow: wrapperElement.style.overflow,
+      overscrollBehavior: wrapperElement.style.overscrollBehavior
+    };
+    wrapperElement.style.overflow = 'hidden';
+    wrapperElement.style.overscrollBehavior = 'none';
+    wrapperElement.scrollTop = 0;
+    return;
+  }
+
+  const state = accountModalWrapperLockState.value;
+  if (!state) return;
+  state.element.style.overflow = state.overflow;
+  state.element.style.overscrollBehavior = state.overscrollBehavior;
+  state.element.scrollTop = state.scrollTop;
+  accountModalWrapperLockState.value = null;
+}
 /**
  * 对弹窗宽高与位移进行统一约束。
  * 允许弹窗通过拖拽和缩放贴合浏览器四边，确保可直接拉满整个视口。
@@ -1220,6 +1745,18 @@ function clampAccountModalViewport() {
   accountModalViewport.width = clampValue(accountModalViewport.width, widthBounds.min, widthBounds.max);
   accountModalViewport.height = clampValue(accountModalViewport.height, heightBounds.min, heightBounds.max);
 
+  if (accountModal.mode === 'create') {
+    /**
+     * 创建态采用绝对定位坐标：
+     * left / top 直接表示弹层左上角位置，因此边界约束只需要保证窗口整体不越出视口。
+     */
+    const maxLeft = Math.max(0, window.innerWidth - accountModalViewport.width - ACCOUNT_MODAL_SAFE_MARGIN);
+    const maxTop = Math.max(0, window.innerHeight - accountModalViewport.height - ACCOUNT_MODAL_SAFE_MARGIN);
+    accountModalViewport.left = clampValue(accountModalViewport.left, ACCOUNT_MODAL_SAFE_MARGIN, maxLeft);
+    accountModalViewport.top = clampValue(accountModalViewport.top, ACCOUNT_MODAL_SAFE_MARGIN, maxTop);
+    return;
+  }
+
   const maxOffsetX = (window.innerWidth - accountModalViewport.width) / 2 - ACCOUNT_MODAL_SAFE_MARGIN;
   const minOffsetX = -maxOffsetX;
   const maxOffsetY = (window.innerHeight - accountModalViewport.height) / 2 - ACCOUNT_MODAL_SAFE_MARGIN;
@@ -1233,10 +1770,19 @@ function clampAccountModalViewport() {
  */
 function resetAccountModalViewport(mode: AccountModalMode) {
   accountModalViewport.fullscreen = false;
-  accountModalViewport.offsetX = 0;
-  accountModalViewport.offsetY = 0;
   accountModalViewport.width = getAccountModalDefaultWidth(mode);
   accountModalViewport.height = ACCOUNT_MODAL_DEFAULT_HEIGHT;
+  if (mode === 'create') {
+    accountModalViewport.left = (window.innerWidth - accountModalViewport.width) / 2;
+    accountModalViewport.top = (window.innerHeight - accountModalViewport.height) / 2;
+    accountModalViewport.offsetX = 0;
+    accountModalViewport.offsetY = 0;
+  } else {
+    accountModalViewport.left = 0;
+    accountModalViewport.top = 0;
+    accountModalViewport.offsetX = 0;
+    accountModalViewport.offsetY = 0;
+  }
   clampAccountModalViewport();
 }
 function resolveAccountModalResizeDirection(event: MouseEvent, rect: DOMRect): AccountModalResizeDirection {
@@ -1270,9 +1816,34 @@ function resetAccountModalCursor() {
 function isAccountModalHeaderDraggableTarget(target: EventTarget | null) {
   const element = target instanceof HTMLElement ? target : null;
   if (!element) return false;
+  if (element.closest('.account-modal-resize-handle')) return false;
   if (element.closest('.account-modal-title__action-btn')) return false;
   if (element.closest('.arco-modal-close-btn')) return false;
   return Boolean(element.closest('.arco-modal-header'));
+}
+/**
+ * 解析显式缩放手柄命中的方向。
+ * 创建态新增了八个可视化拖拽手柄，优先使用手柄方向，可避免仅靠边缘命中时的可发现性不足问题。
+ */
+function resolveAccountModalResizeHandleDirection(target: EventTarget | null): AccountModalResizeDirection {
+  const element = target instanceof HTMLElement ? target.closest('.account-modal-resize-handle') as HTMLElement | null : null;
+  const direction = element?.dataset.direction as AccountModalResizeDirection | undefined;
+  return direction || '';
+}
+/**
+ * 创建态标题栏拖动入口。
+ * 新建弹层改为模板内显式绑定，避免再依赖运行时查询 DOM 后绑定，降低事件丢失与命中不稳定问题。
+ */
+function handleAccountCreateHeaderMouseDown(event: MouseEvent) {
+  if (!isAccountModalHeaderDraggableTarget(event.target)) return;
+  beginAccountModalPointerAction(event, 'drag');
+}
+/**
+ * 创建态缩放手柄入口。
+ * 由模板直接传入方向，保证上 / 下 / 左 / 右 / 四角缩放都能稳定命中。
+ */
+function handleAccountCreateResizeHandleMouseDown(direction: Exclude<AccountModalResizeDirection, ''>, event: MouseEvent) {
+  beginAccountModalPointerAction(event, 'resize', direction);
 }
 function beginAccountModalPointerAction(event: MouseEvent, action: AccountModalPointerAction, direction: AccountModalResizeDirection = '') {
   if (event.button !== 0 || accountModalViewport.fullscreen) {
@@ -1286,6 +1857,8 @@ function beginAccountModalPointerAction(event: MouseEvent, action: AccountModalP
   accountModalPointerState.startClientY = event.clientY;
   accountModalPointerState.startWidth = accountModalViewport.width;
   accountModalPointerState.startHeight = accountModalViewport.height;
+  accountModalPointerState.startLeft = accountModalViewport.left;
+  accountModalPointerState.startTop = accountModalViewport.top;
   accountModalPointerState.startOffsetX = accountModalViewport.offsetX;
   accountModalPointerState.startOffsetY = accountModalViewport.offsetY;
   document.body.style.userSelect = 'none';
@@ -1299,6 +1872,12 @@ function beginAccountModalPointerAction(event: MouseEvent, action: AccountModalP
 }
 function handleAccountModalMouseDown(event: MouseEvent) {
   if (!accountModalElement.value || accountModalViewport.fullscreen) {
+    return;
+  }
+
+  const handleDirection = resolveAccountModalResizeHandleDirection(event.target);
+  if (handleDirection) {
+    beginAccountModalPointerAction(event, 'resize', handleDirection);
     return;
   }
 
@@ -1331,6 +1910,43 @@ function handleAccountModalPointerMove(event: MouseEvent) {
   const deltaY = event.clientY - accountModalPointerState.startClientY;
   const widthBounds = getAccountModalWidthBounds();
   const heightBounds = getAccountModalHeightBounds();
+
+  if (accountModal.mode === 'create') {
+    if (accountModalPointerState.action === 'drag') {
+      accountModalViewport.left = accountModalPointerState.startLeft + deltaX;
+      accountModalViewport.top = accountModalPointerState.startTop + deltaY;
+      clampAccountModalViewport();
+      return;
+    }
+
+    let nextWidth = accountModalPointerState.startWidth;
+    let nextHeight = accountModalPointerState.startHeight;
+    let nextLeft = accountModalPointerState.startLeft;
+    let nextTop = accountModalPointerState.startTop;
+    const direction = accountModalPointerState.direction;
+
+    if (direction.includes('e')) {
+      nextWidth = clampValue(accountModalPointerState.startWidth + deltaX, widthBounds.min, widthBounds.max);
+    }
+    if (direction.includes('s')) {
+      nextHeight = clampValue(accountModalPointerState.startHeight + deltaY, heightBounds.min, heightBounds.max);
+    }
+    if (direction.includes('w')) {
+      nextWidth = clampValue(accountModalPointerState.startWidth - deltaX, widthBounds.min, widthBounds.max);
+      nextLeft = accountModalPointerState.startLeft + (accountModalPointerState.startWidth - nextWidth);
+    }
+    if (direction.includes('n')) {
+      nextHeight = clampValue(accountModalPointerState.startHeight - deltaY, heightBounds.min, heightBounds.max);
+      nextTop = accountModalPointerState.startTop + (accountModalPointerState.startHeight - nextHeight);
+    }
+
+    accountModalViewport.width = nextWidth;
+    accountModalViewport.height = nextHeight;
+    accountModalViewport.left = nextLeft;
+    accountModalViewport.top = nextTop;
+    clampAccountModalViewport();
+    return;
+  }
 
   if (accountModalPointerState.action === 'drag') {
     accountModalViewport.offsetX = accountModalPointerState.startOffsetX + deltaX;
@@ -1385,7 +2001,9 @@ function handleAccountModalPointerUp() {
   stopAccountModalPointerAction();
 }
 function bindAccountModalInteractiveListeners() {
-  const modal = document.querySelector('.account-modal') as HTMLElement | null;
+  const modal = isCreateMode.value
+    ? accountModalCreateElementRef.value
+    : document.querySelector('.account-modal') as HTMLElement | null;
   if (!modal) {
     return;
   }
@@ -1411,8 +2029,38 @@ function handleAccountModalWindowResize() {
  * 这样用户滚动鼠标时，交互焦点始终停留在新增账号弹窗内，不会把背景页面一起带动。
  */
 function syncAccountModalPageScrollLock(locked: boolean) {
-  document.documentElement.classList.toggle(ACCOUNT_MODAL_PAGE_LOCK_CLASS, locked);
-  document.body.classList.toggle(ACCOUNT_MODAL_PAGE_LOCK_CLASS, locked);
+  if (typeof window === 'undefined') return;
+
+  const html = document.documentElement;
+  const body = document.body;
+  if (locked) {
+    if (accountModalPageLockState.locked) return;
+    const scrollTop = window.scrollY || html.scrollTop || body.scrollTop || 0;
+    accountModalPageLockState.scrollTop = scrollTop;
+    accountModalPageLockState.locked = true;
+    html.classList.add(ACCOUNT_MODAL_PAGE_LOCK_CLASS);
+    body.classList.add(ACCOUNT_MODAL_PAGE_LOCK_CLASS);
+    body.style.setProperty('--account-modal-page-lock-top', `-${scrollTop}px`);
+    html.style.overflow = 'hidden';
+    body.style.overflow = 'hidden';
+    html.style.overscrollBehavior = 'none';
+    body.style.overscrollBehavior = 'none';
+    syncAccountModalContainerScrollLock(true);
+    return;
+  }
+
+  if (!accountModalPageLockState.locked) return;
+  const restoreScrollTop = accountModalPageLockState.scrollTop;
+  accountModalPageLockState.locked = false;
+  html.classList.remove(ACCOUNT_MODAL_PAGE_LOCK_CLASS);
+  body.classList.remove(ACCOUNT_MODAL_PAGE_LOCK_CLASS);
+  body.style.removeProperty('--account-modal-page-lock-top');
+  html.style.overflow = '';
+  body.style.overflow = '';
+  html.style.overscrollBehavior = '';
+  body.style.overscrollBehavior = '';
+  syncAccountModalContainerScrollLock(false);
+  window.scrollTo({ top: restoreScrollTop, left: 0, behavior: 'auto' });
 }
 /**
  * 全屏模式切换。
@@ -1741,11 +2389,19 @@ watch(() => accountModal.visible, async visible => {
     syncAccountModalPageScrollLock(true);
     clampAccountModalViewport();
     await nextTick();
-    bindAccountModalInteractiveListeners();
+    if (isCreateMode.value) {
+      accountModalElement.value = accountModalCreateElementRef.value;
+    } else {
+      bindAccountModalInteractiveListeners();
+      syncAccountModalWrapperScrollLock(true);
+    }
     window.addEventListener('resize', handleAccountModalWindowResize);
     return;
   }
 
+  if (!isCreateMode.value) {
+    syncAccountModalWrapperScrollLock(false);
+  }
   syncAccountModalPageScrollLock(false);
   stopAccountModalPointerAction();
   unbindAccountModalInteractiveListeners();
@@ -1755,6 +2411,9 @@ onBeforeUnmount(() => {
   clearAccountBottomScrollbarRaf();
   unbindAccountTableBodyScrollSync();
   window.removeEventListener('resize', scheduleAccountBottomScrollbarSync);
+  if (!isCreateMode.value) {
+    syncAccountModalWrapperScrollLock(false);
+  }
   syncAccountModalPageScrollLock(false);
   stopAccountModalPointerAction();
   unbindAccountModalInteractiveListeners();
@@ -1766,6 +2425,15 @@ onBeforeUnmount(() => {
 :global(html.account-modal-page-lock),
 :global(body.account-modal-page-lock) {
   overflow: hidden;
+  overscroll-behavior: none;
+}
+
+:global(body.account-modal-page-lock) {
+  position: fixed;
+  top: var(--account-modal-page-lock-top, 0px);
+  left: 0;
+  right: 0;
+  width: 100%;
 }
 
 :global(body.account-modal-page-lock) .api-account-page {
@@ -2625,7 +3293,8 @@ onBeforeUnmount(() => {
 .account-modal-title__main {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
+  min-width: 0;
 }
 
 .account-modal-title__markers {
@@ -2720,6 +3389,25 @@ onBeforeUnmount(() => {
   max-width: min(100%, 420px);
 }
 
+.account-modal-title__window-grip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  border: 1px dashed rgba(148, 163, 184, 0.58);
+  border-radius: 999px;
+  background: rgba(248, 250, 252, 0.92);
+  color: #0f5de2;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.88);
+  cursor: move;
+}
+
+.account-modal-title__window-grip :deep(.arco-icon) {
+  font-size: 16px;
+}
+
 .account-modal-title__action-group {
   display: inline-flex;
   align-items: center;
@@ -2748,6 +3436,165 @@ onBeforeUnmount(() => {
   background: linear-gradient(180deg, #fff5f5, #fff1f2);
 }
 
+:deep(.account-modal.account-modal--create .account-modal-title) {
+  align-items: flex-start;
+  gap: 20px;
+}
+
+:deep(.account-modal.account-modal--create .account-modal-title__markers) {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+:deep(.account-modal.account-modal--create .account-modal-title__main p) {
+  color: #7c8ba1;
+}
+
+:deep(.account-modal.account-modal--create .account-modal-title__main strong) {
+  font-size: 24px;
+  color: #0f172a;
+}
+
+:deep(.account-modal.account-modal--create .account-modal-title__badge) {
+  min-height: 40px;
+  padding: 0 16px;
+  background: linear-gradient(135deg, rgba(15, 118, 110, 0.08), rgba(18, 184, 166, 0.14));
+  color: #0f766e;
+  font-weight: 700;
+}
+
+:deep(.account-modal.account-modal--create .account-modal-title__actions) {
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+.account-modal-resize-handle {
+  position: absolute;
+  z-index: 14;
+  background: transparent;
+}
+
+.account-modal-resize-handle--n,
+.account-modal-resize-handle--s {
+  left: 18px;
+  right: 18px;
+  height: 16px;
+}
+
+.account-modal-resize-handle--n {
+  top: 0;
+  cursor: ns-resize;
+}
+
+.account-modal-resize-handle--s {
+  bottom: 0;
+  cursor: ns-resize;
+}
+
+.account-modal-resize-handle--e,
+.account-modal-resize-handle--w {
+  top: 18px;
+  bottom: 18px;
+  width: 16px;
+}
+
+.account-modal-resize-handle--e {
+  right: 0;
+  cursor: ew-resize;
+}
+
+.account-modal-resize-handle--w {
+  left: 0;
+  cursor: ew-resize;
+}
+
+.account-modal-resize-handle--ne,
+.account-modal-resize-handle--nw,
+.account-modal-resize-handle--se,
+.account-modal-resize-handle--sw {
+  width: 22px;
+  height: 22px;
+}
+
+.account-modal-resize-handle--ne {
+  top: 2px;
+  right: 2px;
+  cursor: nesw-resize;
+}
+
+.account-modal-resize-handle--nw {
+  top: 2px;
+  left: 2px;
+  cursor: nwse-resize;
+}
+
+.account-modal-resize-handle--se {
+  right: 2px;
+  bottom: 2px;
+  cursor: nwse-resize;
+}
+
+.account-modal-resize-handle--sw {
+  bottom: 2px;
+  left: 2px;
+  cursor: nesw-resize;
+}
+
+.account-modal-resize-handle--ne::before,
+.account-modal-resize-handle--nw::before,
+.account-modal-resize-handle--se::before,
+.account-modal-resize-handle--sw::before {
+  content: none;
+}
+
+.account-modal-resize-handle--ne::after,
+.account-modal-resize-handle--nw::after,
+.account-modal-resize-handle--se::after,
+.account-modal-resize-handle--sw::after {
+  position: absolute;
+  inset: 2px;
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, transparent 52%, rgba(15, 94, 226, 0.78) 52%, rgba(15, 94, 226, 0.78) 60%, transparent 60%),
+    linear-gradient(135deg, transparent 68%, rgba(18, 184, 166, 0.72) 68%, rgba(18, 184, 166, 0.72) 76%, transparent 76%);
+  content: '';
+  opacity: 0;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+:deep(.account-modal.account-modal--create:hover) .account-modal-resize-handle--ne::after,
+:deep(.account-modal.account-modal--create:hover) .account-modal-resize-handle--nw::after,
+:deep(.account-modal.account-modal--create:hover) .account-modal-resize-handle--se::after,
+:deep(.account-modal.account-modal--create:hover) .account-modal-resize-handle--sw::after {
+  opacity: 0.52;
+}
+
+:deep(.account-modal.account-modal--create.is-resizing) .account-modal-resize-handle--ne::after,
+:deep(.account-modal.account-modal--create.is-resizing) .account-modal-resize-handle--nw::after,
+:deep(.account-modal.account-modal--create.is-resizing) .account-modal-resize-handle--se::after,
+:deep(.account-modal.account-modal--create.is-resizing) .account-modal-resize-handle--sw::after {
+  opacity: 0.9;
+  transform: scale(1.04);
+}
+
+:deep(.account-modal.account-modal--create.is-dragging) {
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.58),
+    0 36px 96px rgba(15, 23, 42, 0.28);
+}
+
+:deep(.account-modal.account-modal--create.is-resizing) {
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.62),
+    0 0 0 1px rgba(59, 130, 246, 0.26),
+    0 32px 92px rgba(15, 23, 42, 0.26);
+}
+
+:deep(.account-modal.account-modal--create.arco-modal-fullscreen) .account-modal-resize-handle {
+  display: none;
+}
+
 .account-modal-shell {
   position: relative;
   display: flex;
@@ -2758,8 +3605,8 @@ onBeforeUnmount(() => {
 }
 
 .account-modal-shell--create {
-  display: grid;
-  grid-template-rows: minmax(0, 1fr);
+  display: flex;
+  flex-direction: column;
   width: 100%;
   height: 100%;
   min-height: 0;
@@ -2767,80 +3614,450 @@ onBeforeUnmount(() => {
 }
 
 .account-create-viewport {
+  position: relative;
   display: flex;
-  flex: 1;
+  flex-direction: column;
   width: 100%;
   height: 100%;
   min-height: 0;
   overflow: hidden;
+  isolation: isolate;
 }
 
 .account-create-blank-page {
-  flex: 1;
-  min-width: 0;
-  min-height: 0;
+  position: absolute;
+  inset: 0;
+  z-index: 0;
   width: 100%;
+  height: 100%;
+  opacity: 0.96;
+  pointer-events: none;
 }
 
-/**
- * 新建态固定弹窗背景布，只允许内部滚动承载层上下滚动。
- * 后续如果继续追加字段或卡片，优先放入该滚动承载层，不要再直接把内容挂到弹窗 body 上。
- */
-.account-create-scroll-region {
-  flex: 1;
-  height: 100%;
+.account-create-content-shell {
+  position: relative;
+  z-index: 1;
+  flex: 1 1 auto;
+  width: 100%;
+  max-height: 100%;
+  min-width: 0;
   min-height: 0;
-  padding: 8px 0 24px;
-  overflow-y: auto;
+  height: 100%;
+  padding: 2px 4px 0 0;
+  overflow-y: scroll !important;
   overflow-x: hidden;
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
   scrollbar-width: thin;
-  scrollbar-color: rgba(148, 163, 184, 0.78) transparent;
+  scrollbar-color: rgba(100, 116, 139, 0.92) rgba(226, 232, 240, 0.4);
 }
 
-.account-create-scroll-region::-webkit-scrollbar {
-  width: 10px;
+.account-create-content-shell::-webkit-scrollbar {
+  width: 14px;
+  height: 12px;
 }
 
-.account-create-scroll-region::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.account-create-scroll-region::-webkit-scrollbar-thumb {
-  border: 2px solid transparent;
+.account-create-content-shell::-webkit-scrollbar-track {
   border-radius: 999px;
-  background: linear-gradient(180deg, rgba(148, 163, 184, 0.92), rgba(100, 116, 139, 0.92));
-  background-clip: padding-box;
+  border: 1px solid rgba(203, 213, 225, 0.66);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.46);
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(226, 232, 240, 0.72), rgba(226, 232, 240, 0.38));
 }
 
-.account-create-scroll-region::-webkit-scrollbar-thumb:hover {
+.account-create-content-shell::-webkit-scrollbar-thumb {
+  border: 2px solid rgba(255, 255, 255, 0.22);
+  border-radius: 999px;
   background: linear-gradient(180deg, rgba(100, 116, 139, 0.96), rgba(71, 85, 105, 0.96));
   background-clip: padding-box;
 }
 
+.account-create-content-shell::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(71, 85, 105, 0.98), rgba(51, 65, 85, 0.98));
+  background-clip: padding-box;
+}
+
 .account-create-form {
+  position: relative;
   display: block;
   width: 100%;
   min-height: max-content;
 }
 
 .account-create-stage {
+  /**
+   * 第②层与第③层内容全部编排在第①层内部内容壳中。
+   * 第①层标题固定，第①层内容壳独占纵向滚动，避免外层 wrapper 或 body 再次抢占滚动焦点。
+   */
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 20px;
   width: 100%;
   min-height: max-content;
-  padding-bottom: 8px;
+  padding: 6px 0 8px;
 }
 
 .account-create-layout {
-  display: flex;
-  flex-direction: column;
-  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: minmax(280px, 332px) minmax(0, 1fr);
+  align-items: start;
   gap: 18px;
   min-width: 0;
   min-height: max-content;
+}
+
+.account-create-hero {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1.28fr) minmax(340px, 0.92fr);
+  gap: 20px;
+  padding: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.26);
+  border-radius: 32px;
+  background:
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.2), transparent 32%),
+    radial-gradient(circle at left bottom, rgba(16, 185, 129, 0.22), transparent 28%),
+    linear-gradient(135deg, rgba(7, 52, 135, 0.96), rgba(17, 103, 196, 0.92) 48%, rgba(13, 148, 136, 0.9) 100%);
+  box-shadow:
+    0 30px 80px rgba(15, 23, 42, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  overflow: hidden !important;
+}
+
+.account-create-hero::before {
+  position: absolute;
+  inset: auto auto -90px -40px;
+  width: 240px;
+  height: 240px;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.26), transparent 72%);
+  content: '';
+  pointer-events: none;
+}
+
+.account-create-hero::after {
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+  background-size: 26px 26px;
+  opacity: 0.18;
+  content: '';
+  pointer-events: none;
+}
+
+.account-create-hero__main,
+.account-create-hero__summary {
+  position: relative;
+  z-index: 1;
+}
+
+.account-create-hero__main {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 18px;
+  min-width: 0;
+}
+
+.account-create-hero__eyebrow {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.account-create-hero__main h2 {
+  margin: 0;
+  font-family: 'Segoe UI Semibold', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-size: clamp(30px, 3vw, 42px);
+  line-height: 1.1;
+  color: #ffffff;
+}
+
+.account-create-hero__description {
+  max-width: 720px;
+  margin: 0;
+  color: rgba(239, 246, 255, 0.9);
+  font-size: 14px;
+  line-height: 1.9;
+}
+
+.account-create-hero__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.account-create-hero__tags span {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #f8fafc;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  backdrop-filter: blur(12px);
+}
+
+.account-create-hero__summary {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 28px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.08));
+  backdrop-filter: blur(16px);
+}
+
+.account-create-hero__summary-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.account-create-hero__summary-head strong {
+  color: #ffffff;
+  font-size: 18px;
+}
+
+.account-create-hero__summary-head p {
+  margin: 6px 0 0;
+  color: rgba(226, 232, 240, 0.82);
+  line-height: 1.7;
+}
+
+.account-create-hero__summary-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #eff6ff;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.account-create-hero__stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.account-create-hero__stat-card {
+  padding: 16px;
+  border-radius: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.08));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.account-create-hero__stat-card span,
+.account-create-hero__stat-card small {
+  color: rgba(226, 232, 240, 0.88);
+}
+
+.account-create-hero__stat-card strong {
+  color: #ffffff;
+  font-size: 24px;
+  line-height: 1.15;
+}
+
+.account-create-side {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+}
+
+.account-create-side-card {
+  position: relative;
+  overflow: hidden;
+  padding: 20px;
+  border: 1px solid rgba(226, 232, 240, 0.94);
+  border-radius: 28px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 252, 0.92));
+  box-shadow: 0 20px 44px rgba(15, 23, 42, 0.08);
+  backdrop-filter: blur(14px);
+}
+
+.account-create-side-card--identity {
+  background:
+    radial-gradient(circle at top right, rgba(37, 99, 235, 0.12), transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(241, 245, 249, 0.94));
+}
+
+.account-create-side-card__heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.account-create-side-card__heading p {
+  margin: 0 0 8px;
+  color: #0f5de2;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.account-create-side-card__heading h3 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 20px;
+}
+
+.account-create-side-card__badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(23, 105, 255, 0.08), rgba(18, 184, 166, 0.12));
+  color: #0f5de2;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.account-create-fact-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.account-create-fact-card {
+  padding: 14px 16px;
+  border-radius: 20px;
+  border: 1px solid rgba(226, 232, 240, 0.92);
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.82);
+}
+
+.account-create-fact-card span,
+.account-create-fact-card small {
+  color: #64748b;
+}
+
+.account-create-fact-card strong,
+.account-create-fact-card :deep(.arco-typography) {
+  color: #0f172a;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.account-create-flow-list,
+.account-create-environment-list {
+  display: grid;
+  gap: 12px;
+}
+
+.account-create-flow-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  padding: 14px 16px;
+  border: 1px solid rgba(226, 232, 240, 0.94);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.account-create-flow-item__index {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 14px;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.account-create-flow-item__content {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.account-create-flow-item__content strong {
+  color: #0f172a;
+  font-size: 15px;
+}
+
+.account-create-flow-item__content p {
+  margin: 0;
+  color: #64748b;
+  line-height: 1.7;
+}
+
+.account-create-flow-item.tone-blue .account-create-flow-item__index {
+  background: linear-gradient(135deg, #2563eb, #38bdf8);
+}
+
+.account-create-flow-item.tone-teal .account-create-flow-item__index {
+  background: linear-gradient(135deg, #0f766e, #14b8a6);
+}
+
+.account-create-flow-item.tone-gold .account-create-flow-item__index {
+  background: linear-gradient(135deg, #c2410c, #f59e0b);
+}
+
+.account-create-environment-card {
+  padding: 16px;
+  border: 1px solid rgba(226, 232, 240, 0.92);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.8);
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.account-create-environment-card.is-active {
+  transform: translateY(-2px);
+  border-color: rgba(23, 105, 255, 0.24);
+  box-shadow: 0 16px 28px rgba(37, 99, 235, 0.12);
+}
+
+.account-create-environment-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.account-create-environment-card__head strong {
+  color: #0f172a;
+  font-size: 15px;
+}
+
+.account-create-environment-card__head span {
+  color: #0f5de2;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.account-create-environment-card__value {
+  display: block;
+  margin-top: 12px;
+  color: #0f172a;
+  font-size: 24px;
+  line-height: 1.2;
+}
+
+.account-create-environment-card p {
+  margin: 8px 0 0;
+  color: #64748b;
+  line-height: 1.7;
 }
 
 .account-create-form-shell {
@@ -2892,7 +4109,46 @@ onBeforeUnmount(() => {
 }
 
 .account-create-form-shell__heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
   margin-bottom: 18px;
+}
+
+.account-create-form-shell__heading-main {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.account-create-form-shell__heading-main h3 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 22px;
+}
+
+.account-create-form-shell__heading-main > p:last-child {
+  margin: 0;
+  color: #64748b;
+  line-height: 1.85;
+}
+
+.account-create-form-shell__eyebrow {
+  margin: 0;
+  color: #0f5de2;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.account-create-form-shell__summary {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
 }
 
 .account-create-form-shell__tags {
@@ -2900,6 +4156,7 @@ onBeforeUnmount(() => {
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;
+  max-width: 360px;
 }
 
 .account-create-form-shell__tags span {
@@ -3028,6 +4285,54 @@ onBeforeUnmount(() => {
   min-height: 0;
 }
 
+.account-modal-shell--create :deep(.arco-form) {
+  display: block;
+  flex: none;
+  min-height: auto;
+}
+
+.account-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 3100;
+  --surface-color: #ffffff;
+  --surface-border: #e5edf6;
+  --text-primary: #0f172a;
+  --text-secondary: #64748b;
+  color: #0f172a;
+}
+
+.account-modal-overlay__mask {
+  position: absolute;
+  inset: 0;
+  /**
+   * 创建弹层后方只保留纯色遮罩，不再使用毛玻璃虚化。
+   * 这样可以避免背景页面内容发糊，同时仍然维持弹层聚焦效果。
+   */
+  background: rgba(15, 23, 42, 0.36);
+  backdrop-filter: none;
+}
+
+.account-modal-overlay__viewport {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  overflow: hidden;
+}
+
+.account-modal-overlay__viewport.is-fullscreen {
+  padding: 0;
+}
+
+.account-modal-overlay__viewport :deep(.account-modal) {
+  pointer-events: auto;
+}
+
 /* 统一控制弹窗可视高度与滚动行为，保证窗口上下保留安全留白，不贴浏览器边缘。 */
 :deep(.account-modal) {
   display: inline-grid;
@@ -3044,7 +4349,15 @@ onBeforeUnmount(() => {
 }
 
 :deep(.account-modal.account-modal--create) {
+  position: absolute;
+  margin: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  background: linear-gradient(180deg, #f8fbff, #eef5fb 46%, #f7fbff 100%);
   border: 1px solid rgba(59, 130, 246, 0.32);
+  overflow: hidden;
+  will-change: left, top, width, height;
+  transition: box-shadow 0.18s ease, border-color 0.18s ease;
   box-shadow:
     inset 0 0 0 1px rgba(255, 255, 255, 0.56),
     0 28px 72px rgba(15, 23, 42, 0.22);
@@ -3089,13 +4402,40 @@ onBeforeUnmount(() => {
 }
 
 :deep(.account-modal .arco-modal-header) {
+  position: sticky;
+  top: 0;
+  z-index: 8;
   min-height: 72px;
   padding: 18px 20px 14px;
   border-bottom: 1px solid rgba(226, 232, 240, 0.82);
   background:
     linear-gradient(180deg, rgba(248, 250, 252, 0.98), rgba(248, 250, 252, 0.92)),
     radial-gradient(circle at top right, rgba(18, 184, 166, 0.08), transparent 38%);
+  backdrop-filter: blur(14px);
   cursor: move;
+}
+
+:deep(.account-modal.account-modal--create .arco-modal-header) {
+  position: relative;
+  top: auto;
+  z-index: 12;
+  min-height: auto;
+  padding: 14px 20px 12px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(248, 250, 252, 0.985)),
+    radial-gradient(circle at top right, rgba(18, 184, 166, 0.08), transparent 38%);
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.05);
+  cursor: move;
+}
+
+:deep(.account-modal.account-modal--create .arco-modal-header)::after {
+  position: absolute;
+  right: 20px;
+  bottom: 0;
+  left: 20px;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(59, 130, 246, 0.22), rgba(148, 163, 184, 0.32), rgba(45, 212, 191, 0.22));
+  content: '';
 }
 
 :deep(.account-modal.arco-modal-fullscreen .arco-modal-header) {
@@ -3148,11 +4488,21 @@ onBeforeUnmount(() => {
 }
 
 :deep(.account-modal-body--create) {
-  /* 新建态背景布保持固定，内部内容滚动交给 account-create-scroll-region 统一承载。 */
-  display: grid;
-  grid-template-rows: minmax(0, 1fr);
+  /**
+   * 第①层内部只保留“固定标题 + 固定内容视口”两段结构。
+   * 第②层 / 第③层全部塞进 `account-create-content-shell` 中，由该内容壳独占右侧纵向滚动条。
+   * 这样可以同时满足：
+   * 1. 标题层固定不动；
+   * 2. 内容全部在第①层内部显示；
+   * 3. 右侧滚动条明确出现在第①层内部内容区。
+   */
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  height: 100%;
+  max-height: 100%;
   min-height: 0;
-  padding: 0 20px 0;
+  padding: 12px 20px 20px;
   overflow: hidden;
 }
 
@@ -4410,6 +5760,8 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 1280px) {
+  .account-create-hero,
+  .account-create-layout,
   .account-workbench,
   .authorization-hero,
   .authorization-layout,
@@ -4423,6 +5775,7 @@ onBeforeUnmount(() => {
 
   .account-modal-footer,
   .account-create-footer,
+  .account-create-form-shell__heading,
   .toolbar,
   .whitelist-head,
   .drawer-header,
@@ -4433,8 +5786,18 @@ onBeforeUnmount(() => {
   }
 
   .authorization-hero__stats,
+  .account-create-hero__stats,
   .callback-hero__stats {
     grid-template-columns: 1fr;
+  }
+
+  .account-create-form-shell__summary {
+    align-items: flex-start;
+  }
+
+  .account-create-form-shell__tags {
+    justify-content: flex-start;
+    max-width: none;
   }
 
   .workspace {
@@ -4475,12 +5838,8 @@ onBeforeUnmount(() => {
   }
 
   :deep(.account-modal-body--create) {
-    padding: 0 14px 0;
-    max-height: calc(100vh - 120px);
-  }
-
-  .account-create-scroll-region {
-    padding: 8px 0 14px;
+    padding: 0 14px 14px;
+    max-height: none;
   }
 
   .account-modal-title,
@@ -4513,11 +5872,44 @@ onBeforeUnmount(() => {
     align-items: stretch;
   }
 
+  .account-create-hero {
+    padding: 22px 18px;
+    border-radius: 26px;
+  }
+
+  .account-create-side-card,
+  .account-create-form-shell,
+  .account-create-footer {
+    border-radius: 24px;
+  }
+
+  .account-create-hero__summary-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .account-create-hero__summary-badge {
+    width: fit-content;
+  }
+
+  .account-create-hero__stats {
+    grid-template-columns: 1fr;
+  }
+
   .account-create-form-shell__tags {
     justify-content: flex-start;
   }
 
   .account-create-form-shell__status {
+    align-items: flex-start;
+  }
+
+  .account-create-flow-item {
+    grid-template-columns: 1fr;
+  }
+
+  .account-create-environment-card__head {
+    flex-direction: column;
     align-items: flex-start;
   }
 
