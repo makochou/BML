@@ -25,8 +25,11 @@ export function useApiAccountFormSchema(options: {
       title: '基础归属信息',
       description: '先完成账号主体、所属系统和联系人信息录入，便于后续授权排查和凭证联调。',
       layout: 'grid',
-      // 新建场景使用更高信息密度，首屏可见更多字段；编辑场景保持稳妥可读性。
-      columns: compactMode ? 3 : 2,
+      /**
+       * 新建弹窗要求提升字段密度，支持一行展示 4 个字段；
+       * 编辑态仍维持 2 列，保证低风险修改场景的可读性与稳态体验。
+       */
+      columns: compactMode ? 4 : 2,
       fields: [
         {
           key: 'accountName',
@@ -83,7 +86,7 @@ export function useApiAccountFormSchema(options: {
       title: '接入策略与安全配置',
       description: '统一维护客户端范围、接入环境、签名版本与状态策略，保证账号配置口径一致。',
       layout: 'grid',
-      columns: compactMode ? 3 : 2,
+      columns: compactMode ? 4 : 2,
       fields: [
         {
           key: 'clientTypes',
@@ -152,13 +155,14 @@ export function useApiAccountFormSchema(options: {
       title: '回调与补充说明',
       description: '补充异步回调地址与运营备注，便于后续通知联调、问题追踪和风险记录。',
       layout: compactMode ? 'grid' : 'single',
-      columns: compactMode ? 2 : 1,
+      columns: compactMode ? 4 : 1,
       fields: [
         {
           key: 'callbackUrl',
           field: 'callbackUrl',
           label: '业务回调地址',
           kind: 'input',
+          colSpan: compactMode ? 2 : 1,
           componentProps: {
             maxlength: 255,
             allowClear: true,
@@ -171,7 +175,7 @@ export function useApiAccountFormSchema(options: {
           field: 'remark',
           label: '备注',
           kind: 'textarea',
-          colSpan: compactMode ? 2 : 1,
+          colSpan: compactMode ? 4 : 1,
           componentProps: {
             maxlength: 500,
             autoSize: compactMode ? { minRows: 2, maxRows: 4 } : { minRows: 4, maxRows: 7 },

@@ -1,6 +1,12 @@
 <template>
-  <section class="api-environment-whitelist-editor">
-    <div class="api-environment-whitelist-editor__heading">
+  <section
+    class="api-environment-whitelist-editor"
+    :class="{
+      'is-compact': !showHeading && !showCallout,
+      'surface-flat': surfaceMode === 'flat'
+    }"
+  >
+    <div v-if="showHeading" class="api-environment-whitelist-editor__heading">
       <div>
         <h3>{{ title }}</h3>
         <p>{{ description }}</p>
@@ -10,7 +16,7 @@
       </a-tag>
     </div>
 
-    <div class="api-environment-whitelist-editor__callout">
+    <div v-if="showCallout" class="api-environment-whitelist-editor__callout">
       <div class="api-environment-whitelist-editor__callout-main">
         <strong>环境独立治理</strong>
         <p>推荐按环境分开维护来源 IP，避免测试流量误入生产白名单，同时减少联调切换时的重复配置。</p>
@@ -66,9 +72,15 @@ const props = withDefaults(defineProps<{
   environmentOptions: EnvironmentOption[];
   title?: string;
   description?: string;
+  showHeading?: boolean;
+  showCallout?: boolean;
+  surfaceMode?: 'card' | 'flat';
 }>(), {
   title: '按环境维护 IP 白名单',
-  description: '测试、预发、生产独立治理，系统会根据当前接入环境自动选择生效清单。'
+  description: '测试、预发、生产独立治理，系统会根据当前接入环境自动选择生效清单。',
+  showHeading: true,
+  showCallout: true,
+  surfaceMode: 'card'
 });
 
 const emit = defineEmits<{
@@ -100,6 +112,24 @@ function getEnvironmentWhitelistCountLabel(value: string) {
   background: rgba(255, 255, 255, 0.92);
   box-shadow: 0 18px 48px rgba(15, 23, 42, 0.06);
   backdrop-filter: blur(10px);
+}
+
+/**
+ * 无卡片表面模式：
+ * 由业务页按需开启，直接在宿主区域平铺展示字段，不额外绘制外层卡片壳。
+ */
+.api-environment-whitelist-editor.surface-flat {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.api-environment-whitelist-editor.surface-flat .api-environment-whitelist-editor__grid {
+  gap: 16px;
+  margin-top: 8px;
 }
 
 .api-environment-whitelist-editor__heading {
@@ -163,9 +193,21 @@ function getEnvironmentWhitelistCountLabel(value: string) {
 
 .api-environment-whitelist-editor__grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  /**
+   * 使用自适应列而非固定 3 列：
+   * 在不同弹层宽度下自动决定列数，避免右侧卡片被挤出可视区。
+   */
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 14px;
   margin-top: 18px;
+}
+
+/**
+ * 紧凑模式：
+ * 当上方标题和治理提示卡都关闭时，白名单卡片区直接贴顶展示，避免出现多余留白。
+ */
+.api-environment-whitelist-editor.is-compact .api-environment-whitelist-editor__grid {
+  margin-top: 0;
 }
 
 .api-environment-whitelist-editor__card {
@@ -173,6 +215,47 @@ function getEnvironmentWhitelistCountLabel(value: string) {
   border-radius: 24px;
   padding: 18px;
   background: linear-gradient(180deg, rgba(248, 250, 252, 0.92), rgba(255, 255, 255, 0.98));
+}
+
+.api-environment-whitelist-editor.surface-flat .api-environment-whitelist-editor__card {
+  border: 0;
+  border-radius: 0;
+  padding: 14px 0 10px;
+  background: transparent;
+  box-shadow: none;
+}
+
+.api-environment-whitelist-editor.surface-flat .api-environment-whitelist-editor__card + .api-environment-whitelist-editor__card {
+  border-top: 1px dashed rgba(203, 213, 225, 0.9);
+  padding-top: 16px;
+}
+
+.api-environment-whitelist-editor.surface-flat .api-environment-whitelist-editor__card-head {
+  margin-bottom: 10px;
+}
+
+.api-environment-whitelist-editor.surface-flat .api-environment-whitelist-editor__card.active {
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.api-environment-whitelist-editor.surface-flat .api-environment-whitelist-editor__card-head span {
+  color: #0f5de2;
+  font-weight: 700;
+}
+
+.api-environment-whitelist-editor.surface-flat :deep(.arco-textarea-wrapper) {
+  border-color: rgba(191, 206, 228, 0.9);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(247, 251, 255, 0.95));
+}
+
+.api-environment-whitelist-editor.surface-flat :deep(.arco-textarea-wrapper:hover) {
+  border-color: rgba(47, 109, 246, 0.42);
+}
+
+.api-environment-whitelist-editor.surface-flat :deep(.arco-textarea-focus) {
+  border-color: rgba(47, 109, 246, 0.62);
+  box-shadow: 0 0 0 3px rgba(47, 109, 246, 0.14);
 }
 
 .api-environment-whitelist-editor__card.active {
@@ -223,10 +306,6 @@ function getEnvironmentWhitelistCountLabel(value: string) {
 }
 
 @media (max-width: 1280px) {
-  .api-environment-whitelist-editor__grid {
-    grid-template-columns: 1fr;
-  }
-
   .api-environment-whitelist-editor__callout {
     flex-direction: column;
   }

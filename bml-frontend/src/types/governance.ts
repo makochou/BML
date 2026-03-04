@@ -70,7 +70,11 @@ export type GovernanceFormFieldSchema = {
   priority?: GovernanceFieldPriority;
   required?: boolean;
   helper?: string;
-  colSpan?: 1 | 2;
+  /**
+   * 字段横向跨列数，取值需与 section.columns 对齐。
+   * 统一放开到 1~6，便于在高密度布局（如 4 列/6 列）下复用同一套 schema 类型。
+   */
+  colSpan?: 1 | 2 | 3 | 4 | 5 | 6;
   componentProps?: Record<string, unknown>;
 };
 
