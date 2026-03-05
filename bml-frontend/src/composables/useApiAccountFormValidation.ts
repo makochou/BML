@@ -9,14 +9,14 @@ const SYSTEM_CODE_PATTERN = /^[A-Za-z0-9_-]{2,64}$/;
 
 export type ApiAccountFormValidationResult =
   | {
-      valid: true;
-      payload: SaveApiAccountPayload;
-      environmentIpWhitelist: EnvironmentIpWhitelist;
-    }
+    valid: true;
+    payload: SaveApiAccountPayload;
+    environmentIpWhitelist: EnvironmentIpWhitelist;
+  }
   | {
-      valid: false;
-      message: string;
-    };
+    valid: false;
+    message: string;
+  };
 
 /**
  * API 账号表单校验与提交负载构建。
@@ -112,6 +112,7 @@ export function useApiAccountFormValidation() {
       environmentIpWhitelist,
       payload: {
         accountName,
+        description: form.description.trim() || null,
         ownerName,
         ownerContact,
         systemName,
@@ -122,6 +123,7 @@ export function useApiAccountFormValidation() {
         ipWhitelist: environmentIpWhitelist[form.accessEnvironment],
         environmentIpWhitelist,
         signVersion: form.signVersion,
+        allowedScopes: (form.allowedScopes || []).filter(Boolean),
         callbackUrl: callbackUrl || null,
         rateLimit,
         expireTime: form.expireTime || null,

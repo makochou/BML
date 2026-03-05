@@ -65,8 +65,10 @@ public class MyBatisPlusMetaObjHandler implements MetaObjectHandler {
     @Override
     public void updateFill(MetaObject metaObject) {
         log.debug("MyBatis-Plus 更新自动填充执行");
-        this.strictUpdateFill(metaObject, "updateTime", LocalDateTime.class, LocalDateTime.now());
-        this.strictUpdateFill(metaObject, "updateBy", Long.class, getCurrentUserId());
+        // 强制覆盖更新时间与更新人，确保业务修改后“最近更新”字段能实时刷新。
+        // 不使用 strictUpdateFill 是因为该方法在字段非空（如编辑请求携带旧值）时会跳过填充。
+        this.setFieldValByName("updateTime", LocalDateTime.now(), metaObject);
+        this.setFieldValByName("updateBy", getCurrentUserId(), metaObject);
     }
 
     /**

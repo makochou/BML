@@ -16,9 +16,11 @@ import com.bml.module.api.dto.UpdateSysApiAccountCommand;
 import com.bml.module.api.entity.SysApiAccount;
 import com.bml.module.api.mapper.SysApiAccountMapper;
 import com.bml.module.api.mapper.SysApiPermissionMapper;
+import com.bml.module.api.constant.ApiAccountTypeConstants;
 import com.bml.module.api.support.ApiAccountEnvironmentSupport;
 import com.bml.module.api.support.ApiAccountEnvironmentWhitelistSupport;
 import com.bml.module.api.support.ApiClientTypeSupport;
+import com.bml.module.api.support.ApiScopeSupport;
 import com.bml.module.api.vo.ApiAccountPermissionCountVO;
 import com.bml.module.api.vo.ApiCredentialVO;
 import com.bml.module.api.vo.SysApiAccountDetailVO;
@@ -47,7 +49,7 @@ import java.util.stream.Collectors;
 @Service
 public class SysApiAccountService extends ServiceImpl<SysApiAccountMapper, SysApiAccount> {
 
-    private static final int DEFAULT_ACCOUNT_TYPE = 1;
+    private static final int DEFAULT_ACCOUNT_TYPE = ApiAccountTypeConstants.DEFAULT;
     private static final int DEFAULT_RATE_LIMIT = 1000;
     private static final int DEFAULT_STATUS = 1;
     private static final long DEFAULT_PAGE_NUM = 1L;
@@ -112,6 +114,7 @@ public class SysApiAccountService extends ServiceImpl<SysApiAccountMapper, SysAp
         String plainSecret = RandomUtil.randomString(32);
         SysApiAccount account = new SysApiAccount();
         account.setAccountName(accountName);
+        account.setDescription(normalizeDescription(command.getDescription()));
         account.setAccessKey(generateAccessKey());
         account.setSecretKey(secretCryptoService.encrypt(plainSecret));
         account.setAccountType(command.getAccountType() == null ? DEFAULT_ACCOUNT_TYPE : command.getAccountType());
@@ -123,6 +126,7 @@ public class SysApiAccountService extends ServiceImpl<SysApiAccountMapper, SysAp
         account.setAccessEnvironment(accessEnvironment);
         applyWhitelistFields(account, accessEnvironment, command.getIpWhitelist(), command.getEnvironmentIpWhitelist());
         account.setSignVersion(normalizeSignVersion(command.getSignVersion()));
+        account.setAllowedScopes(ApiScopeSupport.serializeScopes(command.getAllowedScopes()));
         account.setCallbackUrl(normalizeCallbackUrl(command.getCallbackUrl()));
         account.setRateLimit(command.getRateLimit() == null ? DEFAULT_RATE_LIMIT : command.getRateLimit());
         account.setExpireTime(command.getExpireTime());
@@ -136,6 +140,7 @@ public class SysApiAccountService extends ServiceImpl<SysApiAccountMapper, SysAp
     public ApiCredentialVO insertAccount(SysApiAccountDTO dto) {
         CreateSysApiAccountCommand command = new CreateSysApiAccountCommand();
         command.setAccountName(dto == null ? null : dto.getAccountName());
+        command.setDescription(dto == null ? null : dto.getDescription());
         command.setAccountType(dto == null ? null : dto.getAccountType());
         command.setClientTypes(dto == null ? null : dto.getClientTypes());
         command.setOwnerName(dto == null ? null : dto.getOwnerName());
@@ -146,6 +151,7 @@ public class SysApiAccountService extends ServiceImpl<SysApiAccountMapper, SysAp
         command.setIpWhitelist(dto == null ? null : dto.getIpWhitelist());
         command.setEnvironmentIpWhitelist(dto == null ? null : dto.getEnvironmentIpWhitelist());
         command.setSignVersion(dto == null ? null : dto.getSignVersion());
+        command.setAllowedScopes(dto == null ? null : dto.getAllowedScopes());
         command.setCallbackUrl(dto == null ? null : dto.getCallbackUrl());
         command.setRateLimit(dto == null ? null : dto.getRateLimit());
         command.setExpireTime(dto == null ? null : dto.getExpireTime());
@@ -162,6 +168,7 @@ public class SysApiAccountService extends ServiceImpl<SysApiAccountMapper, SysAp
         String accessEnvironment = normalizeAccessEnvironment(command.getAccessEnvironment());
 
         account.setAccountName(accountName);
+        account.setDescription(normalizeDescription(command.getDescription()));
         account.setAccountType(command.getAccountType() == null ? DEFAULT_ACCOUNT_TYPE : command.getAccountType());
         account.setClientTypes(ApiClientTypeSupport.serializeClientTypes(command.getClientTypes()));
         account.setOwnerName(normalizeOwnerName(command.getOwnerName()));
@@ -171,6 +178,7 @@ public class SysApiAccountService extends ServiceImpl<SysApiAccountMapper, SysAp
         account.setAccessEnvironment(accessEnvironment);
         applyWhitelistFields(account, accessEnvironment, command.getIpWhitelist(), command.getEnvironmentIpWhitelist());
         account.setSignVersion(normalizeSignVersion(command.getSignVersion()));
+        account.setAllowedScopes(ApiScopeSupport.serializeScopes(command.getAllowedScopes()));
         account.setCallbackUrl(normalizeCallbackUrl(command.getCallbackUrl()));
         account.setRateLimit(command.getRateLimit() == null ? DEFAULT_RATE_LIMIT : command.getRateLimit());
         account.setExpireTime(command.getExpireTime());
@@ -186,6 +194,7 @@ public class SysApiAccountService extends ServiceImpl<SysApiAccountMapper, SysAp
         }
         UpdateSysApiAccountCommand command = new UpdateSysApiAccountCommand();
         command.setAccountName(dto.getAccountName());
+        command.setDescription(dto.getDescription());
         command.setAccountType(dto.getAccountType());
         command.setClientTypes(dto.getClientTypes());
         command.setOwnerName(dto.getOwnerName());
@@ -196,6 +205,7 @@ public class SysApiAccountService extends ServiceImpl<SysApiAccountMapper, SysAp
         command.setIpWhitelist(dto.getIpWhitelist());
         command.setEnvironmentIpWhitelist(dto.getEnvironmentIpWhitelist());
         command.setSignVersion(dto.getSignVersion());
+        command.setAllowedScopes(dto.getAllowedScopes());
         command.setCallbackUrl(dto.getCallbackUrl());
         command.setRateLimit(dto.getRateLimit());
         command.setExpireTime(dto.getExpireTime());
@@ -253,10 +263,13 @@ public class SysApiAccountService extends ServiceImpl<SysApiAccountMapper, SysAp
      */
     private LambdaQueryWrapper<SysApiAccount> buildAccountQueryWrapper(SysApiAccountPageQuery query) {
         boolean exactTextMatch = isExactTextMatchMode(query == null ? null : query.getTextMatchMode());
-        String normalizedClientType = ApiClientTypeSupport.normalizeSingleClientType(query == null ? null : query.getClientType());
-        String normalizedEnvironment = ApiAccountEnvironmentSupport.normalizeEnvironment(query == null ? null : query.getAccessEnvironment());
+        String normalizedClientType = ApiClientTypeSupport
+                .normalizeSingleClientType(query == null ? null : query.getClientType());
+        String normalizedEnvironment = ApiAccountEnvironmentSupport
+                .normalizeEnvironment(query == null ? null : query.getAccessEnvironment());
 
         String normalizedAccountName = normalizeQueryText(query == null ? null : query.getAccountName());
+        String normalizedDescription = normalizeQueryText(query == null ? null : query.getDescription());
         String normalizedAccessKey = normalizeQueryText(query == null ? null : query.getAccessKey());
         String normalizedOwnerName = normalizeQueryText(query == null ? null : query.getOwnerName());
         String normalizedOwnerContact = normalizeQueryText(query == null ? null : query.getOwnerContact());
@@ -264,6 +277,8 @@ public class SysApiAccountService extends ServiceImpl<SysApiAccountMapper, SysAp
         String normalizedSystemCode = normalizeQueryText(query == null ? null : query.getSystemCode());
         String normalizedSystemKeyword = normalizeQueryText(query == null ? null : query.getSystemKeyword());
         String normalizedSignVersion = normalizeQueryText(query == null ? null : query.getSignVersion());
+        String normalizedAllowedScope = ApiScopeSupport.normalizeSingleScope(
+                query == null ? null : query.getAllowedScope());
         String normalizedCallbackUrl = normalizeQueryText(query == null ? null : query.getCallbackUrl());
         String normalizedRemark = normalizeQueryText(query == null ? null : query.getRemark());
         String normalizedIpKeyword = normalizeQueryText(query == null ? null : query.getIpKeyword());
@@ -272,23 +287,33 @@ public class SysApiAccountService extends ServiceImpl<SysApiAccountMapper, SysAp
         Integer rateLimitMax = query == null ? null : query.getRateLimitMax();
         validateRange(rateLimitMin, rateLimitMax, "限流范围");
 
-        LocalDateTime expireTimeStart = parseDateTimeQuery(query == null ? null : query.getExpireTimeStart(), "过期开始时间", false);
-        LocalDateTime expireTimeEnd = parseDateTimeQuery(query == null ? null : query.getExpireTimeEnd(), "过期结束时间", true);
+        LocalDateTime expireTimeStart = parseDateTimeQuery(query == null ? null : query.getExpireTimeStart(), "过期开始时间",
+                false);
+        LocalDateTime expireTimeEnd = parseDateTimeQuery(query == null ? null : query.getExpireTimeEnd(), "过期结束时间",
+                true);
         validateRange(expireTimeStart, expireTimeEnd, "过期时间范围");
 
-        LocalDateTime createTimeStart = parseDateTimeQuery(query == null ? null : query.getCreateTimeStart(), "创建开始时间", false);
-        LocalDateTime createTimeEnd = parseDateTimeQuery(query == null ? null : query.getCreateTimeEnd(), "创建结束时间", true);
+        LocalDateTime createTimeStart = parseDateTimeQuery(query == null ? null : query.getCreateTimeStart(), "创建开始时间",
+                false);
+        LocalDateTime createTimeEnd = parseDateTimeQuery(query == null ? null : query.getCreateTimeEnd(), "创建结束时间",
+                true);
         validateRange(createTimeStart, createTimeEnd, "创建时间范围");
 
-        LocalDateTime updateTimeStart = parseDateTimeQuery(query == null ? null : query.getUpdateTimeStart(), "更新开始时间", false);
-        LocalDateTime updateTimeEnd = parseDateTimeQuery(query == null ? null : query.getUpdateTimeEnd(), "更新结束时间", true);
+        LocalDateTime updateTimeStart = parseDateTimeQuery(query == null ? null : query.getUpdateTimeStart(), "更新开始时间",
+                false);
+        LocalDateTime updateTimeEnd = parseDateTimeQuery(query == null ? null : query.getUpdateTimeEnd(), "更新结束时间",
+                true);
         validateRange(updateTimeStart, updateTimeEnd, "更新时间范围");
 
         LambdaQueryWrapper<SysApiAccount> wrapper = new LambdaQueryWrapper<SysApiAccount>()
-                .eq(query != null && query.getAccountId() != null, SysApiAccount::getId, query == null ? null : query.getAccountId())
-                .eq(query != null && query.getStatus() != null, SysApiAccount::getStatus, query == null ? null : query.getStatus())
-                .eq(query != null && query.getAccountType() != null, SysApiAccount::getAccountType, query == null ? null : query.getAccountType())
-                .eq(StrUtil.isNotBlank(normalizedEnvironment), SysApiAccount::getAccessEnvironment, normalizedEnvironment)
+                .eq(query != null && query.getAccountId() != null, SysApiAccount::getId,
+                        query == null ? null : query.getAccountId())
+                .eq(query != null && query.getStatus() != null, SysApiAccount::getStatus,
+                        query == null ? null : query.getStatus())
+                .eq(query != null && query.getAccountType() != null, SysApiAccount::getAccountType,
+                        query == null ? null : query.getAccountType())
+                .eq(StrUtil.isNotBlank(normalizedEnvironment), SysApiAccount::getAccessEnvironment,
+                        normalizedEnvironment)
                 .apply(StrUtil.isNotBlank(normalizedClientType), "FIND_IN_SET({0}, client_types)", normalizedClientType)
                 .ge(rateLimitMin != null, SysApiAccount::getRateLimit, rateLimitMin)
                 .le(rateLimitMax != null, SysApiAccount::getRateLimit, rateLimitMax)
@@ -300,6 +325,7 @@ public class SysApiAccountService extends ServiceImpl<SysApiAccountMapper, SysAp
                 .le(updateTimeEnd != null, SysApiAccount::getUpdateTime, updateTimeEnd);
 
         applyStringFilter(wrapper, SysApiAccount::getAccountName, normalizedAccountName, exactTextMatch);
+        applyStringFilter(wrapper, SysApiAccount::getDescription, normalizedDescription, exactTextMatch);
         applyStringFilter(wrapper, SysApiAccount::getAccessKey, normalizedAccessKey, exactTextMatch);
         applyStringFilter(wrapper, SysApiAccount::getOwnerName, normalizedOwnerName, exactTextMatch);
         applyStringFilter(wrapper, SysApiAccount::getOwnerContact, normalizedOwnerContact, exactTextMatch);
@@ -308,6 +334,10 @@ public class SysApiAccountService extends ServiceImpl<SysApiAccountMapper, SysAp
         applyStringFilter(wrapper, SysApiAccount::getSignVersion, normalizedSignVersion, exactTextMatch);
         applyStringFilter(wrapper, SysApiAccount::getCallbackUrl, normalizedCallbackUrl, exactTextMatch);
         applyStringFilter(wrapper, SysApiAccount::getRemark, normalizedRemark, exactTextMatch);
+
+        if (StrUtil.isNotBlank(normalizedAllowedScope)) {
+            wrapper.apply("FIND_IN_SET({0}, allowed_scopes)", normalizedAllowedScope);
+        }
 
         if (StrUtil.isNotBlank(normalizedSystemKeyword)) {
             wrapper.and(nested -> {
@@ -354,7 +384,8 @@ public class SysApiAccountService extends ServiceImpl<SysApiAccountMapper, SysAp
         }
         List<Long> accountIds = accounts.stream().map(SysApiAccount::getId).filter(Objects::nonNull).toList();
         Map<Long, Long> authorizedCountMap = toCountMap(apiPermissionMapper.selectAuthorizedCountList(accountIds));
-        Map<Long, Long> enabledAuthorizedCountMap = toCountMap(apiPermissionMapper.selectEnabledAuthorizedCountList(accountIds));
+        Map<Long, Long> enabledAuthorizedCountMap = toCountMap(
+                apiPermissionMapper.selectEnabledAuthorizedCountList(accountIds));
         return accounts.stream()
                 .map(account -> toVo(account, authorizedCountMap, enabledAuthorizedCountMap))
                 .toList();
@@ -383,6 +414,7 @@ public class SysApiAccountService extends ServiceImpl<SysApiAccountMapper, SysAp
         SysApiAccountVO vo = new SysApiAccountVO();
         vo.setId(account.getId());
         vo.setAccountName(account.getAccountName());
+        vo.setDescription(account.getDescription());
         vo.setAccessKey(account.getAccessKey());
         vo.setAccountType(account.getAccountType());
         vo.setClientTypes(ApiClientTypeSupport.deserializeClientTypes(account.getClientTypes()));
@@ -396,6 +428,7 @@ public class SysApiAccountService extends ServiceImpl<SysApiAccountMapper, SysAp
         vo.setIpWhitelist(resolveEffectiveWhitelist(account.getAccessEnvironment(), account.getIpWhitelist(),
                 environmentWhitelistMap));
         vo.setSignVersion(account.getSignVersion());
+        vo.setAllowedScopes(ApiScopeSupport.deserializeScopes(account.getAllowedScopes()));
         vo.setCallbackUrl(account.getCallbackUrl());
         vo.setRateLimit(account.getRateLimit());
         vo.setExpireTime(account.getExpireTime());
@@ -411,11 +444,13 @@ public class SysApiAccountService extends ServiceImpl<SysApiAccountMapper, SysAp
     private SysApiAccountDetailVO toDetailVo(SysApiAccount account) {
         List<Long> accountIds = List.of(account.getId());
         Map<Long, Long> authorizedCountMap = toCountMap(apiPermissionMapper.selectAuthorizedCountList(accountIds));
-        Map<Long, Long> enabledAuthorizedCountMap = toCountMap(apiPermissionMapper.selectEnabledAuthorizedCountList(accountIds));
+        Map<Long, Long> enabledAuthorizedCountMap = toCountMap(
+                apiPermissionMapper.selectEnabledAuthorizedCountList(accountIds));
         SysApiAccountVO baseVo = toVo(account, authorizedCountMap, enabledAuthorizedCountMap);
         SysApiAccountDetailVO detailVO = new SysApiAccountDetailVO();
         detailVO.setId(baseVo.getId());
         detailVO.setAccountName(baseVo.getAccountName());
+        detailVO.setDescription(baseVo.getDescription());
         detailVO.setAccessKey(baseVo.getAccessKey());
         detailVO.setAccountType(baseVo.getAccountType());
         detailVO.setClientTypes(baseVo.getClientTypes());
@@ -427,6 +462,7 @@ public class SysApiAccountService extends ServiceImpl<SysApiAccountMapper, SysAp
         detailVO.setIpWhitelist(baseVo.getIpWhitelist());
         detailVO.setEnvironmentIpWhitelist(baseVo.getEnvironmentIpWhitelist());
         detailVO.setSignVersion(baseVo.getSignVersion());
+        detailVO.setAllowedScopes(baseVo.getAllowedScopes());
         detailVO.setCallbackUrl(baseVo.getCallbackUrl());
         detailVO.setRateLimit(baseVo.getRateLimit());
         detailVO.setExpireTime(baseVo.getExpireTime());
@@ -443,6 +479,7 @@ public class SysApiAccountService extends ServiceImpl<SysApiAccountMapper, SysAp
         return ApiCredentialVO.builder()
                 .id(account.getId())
                 .accountName(account.getAccountName())
+                .description(account.getDescription())
                 .accessKey(account.getAccessKey())
                 .clientTypes(ApiClientTypeSupport.deserializeClientTypes(account.getClientTypes()))
                 .ownerName(account.getOwnerName())
@@ -454,6 +491,7 @@ public class SysApiAccountService extends ServiceImpl<SysApiAccountMapper, SysAp
                         buildEnvironmentWhitelistMap(account)))
                 .environmentIpWhitelist(buildEnvironmentWhitelistMap(account))
                 .signVersion(account.getSignVersion())
+                .allowedScopes(ApiScopeSupport.deserializeScopes(account.getAllowedScopes()))
                 .callbackUrl(account.getCallbackUrl())
                 .secretKey(plainSecret)
                 .build();
@@ -604,6 +642,10 @@ public class SysApiAccountService extends ServiceImpl<SysApiAccountMapper, SysAp
         } catch (URISyntaxException exception) {
             throw new BusinessException("回调地址格式不正确");
         }
+    }
+
+    private String normalizeDescription(String description) {
+        return StrUtil.trimToNull(description);
     }
 
     private String normalizeRemark(String remark) {

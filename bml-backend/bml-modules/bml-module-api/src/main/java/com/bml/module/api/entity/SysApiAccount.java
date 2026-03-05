@@ -20,6 +20,9 @@ public class SysApiAccount extends BaseEntity {
     @Schema(description = "账号名称")
     private String accountName;
 
+    @Schema(description = "账号用途描述，用于说明该账号的业务场景和使用目的")
+    private String description;
+
     @Schema(description = "AccessKey")
     private String accessKey;
 
@@ -61,6 +64,9 @@ public class SysApiAccount extends BaseEntity {
 
     @Schema(description = "签名算法版本，例如 v1")
     private String signVersion;
+
+    @Schema(description = "授权范围标签，逗号分隔存储（例如 read,write,admin）")
+    private String allowedScopes;
 
     @Schema(description = "业务回调地址")
     private String callbackUrl;

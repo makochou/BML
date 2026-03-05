@@ -21,6 +21,9 @@ public class ApiCredentialVO {
     @Schema(description = "账号名称")
     private String accountName;
 
+    @Schema(description = "账号用途描述")
+    private String description;
+
     @Schema(description = "AccessKey")
     private String accessKey;
 
@@ -50,6 +53,9 @@ public class ApiCredentialVO {
 
     @Schema(description = "签名算法版本，例如 v1")
     private String signVersion;
+
+    @Schema(description = "授权范围标签集合")
+    private List<String> allowedScopes;
 
     @Schema(description = "业务回调地址")
     private String callbackUrl;

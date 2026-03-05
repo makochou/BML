@@ -24,6 +24,10 @@ public class UpdateSysApiAccountCommand {
     @Schema(description = "账号名称", requiredMode = Schema.RequiredMode.REQUIRED)
     private String accountName;
 
+    @Size(max = 255, message = "账号用途描述长度不能超过255个字符")
+    @Schema(description = "账号用途描述，用于说明该账号的业务场景和使用目的")
+    private String description;
+
     @Min(value = 1, message = "账号类型不合法")
     @Max(value = 2, message = "账号类型不合法")
     @Schema(description = "账号类型：1-内部账号，2-外部账号")
@@ -66,6 +70,10 @@ public class UpdateSysApiAccountCommand {
     @NotBlank(message = "签名算法版本不能为空")
     @Schema(description = "签名算法版本，例如 v1", requiredMode = Schema.RequiredMode.REQUIRED)
     private String signVersion;
+
+    @Size(max = 16, message = "授权范围数量不能超过16个")
+    @Schema(description = "授权范围标签集合，例如 read、write、admin")
+    private List<String> allowedScopes;
 
     @Size(max = 255, message = "回调地址长度不能超过255个字符")
     @Schema(description = "业务回调地址")

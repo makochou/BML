@@ -15,6 +15,7 @@ export function useApiAccountFormSchema(options: {
   clientTypeOptions: SelectOption[];
   environmentOptions: SelectOption[];
   signVersionOptions: SelectOption[];
+  scopeOptions: SelectOption[];
   statusOptions: SelectOption[];
   compactMode?: boolean;
 }) {
@@ -78,6 +79,18 @@ export function useApiAccountFormSchema(options: {
           kind: 'input',
           required: true,
           componentProps: { maxlength: 100, placeholder: '填写手机号、邮箱或企业微信' }
+        },
+        {
+          key: 'description',
+          field: 'description',
+          label: '账号用途描述',
+          kind: 'textarea',
+          colSpan: compactMode ? 4 : 2,
+          componentProps: {
+            maxlength: 255,
+            autoSize: compactMode ? { minRows: 2, maxRows: 3 } : { minRows: 2, maxRows: 4 },
+            placeholder: '说明该账号的业务场景和使用目的，例如：生产环境数据同步专用'
+          }
         }
       ]
     },
@@ -125,6 +138,19 @@ export function useApiAccountFormSchema(options: {
           kind: 'input-number',
           required: true,
           componentProps: { min: 1, step: 100, mode: 'button' }
+        },
+        {
+          key: 'allowedScopes',
+          field: 'allowedScopes',
+          label: '授权范围',
+          kind: 'select',
+          componentProps: {
+            options: options.scopeOptions,
+            multiple: true,
+            allowClear: true,
+            maxTagCount: 'responsive',
+            placeholder: '选择该账号允许的接口访问范围'
+          }
         },
         {
           key: 'status',

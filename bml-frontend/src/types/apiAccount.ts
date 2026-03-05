@@ -14,6 +14,7 @@ export interface EnvironmentIpWhitelist {
 }
 
 export interface ApiAccountGovernanceFields {
+    description?: string | null;
     ownerName: string;
     ownerContact: string;
     systemName: string;
@@ -22,6 +23,7 @@ export interface ApiAccountGovernanceFields {
     ipWhitelist: string[];
     environmentIpWhitelist: EnvironmentIpWhitelist;
     signVersion: string;
+    allowedScopes?: string[] | null;
     callbackUrl?: string | null;
 }
 
@@ -56,6 +58,7 @@ export interface ApiAccountPageQuery {
     pageSize: number;
     accountId?: number;
     accountName?: string;
+    description?: string;
     accessKey?: string;
     ownerName?: string;
     ownerContact?: string;
@@ -63,6 +66,7 @@ export interface ApiAccountPageQuery {
     systemCode?: string;
     systemKeyword?: string;
     signVersion?: string;
+    allowedScope?: string;
     callbackUrl?: string;
     remark?: string;
     ipKeyword?: string;
@@ -93,6 +97,7 @@ export interface SaveApiAccountPayload extends ApiAccountGovernanceFields {
 
 export interface ApiAccountFormModel {
     accountName: string;
+    description: string;
     ownerName: string;
     ownerContact: string;
     systemName: string;
@@ -101,6 +106,7 @@ export interface ApiAccountFormModel {
     clientTypes: string[];
     accessEnvironment: AccessEnvironment;
     signVersion: string;
+    allowedScopes: string[];
     environmentIpWhitelistText: EnvironmentIpWhitelistTextMap;
     callbackUrl: string;
     rateLimit: number;

@@ -16,6 +16,9 @@ public class SysApiAccountPageQuery extends PageQuery {
     @Schema(description = "账号名称，支持模糊匹配")
     private String accountName;
 
+    @Schema(description = "账号用途描述，支持模糊匹配")
+    private String description;
+
     @Schema(description = "账号ID")
     private Long accountId;
 
@@ -48,6 +51,9 @@ public class SysApiAccountPageQuery extends PageQuery {
 
     @Schema(description = "签名版本")
     private String signVersion;
+
+    @Schema(description = "授权范围标签，精确匹配单个 scope")
+    private String allowedScope;
 
     @Schema(description = "回调地址")
     private String callbackUrl;

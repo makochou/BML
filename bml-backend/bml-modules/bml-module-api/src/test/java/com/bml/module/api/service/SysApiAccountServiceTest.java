@@ -65,7 +65,9 @@ class SysApiAccountServiceTest {
         assertEquals(List.of("172.16.0.0/24"), credential.getEnvironmentIpWhitelist().get("staging"));
         assertEquals(List.of("203.0.113.10", "10.0.0.0/24"), credential.getEnvironmentIpWhitelist().get("production"));
         assertEquals("v1", credential.getSignVersion());
+        assertEquals(List.of("read", "write"), credential.getAllowedScopes());
         assertEquals("https://enterprise.example.com/open-api/callback", credential.getCallbackUrl());
+        assertEquals("生产数据同步专用", credential.getDescription());
         assertFalse(credential.getAccessKey().isBlank());
         assertFalse(credential.getSecretKey().isBlank());
         verify(cryptoService).encrypt(credential.getSecretKey());
@@ -80,6 +82,8 @@ class SysApiAccountServiceTest {
         assertEquals("192.168.10.10", persisted.getTestIpWhitelist());
         assertEquals("172.16.0.0/24", persisted.getStagingIpWhitelist());
         assertEquals("203.0.113.10,10.0.0.0/24", persisted.getProductionIpWhitelist());
+        assertEquals("read,write", persisted.getAllowedScopes());
+        assertEquals("生产数据同步专用", persisted.getDescription());
     }
 
     @Test
@@ -126,6 +130,8 @@ class SysApiAccountServiceTest {
         account.setStagingIpWhitelist("172.16.0.0/24");
         account.setProductionIpWhitelist("203.0.113.10");
         account.setSignVersion("v1");
+        account.setAllowedScopes("read,admin");
+        account.setDescription("预发联调专用账号");
         account.setCallbackUrl("https://enterprise.example.com/open-api/callback");
 
         when(accountMapper.selectById(2001L)).thenReturn(account);
@@ -179,10 +185,12 @@ class SysApiAccountServiceTest {
                 "staging", List.of("172.16.0.0/24"),
                 "production", List.of("203.0.113.10", "10.0.0.0/24")));
         command.setSignVersion("v1");
+        command.setAllowedScopes(List.of("read", "write"));
         command.setCallbackUrl("https://enterprise.example.com/open-api/callback");
         command.setRateLimit(3000);
         command.setStatus(1);
         command.setRemark("external partner");
+        command.setDescription("生产数据同步专用");
         return command;
     }
 }
