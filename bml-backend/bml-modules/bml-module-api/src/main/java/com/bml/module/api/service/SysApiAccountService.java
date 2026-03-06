@@ -101,6 +101,39 @@ public class SysApiAccountService extends ServiceImpl<SysApiAccountMapper, SysAp
         return toDetailVo(getRequiredAccount(id));
     }
 
+    /**
+     * 获取 API 账号副本视图。
+     * <p>
+     * 业务规则：
+     * 1. 追加 "_Copy" 后缀到账号名称；
+     * 2. 清空主键 ID、AK、密钥引用、创建时间、更新时间；
+     * 3. 清空授权统计数（复制不包含权限关系）。
+     * </p>
+     *
+     * @param id 原账号 ID
+     * @return 准备进入新建模式的账号详情副本
+     */
+    public SysApiAccountDetailVO getAccountCopy(Long id) {
+        SysApiAccount account = getRequiredAccount(id);
+        SysApiAccountDetailVO copy = toDetailVo(account);
+
+        // 重置为新建模式特征
+        copy.setId(null);
+        if (StrUtil.isNotBlank(copy.getAccountName())) {
+            copy.setAccountName(copy.getAccountName() + "_Copy");
+        }
+        // AK 在新建保存时重新生成，这里先清空避免误导
+        copy.setAccessKey(null);
+        // 复制不保留原有权限统计
+        copy.setAuthorizedApiCount(0L);
+        copy.setEnabledAuthorizedApiCount(0L);
+        // 清理物理审计字段
+        copy.setCreateTime(null);
+        copy.setUpdateTime(null);
+
+        return copy;
+    }
+
     public SysApiAccountVO getAccountInfo(Long id) {
         return toVo(getRequiredAccount(id));
     }

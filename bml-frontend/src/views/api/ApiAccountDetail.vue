@@ -18,6 +18,7 @@
         <template #heroActions>
           <a-button @click="goBackToManage">返回列表</a-button>
           <a-button @click="goToManageAction('edit')">编辑账号</a-button>
+          <a-button @click="goToManageAction('copy')">复制新建</a-button>
           <a-button @click="goToManageAction('authorization')">接口授权</a-button>
           <a-button @click="goToManageAction('callback')">回调日志</a-button>
           <a-button type="primary" @click="goToManageAction('reset-secret')">重置并查看新凭证</a-button>
@@ -97,7 +98,7 @@ import {
   formatDisplayDateTime
 } from '../../utils/api-account-governance';
 
-type ManageRouteAction = 'edit' | 'authorization' | 'callback' | 'reset-secret';
+type ManageRouteAction = 'edit' | 'copy' | 'authorization' | 'callback' | 'reset-secret';
 
 const route = useRoute();
 const router = useRouter();

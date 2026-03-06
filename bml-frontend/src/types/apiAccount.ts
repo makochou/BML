@@ -43,7 +43,7 @@ export interface ApiAccountItem extends ApiAccountGovernanceFields {
     updateTime?: string;
 }
 
-export interface ApiAccountDetail extends ApiAccountItem {}
+export interface ApiAccountDetail extends ApiAccountItem { }
 
 export interface ApiCredentialPayload extends ApiAccountGovernanceFields {
     id: number;
@@ -51,6 +51,8 @@ export interface ApiCredentialPayload extends ApiAccountGovernanceFields {
     accessKey: string;
     clientTypes: string[];
     secretKey: string;
+    rateLimit?: number;
+    authorizedApiCount?: number;
 }
 
 export interface ApiAccountPageQuery {

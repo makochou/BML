@@ -76,6 +76,14 @@
                     <small v-if="item.locked">固定</small>
                   </div>
                   <div class="table-column-setting-panel__actions">
+                    <a-button size="mini" class="table-column-setting-panel__order-btn" :disabled="item.moveUpDisabled"
+                      @click="moveAccountTableColumn(item.kind, -1)">
+                      <template #icon><icon-up /></template>
+                    </a-button>
+                    <a-button size="mini" class="table-column-setting-panel__order-btn"
+                      :disabled="item.moveDownDisabled" @click="moveAccountTableColumn(item.kind, 1)">
+                      <template #icon><icon-down /></template>
+                    </a-button>
                     <a-tooltip :content="item.fixedFront ? '取消前置固定' : '固定在前列（左侧）'">
                       <a-button size="mini" class="table-column-setting-panel__fixed-btn"
                         :class="{ 'is-active': item.fixedFront }" :disabled="item.fixedFrontDisabled"
@@ -85,14 +93,6 @@
                     </a-tooltip>
                     <a-switch size="small" :model-value="item.visible" :disabled="item.locked"
                       @change="handleAccountColumnVisibilityChange(item.kind, Boolean($event))" />
-                    <a-button size="mini" class="table-column-setting-panel__order-btn" :disabled="item.moveUpDisabled"
-                      @click="moveAccountTableColumn(item.kind, -1)">
-                      <template #icon><icon-up /></template>
-                    </a-button>
-                    <a-button size="mini" class="table-column-setting-panel__order-btn"
-                      :disabled="item.moveDownDisabled" @click="moveAccountTableColumn(item.kind, 1)">
-                      <template #icon><icon-down /></template>
-                    </a-button>
                   </div>
                 </div>
               </div>
@@ -108,123 +108,200 @@
         <div ref="accountTableListRegionRef" class="table-shell__list-region">
           <a-table :key="`account-table-${accountTableRenderVersion}`" class="account-table" size="small" row-key="id"
             :data="accountList" :loading="tableLoading" :pagination="false"
-            :scroll="{ x: accountTableScrollX, y: '100%' }" :scrollbar="false" sticky-header column-resizable
+            v-model:selected-keys="selectedKeys" :row-selection="rowSelection"
+            :scroll="{ x: accountTableScrollX, y: '100%' }" :scrollbar="true" sticky-header column-resizable
+            :columns="accountTableColumns"
+            :row-class="(record: ApiAccountItem) => record.id === activeRowId ? 'is-row-active' : ''"
+            @row-click="(record: ApiAccountItem) => activeRowId = record.id"
             @column-resize="handleAccountColumnResize" @row-dblclick="handleAccountRowDblClick">
-            <template #columns>
-              <a-table-column v-for="column in accountTableColumns" :key="column.key" :title="column.title"
-                :data-index="column.dataIndex" :width="column.width"
-                :fixed="column.kind === 'actions' ? 'right' : column.fixed" :ellipsis="column.ellipsis"
-                :tooltip="column.tooltip">
-                <template #cell="{ record }">
-                  <div v-if="column.kind === 'accountName'" class="table-field-cell">
-                    <EllipsisTooltipText :text="getPlainText(record, 'accountName', '-')" variant="primary" />
-                  </div>
-                  <div v-else-if="column.kind === 'accountType'" class="table-field-cell">
-                    <a-tag :color="getAccountTypeTagColor(record.accountType)">{{
-                      getAccountTypeLabel(record.accountType) }}</a-tag>
-                  </div>
-                  <div v-else-if="column.kind === 'accountId'" class="table-field-cell">
-                    <EllipsisTooltipText :text="record.id ? `#${record.id}` : '-'" variant="mono" />
-                  </div>
-                  <div v-else-if="column.kind === 'systemName'" class="table-field-cell">
-                    <EllipsisTooltipText :text="record.systemName || '-'" />
-                  </div>
-                  <div v-else-if="column.kind === 'ownerName'" class="table-field-cell">
-                    <EllipsisTooltipText :text="record.ownerName || '-'" />
-                  </div>
-                  <div v-else-if="column.kind === 'accessEnvironment'" class="table-field-cell">
-                    <a-tag :color="getEnvironmentTagColor(record.accessEnvironment)">{{
-                      getAccessEnvironmentLabel(record.accessEnvironment) }}</a-tag>
-                  </div>
-                  <div v-else-if="column.kind === 'clientTypes'" class="table-field-cell">
-                    <EllipsisTooltipText :text="getCompactClientSummary(record.clientTypes)"
-                      :tooltip-text="getFullClientTypeSummary(record.clientTypes)" />
-                  </div>
-                  <div v-else-if="column.kind === 'status'" class="table-field-cell">
-                    <a-tag :color="record.status === 1 ? 'green' : 'red'">{{ getStatusLabel(record.status) }}</a-tag>
-                  </div>
-                  <div v-else-if="column.kind === 'authorizedCount'" class="table-field-cell">
-                    <span class="table-field-cell__text">{{ record.authorizedApiCount || 0 }}</span>
-                  </div>
-                  <div v-else-if="column.kind === 'description'" class="table-field-cell">
-                    <EllipsisTooltipText :text="record.description || '-'" />
-                  </div>
-                  <div v-else-if="column.kind === 'allowedScopes'" class="table-field-cell">
-                    <template v-if="record.allowedScopes && record.allowedScopes.length">
-                      <a-tag v-for="scope in record.allowedScopes.slice(0, 3)" :key="scope" size="small"
-                        color="arcoblue" style="margin: 1px 2px;">{{ scope }}</a-tag>
-                      <a-tag v-if="record.allowedScopes.length > 3" size="small" color="gray"
-                        style="margin: 1px 2px;">+{{ record.allowedScopes.length - 3 }}</a-tag>
-                    </template>
-                    <span v-else class="table-field-cell__text">-</span>
-                  </div>
-                  <div v-else-if="column.kind === 'accessKey'" class="table-field-cell">
-                    <EllipsisTooltipText
-                      :text="record.accessKey ? `${record.accessKey.substring(0, 8)}****${record.accessKey.substring(record.accessKey.length - 4)}` : '-'"
-                      variant="mono" />
-                  </div>
-                  <div v-else-if="column.kind === 'systemCode'" class="table-field-cell">
-                    <EllipsisTooltipText :text="record.systemCode || '-'" variant="mono" />
-                  </div>
-                  <div v-else-if="column.kind === 'ownerContact'" class="table-field-cell">
-                    <EllipsisTooltipText :text="record.ownerContact || '-'" />
-                  </div>
-                  <div v-else-if="column.kind === 'signVersion'" class="table-field-cell">
-                    <a-tag size="small">{{ record.signVersion || '-' }}</a-tag>
-                  </div>
-                  <div v-else-if="column.kind === 'rateLimit'" class="table-field-cell">
-                    <span class="table-field-cell__text">{{ record.rateLimit }} QPS</span>
-                  </div>
-                  <div v-else-if="column.kind === 'expireTime'" class="table-field-cell table-field-cell--time">
-                    <span class="table-field-cell__mono">{{ record.expireTime || '永久有效' }}</span>
-                  </div>
-                  <div v-else-if="column.kind === 'callbackUrl'" class="table-field-cell">
-                    <EllipsisTooltipText :text="record.callbackUrl || '-'" />
-                  </div>
-                  <div v-else-if="column.kind === 'remark'" class="table-field-cell">
-                    <EllipsisTooltipText :text="record.remark || '-'" />
-                  </div>
-                  <div v-else-if="column.kind === 'createTime'" class="table-field-cell table-field-cell--time">
-                    <span class="table-field-cell__mono">{{ record.createTime || '-' }}</span>
-                  </div>
-                  <div v-else-if="column.kind === 'updateTime'" class="table-field-cell table-field-cell--time">
-                    <span class="table-field-cell__mono">{{ record.updateTime || '-' }}</span>
-                  </div>
-                  <div v-else-if="column.kind === 'actions'" class="table-row-actions" @click.stop @dblclick.stop>
-                    <!-- 编辑：主操作，对标"新建账号"的 primary 风格 -->
-                    <a-button type="primary" size="mini" class="table-action-btn table-action-btn--primary"
-                      @click="handleEditAccount(record)">
-                      <template #icon><icon-edit /></template>
-                      编辑
-                    </a-button>
-                    <!-- 授权：主操作，同样使用 primary 风格 -->
-                    <a-button type="primary" size="mini" class="table-action-btn table-action-btn--primary"
-                      @click="handleAuthorizeAccount(record)">
-                      <template #icon><icon-safe /></template>
-                      授权
-                    </a-button>
-                    <!-- 更多：对标"列设置"的默认描边风格 -->
-                    <a-dropdown trigger="click" position="br">
-                      <a-button size="mini" class="table-action-btn table-action-btn--more">
-                        <template #icon><icon-more /></template>
-                      </a-button>
-                      <template #content>
-                        <a-doption @click="handleCopyAccount(record)">复制</a-doption>
-                        <a-doption @click="handleCallbackLogAccount(record)">回调日志</a-doption>
-                        <a-doption @click="confirmResetSecret(record)">重置密钥</a-doption>
-                        <a-doption class="table-row-actions__danger"
-                          @click="confirmDeleteAccount(record)">删除账号</a-doption>
-                      </template>
-                    </a-dropdown>
-                  </div>
-                  <span v-else>{{ getPlainText(record, column.dataIndex, '-') }}</span>
+            <!-- 序号列 -->
+            <template #index="{ rowIndex }">
+              <div class="table-field-cell table-field-cell--index">
+                {{ (accountTablePagination.current - 1) * accountTablePagination.pageSize + rowIndex + 1 }}
+              </div>
+            </template>
+
+            <!-- 账号名称 -->
+            <template #accountName="{ record }">
+              <div class="table-field-cell">
+                <EllipsisTooltipText :text="getPlainText(record, 'accountName', '-')" variant="primary" />
+              </div>
+            </template>
+
+            <!-- 状态 -->
+            <template #status="{ record }">
+              <div class="table-field-cell">
+                <a-tag :color="record.status === 1 ? 'green' : 'red'">
+                  {{ getStatusLabel(record.status) }}
+                </a-tag>
+              </div>
+            </template>
+
+            <!-- 账号类型 -->
+            <template #accountType="{ record }">
+              <div class="table-field-cell">
+                <a-tag :color="getAccountTypeTagColor(record.accountType)">
+                  {{ getAccountTypeLabel(record.accountType) }}
+                </a-tag>
+              </div>
+            </template>
+
+            <!-- 业务系统 -->
+            <template #systemName="{ record }">
+              <div class="table-field-cell">
+                <EllipsisTooltipText :text="record.systemName || '-'" />
+              </div>
+            </template>
+
+            <!-- 负责人 -->
+            <template #ownerName="{ record }">
+              <div class="table-field-cell">
+                <EllipsisTooltipText :text="record.ownerName || '-'" />
+              </div>
+            </template>
+
+            <!-- 接入环境 -->
+            <template #accessEnvironment="{ record }">
+              <div class="table-field-cell">
+                <a-tag :color="getEnvironmentTagColor(record.accessEnvironment)">
+                  {{ getAccessEnvironmentLabel(record.accessEnvironment) }}
+                </a-tag>
+              </div>
+            </template>
+
+            <!-- 授权数 -->
+            <template #authorizedCount="{ record }">
+              <div class="table-field-cell">
+                <span class="table-field-cell__text">{{ record.authorizedApiCount || 0 }}</span>
+              </div>
+            </template>
+
+            <!-- 客户端类型 -->
+            <template #clientTypes="{ record }">
+              <div class="table-field-cell">
+                <EllipsisTooltipText :text="getCompactClientSummary(record.clientTypes)"
+                  :tooltip-text="getFullClientTypeSummary(record.clientTypes)" />
+              </div>
+            </template>
+
+            <!-- 权限范围 -->
+            <template #allowedScopes="{ record }">
+              <div class="table-field-cell">
+                <template v-if="record.allowedScopes && record.allowedScopes.length">
+                  <a-tag v-for="scope in record.allowedScopes.slice(0, 3)" :key="scope" size="small" color="arcoblue"
+                    style="margin: 1px 2px;">{{ scope }}</a-tag>
+                  <a-tag v-if="record.allowedScopes.length > 3" size="small" color="gray" style="margin: 1px 2px;">+{{
+                    record.allowedScopes.length - 3 }}</a-tag>
                 </template>
-              </a-table-column>
+                <span v-else class="table-field-cell__text">-</span>
+              </div>
+            </template>
+
+            <!-- 访问密钥 -->
+            <template #accessKey="{ record }">
+              <div class="table-field-cell">
+                <EllipsisTooltipText
+                  :text="record.accessKey ? `${record.accessKey.substring(0, 8)}****${record.accessKey.substring(record.accessKey.length - 4)}` : '-'"
+                  variant="mono" />
+              </div>
+            </template>
+
+            <!-- 最近更新 / 创建时间 / 过期时间 -->
+            <template #updateTime="{ record }">
+              <div class="table-field-cell table-field-cell--time">
+                <span class="table-field-cell__mono">{{ record.updateTime || '-' }}</span>
+              </div>
+            </template>
+            <template #createTime="{ record }">
+              <div class="table-field-cell table-field-cell--time">
+                <span class="table-field-cell__mono">{{ record.createTime || '-' }}</span>
+              </div>
+            </template>
+            <template #expireTime="{ record }">
+              <div class="table-field-cell table-field-cell--time">
+                <span class="table-field-cell__mono">{{ record.expireTime || '永久有效' }}</span>
+              </div>
+            </template>
+
+            <!-- 操作列 -->
+            <template #actions="{ record }">
+              <div class="table-row-actions" @click.stop @dblclick.stop>
+                <a-button type="primary" size="mini" class="table-action-btn table-action-btn--primary"
+                  @click="handleEditAccount(record)">
+                  <template #icon><icon-edit /></template>
+                  编辑
+                </a-button>
+                <a-button type="primary" size="mini" class="table-action-btn table-action-btn--primary"
+                  @click="handleAuthorizeAccount(record)">
+                  <template #icon><icon-safe /></template>
+                  授权
+                </a-button>
+                <a-dropdown trigger="click" position="br">
+                  <a-button size="mini" class="table-action-btn table-action-btn--more">
+                    <template #icon><icon-more /></template>
+                  </a-button>
+                  <template #content>
+                    <a-doption @click="handleCopyAccount(record)">复制</a-doption>
+                    <a-doption @click="handleCallbackLogAccount(record)">回调日志</a-doption>
+                    <a-doption @click="confirmResetSecret(record)">重置密钥</a-doption>
+                    <a-doption class="table-row-actions__danger" @click="confirmDeleteAccount(record)">删除账号</a-doption>
+                  </template>
+                </a-dropdown>
+              </div>
+            </template>
+
+            <!-- 账号ID -->
+            <template #accountId="{ record }">
+              <div class="table-field-cell">
+                <EllipsisTooltipText :text="record.id ? `#${record.id}` : '-'" variant="mono" />
+              </div>
+            </template>
+
+            <!-- 系统编码 -->
+            <template #systemCode="{ record }">
+              <div class="table-field-cell">
+                <EllipsisTooltipText :text="record.systemCode || '-'" variant="mono" />
+              </div>
+            </template>
+
+            <!-- 负责人联系方式 -->
+            <template #ownerContact="{ record }">
+              <div class="table-field-cell">
+                <EllipsisTooltipText :text="record.ownerContact || '-'" />
+              </div>
+            </template>
+
+            <!-- 签名版本 -->
+            <template #signVersion="{ record }">
+              <div class="table-field-cell">
+                <a-tag size="small">{{ record.signVersion || '-' }}</a-tag>
+              </div>
+            </template>
+
+            <!-- 限流配置 -->
+            <template #rateLimit="{ record }">
+              <div class="table-field-cell">
+                <span class="table-field-cell__text">{{ record.rateLimit }} QPS</span>
+              </div>
+            </template>
+
+            <!-- 回调地址 -->
+            <template #callbackUrl="{ record }">
+              <div class="table-field-cell">
+                <EllipsisTooltipText :text="record.callbackUrl || '-'" />
+              </div>
+            </template>
+
+            <!-- 治理备注 -->
+            <template #remark="{ record }">
+              <div class="table-field-cell">
+                <EllipsisTooltipText :text="record.remark || '-'" />
+              </div>
             </template>
           </a-table>
           <div v-show="showAccountBottomScrollbar" ref="accountTableBottomScrollbarRef" class="table-shell__x-scrollbar"
             @scroll="handleAccountBottomScrollbarScroll">
-            <div class="table-shell__x-scrollbar-track" :style="{ width: `${accountTableScrollX}px` }">
+            <div class="table-shell__x-scrollbar-track" :style="{ width: `${accountTableContentWidth}px` }">
             </div>
           </div>
         </div>
@@ -386,11 +463,11 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch, h } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { Message, Modal } from '@arco-design/web-vue';
 import { IconClose, IconDown, IconDragArrow, IconFullscreen, IconFullscreenExit, IconPlus, IconPushpin, IconSettings, IconSync, IconUp, IconMore, IconEdit, IconSafe, IconCopy } from '@arco-design/web-vue/es/icon';
-import { createApiAccount, deleteApiAccount, fetchApiAccountDetail, fetchApiAccountPage, fetchApiCallbackLogs, fetchAuthorizationSnapshot, resetApiAccountSecret, retryApiCallbackLog, saveAuthorization, syncOpenApiRegistry, triggerApiAccountTestCallback, updateApiAccount } from '../../api/apiAccount';
+import { createApiAccount, deleteApiAccount, fetchApiAccountCopy, fetchApiAccountDetail, fetchApiAccountPage, fetchApiCallbackLogs, fetchAuthorizationSnapshot, resetApiAccountSecret, retryApiCallbackLog, saveAuthorization, syncOpenApiRegistry, triggerApiAccountTestCallback, updateApiAccount } from '../../api/apiAccount';
 import ApiAuthorizationWorkbenchDrawer from '../../components/api-account/ApiAuthorizationWorkbenchDrawer.vue';
 import ApiCallbackLogWorkbenchDrawer from '../../components/api-account/ApiCallbackLogWorkbenchDrawer.vue';
 import ApiCredentialDeliveryModal from '../../components/api-account/ApiCredentialDeliveryModal.vue';
@@ -422,10 +499,11 @@ import type {
 import type { FactCard, WorkbenchStatCard } from '../../types/governance';
 
 type AccountModalMode = 'create' | 'edit';
-type ManageRouteAction = 'edit' | 'authorization' | 'callback' | 'reset-secret';
+type ManageRouteAction = 'edit' | 'copy' | 'authorization' | 'callback' | 'reset-secret';
 type AuthorizationTreeNode = { key: string; title: string; nodeType: 'module' | 'controller' | 'api'; description?: string; httpMethod?: string; apiUrl?: string; disableCheckbox?: boolean; children?: AuthorizationTreeNode[] };
 type AuthorizationModuleCard = { moduleName: string; apiCount: number; controllerCount: number; selectedCount: number };
 type AccountColumnKind =
+  | 'index'
   | 'accountName'
   | 'status'
   | 'accountType'
@@ -527,7 +605,7 @@ const queryAdvancedExpanded = ref(false);
 const accountList = ref<ApiAccountItem[]>([]);
 const tableLoading = ref(false);
 const syncingRegistry = ref(false);
-const pagination = reactive({ current: 1, pageSize: 10, total: 0 });
+const accountTablePagination = reactive({ current: 1, pageSize: 10, total: 0 });
 const accountModal = reactive({ visible: false, mode: 'create' as AccountModalMode, editingId: 0, submitting: false });
 /**
  * 新建/编辑弹窗视口状态。
@@ -570,11 +648,37 @@ const accountTableBottomScrollbarRef = ref<HTMLElement | null>(null);
 const accountTableBodyScrollableRef = ref<HTMLElement | null>(null);
 const showAccountBottomScrollbar = ref(false);
 /**
+ * 表格内容真实宽度：
+ * 通过 ResizeObserver 动态监听表格 Body 的 scrollWidth，
+ * 确保底部自定义滚动条的滑块范围与表格内容完全对齐，解决手动拖拽列宽后滚动到底部仍有遮挡的问题。
+ */
+const accountTableContentWidth = ref(0);
+let accountTableResizeObserver: ResizeObserver | null = null;
+/**
  * 表格渲染版本号：
  * Arco 的列拖拽改宽会保留内部宽度状态，恢复默认时需要强制重建实例，
  * 才能确保默认列宽立即回显到页面。
  */
 const accountTableRenderVersion = ref(0);
+const activeRowId = ref<number | null>(null);
+const selectedKeys = ref<(string | number)[]>([]);
+
+/**
+ * 表格行选择配置：
+ * 显式声明 checkbox 模式并启用全选，确保 Arco Table 正确渲染选择列。
+ */
+const rowSelection = reactive({
+  type: 'checkbox' as const,
+  showCheckedAll: true,
+  onlyCurrent: false,
+});
+
+/**
+ * 表格行选择配置：
+ * 显式声明 checkbox 模式并启用全选，确保 Arco Table 正确渲染选择列。
+ */
+
+
 let accountTableBodyScrollHandler: ((event: Event) => void) | null = null;
 let accountBottomScrollbarSyncing = false;
 let accountBottomScrollbarRafId: number | null = null;
@@ -586,9 +690,9 @@ const callbackLogDrawer = reactive({ visible: false, loading: false, testing: fa
 const callbackLogFilters = reactive<ApiCallbackLogFilterModel>({ callbackStatus: undefined });
 
 const tablePaginationConfig = computed(() => ({
-  current: pagination.current,
-  pageSize: pagination.pageSize,
-  total: pagination.total,
+  current: accountTablePagination.current,
+  pageSize: accountTablePagination.pageSize,
+  total: accountTablePagination.total,
   showTotal: true,
   showPageSize: true,
   pageSizeOptions: [10, 20, 50, 100]
@@ -657,7 +761,7 @@ const ACCOUNT_TABLE_LAYOUT_STORAGE_KEY_PREFIX = 'bml.api-account.manage.table-la
 function getAccountTableLayoutStorageKey() {
   return buildUserScopedStorageKey(ACCOUNT_TABLE_LAYOUT_STORAGE_KEY_PREFIX);
 }
-const ACCOUNT_TABLE_LOCKED_COLUMN_KINDS = new Set<AccountColumnKind>(['accountName', 'actions']);
+const ACCOUNT_TABLE_LOCKED_COLUMN_KINDS = new Set<AccountColumnKind>(['actions']);
 /**
  * 列宽拖拽最小值统一与 Arco Table 内置最小宽度对齐（40px）。
  * 之前按业务可读性设置了较大的列最小宽度，导致用户拖窄后刷新会被“回弹”到较大值，
@@ -665,53 +769,55 @@ const ACCOUNT_TABLE_LOCKED_COLUMN_KINDS = new Set<AccountColumnKind>(['accountNa
  */
 const ACCOUNT_TABLE_COLUMN_RESIZE_MIN_WIDTH = 40;
 const ACCOUNT_TABLE_COLUMN_MAX_WIDTH: Record<AccountColumnKind, number> = {
-  accountName: 360,
-  status: 180,
-  accountType: 180,
-  systemName: 340,
-  ownerName: 220,
-  accessEnvironment: 220,
-  authorizedCount: 220,
-  updateTime: 340,
-  actions: 320,
-  accountId: 320,
-  accessKey: 400,
-  systemCode: 260,
-  ownerContact: 300,
-  signVersion: 200,
-  rateLimit: 200,
-  expireTime: 320,
-  callbackUrl: 450,
-  clientTypes: 320,
-  allowedScopes: 400,
-  remark: 450,
-  createTime: 340
+  index: 120,
+  accountName: 1200,
+  status: 300,
+  accountType: 300,
+  systemName: 800,
+  ownerName: 400,
+  accessEnvironment: 400,
+  authorizedCount: 300,
+  updateTime: 600,
+  actions: 600,
+  accountId: 400,
+  accessKey: 800,
+  systemCode: 600,
+  ownerContact: 600,
+  signVersion: 400,
+  rateLimit: 400,
+  expireTime: 600,
+  callbackUrl: 1000,
+  clientTypes: 600,
+  allowedScopes: 800,
+  remark: 1000,
+  createTime: 600
 };
 // 列基础模型（默认顺序 + 默认宽度 + 固定信息）集中收口。
 // 按日常查看频率排序：核心标识 → 运营状态 → 归属信息 → 策略范围 → 低频字段 → 操作列。
 const accountTableColumnBaseModel = defineTableColumns<AccountColumnKind>([
-  { key: 'accountName', dataIndex: 'account_name', title: '账号名称', kind: 'accountName', width: 220, fixed: 'left' },
-  { key: 'status', dataIndex: 'status', title: '状态', kind: 'status', width: 100 },
-  { key: 'accountType', dataIndex: 'account_type', title: '账号类型', kind: 'accountType', width: 110 },
-  { key: 'systemName', dataIndex: 'system_name', title: '业务系统', kind: 'systemName', width: 180 },
-  { key: 'ownerName', dataIndex: 'owner_name', title: '负责人', kind: 'ownerName', width: 120 },
-  { key: 'accessEnvironment', dataIndex: 'access_environment', title: '接入环境', kind: 'accessEnvironment', width: 110 },
-  { key: 'authorizedCount', dataIndex: 'authorized_api_count', title: '授权数', kind: 'authorizedCount', width: 100 },
-  { key: 'updateTime', dataIndex: 'update_time', title: '最近更新', kind: 'updateTime', width: 180 },
-  { key: 'actions', dataIndex: 'actions', title: '操作', kind: 'actions', width: 170, fixed: 'right' },
+  { key: 'index', dataIndex: 'index', title: '序号', kind: 'index', width: 70, fixed: 'left', slotName: 'index' },
+  { key: 'accountName', dataIndex: 'accountName', title: '账号名称', kind: 'accountName', width: 220, fixed: 'left', slotName: 'accountName' },
+  { key: 'status', dataIndex: 'status', title: '状态', kind: 'status', width: 100, slotName: 'status' },
+  { key: 'accountType', dataIndex: 'accountType', title: '账号类型', kind: 'accountType', width: 110, slotName: 'accountType' },
+  { key: 'systemName', dataIndex: 'systemName', title: '业务系统', kind: 'systemName', width: 180, slotName: 'systemName' },
+  { key: 'ownerName', dataIndex: 'ownerName', title: '负责人', kind: 'ownerName', width: 120, slotName: 'ownerName' },
+  { key: 'accessEnvironment', dataIndex: 'accessEnvironment', title: '接入环境', kind: 'accessEnvironment', width: 110, slotName: 'accessEnvironment' },
+  { key: 'authorizedCount', dataIndex: 'authorizedApiCount', title: '授权数', kind: 'authorizedCount', width: 100, slotName: 'authorizedCount' },
+  { key: 'updateTime', dataIndex: 'updateTime', title: '最近更新', kind: 'updateTime', width: 180, slotName: 'updateTime' },
+  { key: 'actions', dataIndex: 'actions', title: '操作', kind: 'actions', width: 170, fixed: 'right', slotName: 'actions' },
   // 扩展字段，默认隐藏
-  { key: 'accountId', dataIndex: 'id', title: '账号ID', kind: 'accountId', width: 100 },
-  { key: 'accessKey', dataIndex: 'access_key', title: '访问密钥', kind: 'accessKey', width: 220 },
-  { key: 'systemCode', dataIndex: 'system_code', title: '系统编码', kind: 'systemCode', width: 160 },
-  { key: 'ownerContact', dataIndex: 'owner_contact', title: '负责人联系方式', kind: 'ownerContact', width: 180 },
-  { key: 'signVersion', dataIndex: 'sign_version', title: '签名版本', kind: 'signVersion', width: 110 },
-  { key: 'rateLimit', dataIndex: 'rate_limit', title: '限流配置', kind: 'rateLimit', width: 120 },
-  { key: 'expireTime', dataIndex: 'expire_time', title: '过期时间', kind: 'expireTime', width: 180 },
-  { key: 'callbackUrl', dataIndex: 'callback_url', title: '回调地址', kind: 'callbackUrl', width: 260 },
-  { key: 'clientTypes', dataIndex: 'client_types', title: '客户端类型', kind: 'clientTypes', width: 180 },
-  { key: 'allowedScopes', dataIndex: 'allowed_scopes', title: '权限范围', kind: 'allowedScopes', width: 200 },
-  { key: 'remark', dataIndex: 'remark', title: '治理备注', kind: 'remark', width: 220 },
-  { key: 'createTime', dataIndex: 'create_time', title: '创建时间', kind: 'createTime', width: 180 }
+  { key: 'accountId', dataIndex: 'id', title: '账号ID', kind: 'accountId', width: 100, slotName: 'accountId' },
+  { key: 'accessKey', dataIndex: 'accessKey', title: '访问密钥', kind: 'accessKey', width: 220, slotName: 'accessKey' },
+  { key: 'systemCode', dataIndex: 'systemCode', title: '系统编码', kind: 'systemCode', width: 160, slotName: 'systemCode' },
+  { key: 'ownerContact', dataIndex: 'ownerContact', title: '负责人联系方式', kind: 'ownerContact', width: 180, slotName: 'ownerContact' },
+  { key: 'signVersion', dataIndex: 'signVersion', title: '签名版本', kind: 'signVersion', width: 110, slotName: 'signVersion' },
+  { key: 'rateLimit', dataIndex: 'rateLimit', title: '限流配置', kind: 'rateLimit', width: 120, slotName: 'rateLimit' },
+  { key: 'expireTime', dataIndex: 'expireTime', title: '过期时间', kind: 'expireTime', width: 180, slotName: 'expireTime' },
+  { key: 'callbackUrl', dataIndex: 'callbackUrl', title: '回调地址', kind: 'callbackUrl', width: 260, slotName: 'callbackUrl' },
+  { key: 'clientTypes', dataIndex: 'clientTypes', title: '客户端类型', kind: 'clientTypes', width: 180, slotName: 'clientTypes' },
+  { key: 'allowedScopes', dataIndex: 'allowedScopes', title: '权限范围', kind: 'allowedScopes', width: 200, slotName: 'allowedScopes' },
+  { key: 'remark', dataIndex: 'remark', title: '治理备注', kind: 'remark', width: 220, slotName: 'remark' },
+  { key: 'createTime', dataIndex: 'createTime', title: '创建时间', kind: 'createTime', width: 180, slotName: 'createTime' }
 ]);
 const accountTableColumnBaseMap = (accountTableColumnBaseModel as any[]).reduce((accumulator, column) => {
   accumulator[column.kind] = column;
@@ -733,6 +839,7 @@ function createDefaultAccountTableColumnLayout(): Record<AccountColumnKind, Acco
    * 9. 操作 (Fixed Right)
    */
   const defaultVisibleOrder = [
+    'index',
     'accountName',
     'status',
     'accountType',
@@ -767,7 +874,8 @@ const columnSettingDragState = reactive({
 });
 function clampAccountColumnWidth(kind: AccountColumnKind, width: number) {
   const max = ACCOUNT_TABLE_COLUMN_MAX_WIDTH[kind];
-  return Math.min(max, Math.max(ACCOUNT_TABLE_COLUMN_RESIZE_MIN_WIDTH, Math.round(width)));
+  const min = kind === 'index' ? 60 : ACCOUNT_TABLE_COLUMN_RESIZE_MIN_WIDTH;
+  return Math.min(max, Math.max(min, Math.round(width)));
 }
 function normalizeAccountTableColumnOrder() {
   const unlockedKinds = accountTableColumnBaseModel
@@ -1015,19 +1123,33 @@ const accountTableColumnModel = computed(() => {
   const normalItems = visibleItems.filter(item => !item.fixedFront && !item.locked);
   const orderedItems = [...lockedLeftItems, ...frontFixedItems, ...normalItems, ...lockedRightItems];
 
-  return orderedItems.map(item => {
-    const isStretch = item.kind === 'updateTime';
-    return {
-      ...accountTableColumnBaseMap[item.kind],
-      width: isStretch ? undefined : accountTableColumnLayout[item.kind]!.width,
-      minWidth: isStretch ? accountTableColumnLayout[item.kind]!.width : undefined,
+  const columns: any[] = [];
+  
+  orderedItems.forEach(item => {
+    const base = accountTableColumnBaseMap[item.kind];
+    const column = {
+      ...base,
+      width: accountTableColumnLayout[item.kind]!.width,
       fixed: item.kind === 'actions'
         ? 'right'
-        : (accountTableColumnLayout[item.kind]!.fixedFront ? 'left' : accountTableColumnBaseMap[item.kind].fixed)
-    } as any;
+        : (accountTableColumnLayout[item.kind]!.fixedFront ? 'left' : (item.locked ? base.fixed : undefined))
+    };
+    columns.push(column);
+
   });
+
+  return columns;
 });
-const accountTableScrollX = computed(() => accountTableColumnModel.value.reduce((sum, item) => sum + (item.width || item.minWidth || 0), 0) + 28);
+/**
+ * 表格横向强制宽度：
+ * Arco Table 需要一个预设的 x 滚动值来启用横向滚动模式。
+ * 这里计算所有可见列的宽度之和，并额外增加 60px 的安全缓冲（包含操作列偏移与容器边距），
+ * 确保在列宽拖大后，表格容器有足够的弹性空间显示出最右侧的操作按钮。
+ */
+const accountTableScrollX = computed(() => {
+  const baseWidth = accountTableColumnModel.value.reduce((sum, item) => sum + (item.width || item.minWidth || 0), 0);
+  return baseWidth + 100;
+});
 const { columns: accountTableColumns, getPlainText } = useTableColumns(() => accountTableColumnModel.value);
 function clearAccountBottomScrollbarRaf() {
   if (accountBottomScrollbarRafId == null) return;
@@ -1059,6 +1181,43 @@ function scheduleAccountBottomScrollbarSync() {
     accountBottomScrollbarRafId = null;
     syncAccountBottomScrollbarState();
   });
+}
+function updateAccountTableContentWidth() {
+  const body = accountTableBodyScrollableRef.value;
+  if (body) {
+    // 优先读取 DOM 的 scrollWidth（含所有列宽），保证滚动条范围 100% 准确。
+    accountTableContentWidth.value = body.scrollWidth;
+  } else {
+    // 回退到 Reactivity 计算值。
+    accountTableContentWidth.value = accountTableScrollX.value;
+  }
+}
+function unbindAccountTableResizeObserver() {
+  if (accountTableResizeObserver) {
+    accountTableResizeObserver.disconnect();
+    accountTableResizeObserver = null;
+  }
+}
+function bindAccountTableResizeObserver() {
+  unbindAccountTableResizeObserver();
+  const body = accountTableBodyScrollableRef.value;
+  if (!body) return;
+
+  accountTableResizeObserver = new ResizeObserver(() => {
+    updateAccountTableContentWidth();
+    scheduleAccountBottomScrollbarSync();
+  });
+  
+  // 监听表格 body 容器的尺寸变化。
+  accountTableResizeObserver.observe(body);
+  
+  // 针对内部 table 元素也要监听，因为列宽调整可能不改变容器 clientWidth 但改变 scrollWidth。
+  const tableEl = body.querySelector('table');
+  if (tableEl) {
+    accountTableResizeObserver.observe(tableEl);
+  }
+  
+  updateAccountTableContentWidth();
 }
 function unbindAccountTableBodyScrollSync() {
   if (accountTableBodyScrollableRef.value && accountTableBodyScrollHandler) {
@@ -1100,6 +1259,7 @@ function bindAccountTableBodyScrollSync() {
     });
   };
   scrollHost.addEventListener('scroll', accountTableBodyScrollHandler, { passive: true });
+  bindAccountTableResizeObserver();
   scheduleAccountBottomScrollbarSync();
 }
 function handleAccountBottomScrollbarScroll(event: Event) {
@@ -1178,8 +1338,8 @@ const callbackTableStats = computed<WorkbenchStatCard[]>(() => [{ label: '当前
  */
 function buildAccountPageQueryParams() {
   return {
-    pageNum: pagination.current,
-    pageSize: pagination.pageSize,
+    pageNum: accountTablePagination.current,
+    pageSize: accountTablePagination.pageSize,
     accountId: queryForm.accountId,
     accountName: normalizeQueryText(queryForm.accountName),
     accessKey: normalizeQueryText(queryForm.accessKey),
@@ -1213,7 +1373,7 @@ async function loadPageData() {
   try {
     const { data } = await fetchApiAccountPage(buildAccountPageQueryParams());
     accountList.value = data.records || [];
-    pagination.total = data.total || 0;
+    accountTablePagination.total = data.total || 0;
   } finally {
     tableLoading.value = false;
   }
@@ -1468,14 +1628,33 @@ function toggleAccountModalFullscreen() {
  * 将当前表单数据保留，但将模式切换为 'create'，并重置编辑 ID。
  * 标题和提交按钮文本会自动更新。
  */
-function handleCopyInsideModal() {
-  accountModal.mode = 'create';
-  accountModal.editingId = 0;
-  // 为账号名称追加副本后缀，方便用户识别与修改
-  if (accountForm.accountName && !accountForm.accountName.endsWith('_Copy')) {
-    accountForm.accountName = `${accountForm.accountName}_Copy`;
+/**
+ * 在弹窗内部执行“以此为模板复制并新建”：
+ * 采用后端驱动的克隆模式，确保审计字段、主键 ID 与 AK 的清理逻辑在服务端闭环，
+ * 前端只负责接管新数据并触发“模式切换”视觉动效。
+ */
+async function handleCopyInsideModal() {
+  if (!accountModal.editingId) return;
+  
+  accountModal.submitting = true;
+  try {
+    const { data } = await fetchApiAccountCopy(accountModal.editingId);
+    
+    // 切换至新建模式
+    accountModal.mode = 'create';
+    accountModal.editingId = 0;
+    
+    // 使用后端生成的克隆数据回填表单（已包含 _Copy 后缀）
+    fillAccountForm(data);
+    
+    // 触发一个极简的视觉反馈，让用户感知“保存”变为了“创建”
+    Message.info({
+      content: '已切换至全量克隆模式，修改后即可保存为新账号',
+      icon: () => h(IconCopy, { style: { color: '#165dff' } })
+    });
+  } finally {
+    accountModal.submitting = false;
   }
-  Message.info('已切换至新建模式，修改后即可保存为新账号');
 }
 function closeAccountModal() {
   accountModal.visible = false;
@@ -1509,20 +1688,39 @@ async function handleCallbackLogAccount(record: ApiAccountItem) { await openCall
  * 列表项复制：获取行数据详情并进入新建模式。
  * 逻辑与弹窗内复制一致，但针对列表项触发。
  */
+/**
+ * 列表项复制：采用标准化 API 驱动 cloner 模式。
+ * 相比于前端直接浅拷贝 JS 对象，调用 /copy 接口能确保后端拦截器、审计字段清理
+ * 以及业务规则（如名称后缀、权限剥离）在多端统一。
+ */
 async function handleCopyAccount(record: ApiAccountItem) {
-  const { data } = await fetchApiAccountDetail(record.id);
-  accountModal.mode = 'create';
-  accountModal.editingId = 0;
-  fillAccountForm(data);
-  if (accountForm.accountName && !accountForm.accountName.endsWith('_Copy')) {
-    accountForm.accountName = `${accountForm.accountName}_Copy`;
+  tableLoading.value = true;
+  try {
+    const { data } = await fetchApiAccountCopy(record.id);
+    
+    accountModal.mode = 'create';
+    accountModal.editingId = 0;
+    
+    // 数据回填
+    fillAccountForm(data);
+    
+    // 定制化初始化视口位姿
+    resetAccountModalViewport('create');
+    accountModal.visible = true;
+    
+    Message.info('已复制当前账号信息，可在此基础上创建新账号');
+  } finally {
+    tableLoading.value = false;
   }
-  resetAccountModalViewport('create');
-  accountModal.visible = true;
 }
 async function handleResetSecretById(accountId: number) {
   const { data } = await resetApiAccountSecret(accountId);
-  credentialModal.payload = data;
+  const account = accountList.value.find(a => a.id === accountId);
+  credentialModal.payload = {
+    ...data,
+    rateLimit: account?.rateLimit,
+    authorizedApiCount: account?.authorizedApiCount
+  };
   credentialModal.visible = true;
   Message.success('密钥已重置');
   await refreshPage();
@@ -1530,7 +1728,7 @@ async function handleResetSecretById(accountId: number) {
 async function handleDeleteAccountById(accountId: number) {
   await deleteApiAccount(accountId);
   Message.success('账号已删除');
-  if (pagination.current > 1 && accountList.value.length === 1) pagination.current -= 1;
+  if (accountTablePagination.current > 1 && accountList.value.length === 1) accountTablePagination.current -= 1;
   await refreshPage();
 }
 function confirmResetSecret(record: Pick<ApiAccountItem, 'id' | 'accountName'>) {
@@ -1559,7 +1757,11 @@ async function submitAccountForm() {
   try {
     if (accountModal.mode === 'create') {
       const { data } = await createApiAccount(validationResult.payload);
-      credentialModal.payload = data;
+      credentialModal.payload = {
+        ...data,
+        rateLimit: accountForm.rateLimit,
+        authorizedApiCount: 0
+      };
       credentialModal.visible = true;
       Message.success('API账号创建成功');
     } else {
@@ -1573,7 +1775,7 @@ async function submitAccountForm() {
     accountModal.submitting = false;
   }
 }
-async function handleSearch() { pagination.current = 1; await loadPageData(); }
+async function handleSearch() { accountTablePagination.current = 1; await loadPageData(); }
 function toggleQueryAdvanced() { queryAdvancedExpanded.value = !queryAdvancedExpanded.value; }
 /**
  * 设置字符匹配模式。
@@ -1619,11 +1821,11 @@ async function handleResetSearch() {
     updateTimeEnd: ''
   });
   queryAdvancedExpanded.value = false;
-  pagination.current = 1;
+  accountTablePagination.current = 1;
   await loadPageData();
 }
-async function handlePageChange(page: number) { pagination.current = page; await loadPageData(); }
-async function handlePageSizeChange(pageSize: number) { pagination.pageSize = pageSize; pagination.current = 1; await loadPageData(); }
+async function handlePageChange(page: number) { accountTablePagination.current = page; await loadPageData(); }
+async function handlePageSizeChange(pageSize: number) { accountTablePagination.pageSize = pageSize; accountTablePagination.current = 1; await loadPageData(); }
 async function handleSyncRegistry() { syncingRegistry.value = true; try { const { data } = await syncOpenApiRegistry(); Message.success(`项目接口目录同步完成，本次发现 ${data.totalDiscovered} 个可授权接口`); await refreshPage(); if (authorizationDrawer.visible && authorizationDrawer.accountId) await loadAuthorizationSnapshot(authorizationDrawer.accountId); } finally { syncingRegistry.value = false; } }
 async function loadAuthorizationSnapshot(accountId: number) { authorizationDrawer.loading = true; try { const { data } = await fetchAuthorizationSnapshot(accountId); authorizationDrawer.accountId = accountId; authorizationDrawer.snapshot = data; authorizationDrawer.checkedKeys = (data.selectedApiIds || []).map(id => buildApiKey(id)); } finally { authorizationDrawer.loading = false; } }
 async function submitAuthorization() { if (!authorizationDrawer.accountId) return; authorizationDrawer.saving = true; try { await saveAuthorization(authorizationDrawer.accountId, parseCheckedApiIds(authorizationDrawer.checkedKeys)); Message.success('接口授权已保存'); await Promise.all([loadAuthorizationSnapshot(authorizationDrawer.accountId), refreshPage()]); } finally { authorizationDrawer.saving = false; } }
@@ -1697,6 +1899,8 @@ async function handleManageRouteAction() {
   if (!action || !accountId) return;
   if (action === 'edit') {
     await openEditModalById(accountId);
+  } else if (action === 'copy') {
+    await handleCopyAccount({ id: accountId } as ApiAccountItem);
   } else if (action === 'authorization') {
     await openAuthorizationDrawerById(accountId);
   } else if (action === 'callback') {
@@ -1755,6 +1959,7 @@ watch(() => accountModal.visible, async visible => {
 onBeforeUnmount(() => {
   clearAccountBottomScrollbarRaf();
   unbindAccountTableBodyScrollSync();
+  unbindAccountTableResizeObserver();
   window.removeEventListener('resize', scheduleAccountBottomScrollbarSync);
   if (!isCreateMode.value) {
     syncAccountModalWrapperScrollLock(false);
@@ -1811,10 +2016,12 @@ onBeforeUnmount(() => {
   /* 查询卡片与列表卡片间距变量：统一收口为可配置项，便于后续页面直接复用同一套垂直节奏。 */
   --api-account-query-offset-y: -8px;
   --api-account-stage-gap-y: 8px;
-  min-height: 100%;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
   padding: 24px;
   background: linear-gradient(180deg, var(--page-bg-start), var(--page-bg-end));
-  overflow: auto;
+  overflow: hidden;
 }
 
 .card,
@@ -1929,6 +2136,7 @@ onBeforeUnmount(() => {
     inset 0 1px 0 rgba(255, 255, 255, 0.94),
     0 6px 14px rgba(36, 102, 169, 0.08);
   margin-top: var(--api-account-query-offset-y);
+  flex-shrink: 0;
 }
 
 .query-panel__advanced {
@@ -2071,9 +2279,12 @@ onBeforeUnmount(() => {
    * 列表舞台高度策略：
    * 在首屏下给列表区一个稳定的最小高度，配合 body-fill 与表格 flex 伸展，
    * 让卡片始终铺满列表区域，避免底部出现大块空白。
+   * 为实现吸底效果，移除 clamp 限制，改用 flex: 1。
    */
   margin-top: var(--api-account-stage-gap-y);
-  min-height: clamp(420px, calc(100vh - 250px), 860px);
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .table-shell :deep(.governance-list-stage__body) {
@@ -2104,6 +2315,56 @@ onBeforeUnmount(() => {
  */
 .table-shell__list-region>.account-table {
   height: 100%;
+}
+
+/**
+ * 滚动条美化 (Premium Scrollbar Styling):
+ * 为中间列表区域增加符合冰川蓝主题的垂直滚动条，
+ * 采用半透明背景与渐变滑块，提升交互反馈感。
+ */
+.account-table :deep(.arco-scrollbar-track-direction-vertical) {
+  width: 8px;
+  background-color: rgba(226, 232, 240, 0.45);
+  border-radius: 999px;
+  margin-right: 2px;
+}
+
+.account-table :deep(.arco-scrollbar-thumb-direction-vertical) {
+  background: linear-gradient(180deg, rgba(148, 163, 184, 0.76), rgba(100, 116, 139, 0.68));
+  border: 1.5px solid rgba(255, 255, 255, 0.4);
+  border-radius: 999px;
+  transition: background 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.account-table :deep(.arco-scrollbar-thumb-direction-vertical:hover) {
+  background: linear-gradient(180deg, rgba(100, 116, 139, 0.88), rgba(71, 85, 105, 0.82));
+}
+
+.table-field-cell {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.table-field-cell--index {
+  justify-content: center;
+  font-weight: 500;
+  color: var(--text-secondary);
+  width: 100%;
+}
+
+/**
+ * 隐藏 Arco 内置的横向滚动条 (Hide Built-in Horizontal Scrollbar):
+ * 由于下方已经存在自定义同步的横向滚动条，
+ * 这里通过 CSS 隐藏 Arco 表格内部产生的横向滚动条，避免视觉重合。
+ */
+.account-table :deep(.arco-scrollbar-track-direction-horizontal),
+.account-table :deep(.arco-scrollbar-thumb-direction-horizontal) {
+  display: none !important;
 }
 
 .table-shell__x-scrollbar {
@@ -3314,6 +3575,16 @@ onBeforeUnmount(() => {
   color: #0f172a;
   font-size: 24px;
   line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.table-field-cell--index {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
 }
 
 .account-create-environment-card p {
@@ -6140,5 +6411,24 @@ onBeforeUnmount(() => {
     flex-direction: column;
     align-items: stretch;
   }
+}
+
+/**
+ * 账号列表行选中高亮样式 (光标显示)
+ * 采用下沉到 td 的渲染方案，确保 tr 在 relative 定位下不破坏表格布局。
+ */
+:deep(.account-table .arco-table-tr.is-row-active .arco-table-td) {
+  background-color: var(--color-primary-light-1) !important;
+  transition: background-color 0.2s ease;
+}
+
+/* 即使在有斑马纹或鼠标悬停时，也强制保持选中色 */
+:deep(.account-table .arco-table-tr.is-row-active:hover .arco-table-td) {
+  background-color: var(--color-primary-light-1) !important;
+}
+
+/* 在第一列单元格使用内阴影实现侧边指示条，这种方式不会改变单元格尺寸或导致布局崩坏 */
+:deep(.account-table .arco-table-tr.is-row-active .arco-table-td:first-child) {
+  box-shadow: inset 3px 0 0 var(--color-primary-light-4);
 }
 </style>

@@ -1,177 +1,176 @@
 <template>
   <a-modal
     v-model:visible="visibleModel"
-    width="1180px"
+    width="1000px"
     :footer="false"
-    class="credential-delivery-modal"
+    class="credential-delivery-modal-v2"
     unmount-on-close
+    :mask-closable="false"
   >
-    <template #title>
-      <div class="credential-delivery-modal__title">
-        <div class="credential-delivery-modal__title-main">
-          <p>Security Credential Delivery Center</p>
-          <strong>请立即保存新凭证</strong>
+    <div v-if="payload" class="credential-cert">
+      <!-- 顶部装饰与成功状态 -->
+      <header class="cert-header">
+        <div class="cert-header__decoration">
+          <div class="orb orb--1"></div>
+          <div class="orb orb--2"></div>
         </div>
-        <span class="credential-delivery-modal__badge">SecretKey 仅展示一次</span>
-      </div>
-    </template>
-
-    <GovernanceWorkbenchShell
-      v-if="payload"
-      class="credential-delivery-workbench"
-      eyebrow="Secure Credential Bundle"
-      title="凭证只会在本次交付窗口中返回"
-      description="建议先复制整套凭证，再同步保存到企业密钥平台、部署变量或安全保险箱。关闭弹窗、刷新页面或再次重置后，系统不会返回旧 SecretKey。"
-      :tags="heroTags"
-      :stats="summaryCards"
-      theme="violet"
-    >
-      <template #aside>
-        <GovernancePanel class="credential-delivery-panel credential-delivery-panel--attention" title="保存动作">
-          <div class="credential-delivery-step-list">
-            <article
-              v-for="item in safetyGuide"
-              :key="item.title"
-              class="credential-delivery-step"
-            >
-              <strong>{{ item.title }}</strong>
-              <p>{{ item.description }}</p>
-            </article>
-          </div>
-        </GovernancePanel>
-
-        <GovernancePanel class="credential-delivery-panel" title="签名请求头">
-          <div class="credential-delivery-header-list">
-            <article
-              v-for="item in requestHeaders"
-              :key="item.name"
-              class="credential-delivery-header-item"
-            >
-              <div class="credential-delivery-header-item__top">
-                <strong>{{ item.name }}</strong>
-                <span>{{ item.value }}</span>
-              </div>
-              <small>{{ item.description }}</small>
-            </article>
-          </div>
-        </GovernancePanel>
-      </template>
-
-      <div class="credential-delivery-main">
-        <GovernancePanel class="credential-delivery-panel credential-delivery-panel--keys">
-          <template #header>
-            <div class="section-heading">
-              <div>
-                <h3>密钥交付区</h3>
-                <p>以下内容为本次生成的真实凭证，建议按字段复制后立即完成安全留存。</p>
-              </div>
+        
+        <div class="cert-header__main">
+          <div class="cert-status">
+            <div class="cert-status__icon">
+              <icon-check-circle-fill />
             </div>
-          </template>
-          <div class="credential-delivery-key-grid">
-            <article
-              v-for="item in keyCards"
+            <div class="cert-status__text">
+              <p>ACCOUNT SECURITY PROVISIONING</p>
+              <h2>API账号凭证交付成功</h2>
+            </div>
+          </div>
+          <div class="cert-badge">
+            <icon-safe />
+            <span>SecretKey 仅展示一次</span>
+          </div>
+        </div>
+      </header>
+
+      <main class="cert-content">
+        <!-- 核心凭证区 -->
+        <section class="cert-section cert-section--keys">
+          <div class="section-title">
+            <icon-lock />
+            <h3>核心调用凭证</h3>
+            <small>SECURITY CREDENTIALS</small>
+          </div>
+          
+          <div class="key-cards">
+            <article 
+              v-for="item in keyCards" 
               :key="item.label"
-              class="credential-delivery-key-card"
-              :class="`tone-${item.tone}`"
+              class="key-card"
+              :class="`is-${item.tone}`"
             >
-              <div class="credential-delivery-key-card__head">
-                <div>
-                  <span>{{ item.label }}</span>
-                  <small>{{ item.hint }}</small>
-                </div>
-                <a-button size="mini" @click="copyCredentialValue(item.label, item.value)">复制</a-button>
+              <div class="key-card__info">
+                <strong>{{ item.label }}</strong>
+                <p>{{ item.hint }}</p>
               </div>
-              <code>{{ item.value }}</code>
+              <div class="key-card__value">
+                <code>{{ item.value }}</code>
+                <a-tooltip :content="`复制 ${item.label}`">
+                  <a-button 
+                    shape="circle" 
+                    size="small" 
+                    class="key-copy-btn"
+                    @click="copyCredentialValue(item.label, String(item.value))"
+                  >
+                    <template #icon><icon-copy /></template>
+                  </a-button>
+                </a-tooltip>
+              </div>
             </article>
           </div>
-        </GovernancePanel>
+        </section>
 
-        <GovernancePanel class="credential-delivery-panel">
-          <template #header>
-            <div class="section-heading">
-              <div>
-                <h3>账号画像</h3>
-                <p>账号身份、归属系统与责任人信息已与本次凭证绑定，便于后续授权排查和日志追踪。</p>
+        <!-- 详细画像与环境区 -->
+        <div class="cert-grid">
+          <section class="cert-section">
+            <div class="section-title">
+              <icon-idcard />
+              <h3>账号身份画像</h3>
+            </div>
+            <div class="profile-grid">
+              <div v-for="item in profileCards" :key="item.label" class="profile-item">
+                <span class="profile-item__label">{{ item.label }}</span>
+                <div class="profile-item__value">
+                  <EllipsisTooltipText :text="item.value || '-'" />
+                  <icon-copy 
+                    v-if="item.copyable" 
+                    class="copy-mini"
+                    @click="copyCredentialValue(item.label, String(item.value))"
+                  />
+                </div>
               </div>
             </div>
-          </template>
-          <GovernanceFactGrid
-            class="credential-delivery-profile-grid"
-            card-class="credential-delivery-profile-card"
-            copy-class="credential-delivery-profile-card__copy"
-            :items="profileCards"
-          />
-          <div class="credential-delivery-aux-grid">
-            <article class="credential-delivery-aux-card">
-              <span>调用客户端</span>
-              <div v-if="clientLabels.length" class="tags">
-                <a-tag
-                  v-for="item in clientLabels"
-                  :key="`credential-client-${item}`"
-                  color="arcoblue"
-                >
-                  {{ item }}
+          </section>
+
+          <section class="cert-section">
+            <div class="section-title">
+              <icon-settings />
+              <h3>运行时配置</h3>
+            </div>
+            <div class="runtime-grid">
+              <div class="runtime-item">
+                <span class="runtime-item__label">当前接入环境</span>
+                <a-tag :color="getEnvironmentTagColor(payload.accessEnvironment)" bordered>
+                  {{ getAccessEnvironmentLabel(payload.accessEnvironment) }}
                 </a-tag>
               </div>
-              <strong v-else>未维护</strong>
-              <small>用于识别当前账号允许接入的终端形态。</small>
-            </article>
-            <article class="credential-delivery-aux-card">
-              <span>业务回调地址</span>
-              <a-typography-text
-                v-if="payload.callbackUrl"
-                copyable
-                class="credential-delivery-profile-card__copy"
-              >
-                {{ payload.callbackUrl }}
-              </a-typography-text>
-              <strong v-else>{{ callbackValue }}</strong>
-              <small>用于异步结果通知和回调联调，未配置时可按需补充。</small>
-            </article>
-          </div>
-        </GovernancePanel>
-
-        <GovernancePanel class="credential-delivery-panel">
-          <template #header>
-            <div class="section-heading section-heading--row">
-              <div>
-                <h3>环境白名单</h3>
-                <p>测试、预发、生产环境独立维护来源 IP，系统会按当前接入环境自动选择生效清单。</p>
+              <div class="runtime-item">
+                <span class="runtime-item__label">限流阈值 (QPS)</span>
+                <strong>{{ payload.rateLimit || 1000 }}</strong>
               </div>
-              <a-tag :color="getEnvironmentTagColor(payload.accessEnvironment)">
-                当前生效：{{ getAccessEnvironmentLabel(payload.accessEnvironment) }}
-              </a-tag>
+              <div class="runtime-item">
+                <span class="runtime-item__label">签名版本</span>
+                <a-tag size="small" bordered>{{ payload.signVersion || 'v1' }}</a-tag>
+              </div>
+              <div class="runtime-item">
+                <span class="runtime-item__label">授权API数量</span>
+                <strong>{{ payload.authorizedApiCount || 0 }}</strong>
+              </div>
             </div>
-          </template>
-          <ApiEnvironmentWhitelistCards :payload="payload" />
-        </GovernancePanel>
-      </div>
-
-      <template #footer>
-        <div class="credential-delivery-footer">
-          <div class="credential-delivery-footer__tip">
-            <strong>交付建议</strong>
-            <span>复制完成后，建议立即录入企业密钥管理系统，并避免通过聊天工具、明文邮件或工单评论传播 SecretKey。</span>
-          </div>
-          <div class="credential-delivery-footer__actions">
-            <a-button @click="copyCredentialBundle">复制整套凭证</a-button>
-            <a-button type="primary" @click="closeModal">我已保存</a-button>
-          </div>
+            
+            <div class="whitelist-summary">
+              <p>来源 IP 白名单 ({{ getAccessEnvironmentLabel(payload.accessEnvironment) }})</p>
+              <div class="ip-list">
+                <template v-if="currentEnvWhitelist.length">
+                  <a-tag v-for="ip in currentEnvWhitelist" :key="ip" size="small" color="gray">{{ ip }}</a-tag>
+                </template>
+                <span v-else class="empty-text">未配置（允许所有 IP）</span>
+              </div>
+            </div>
+          </section>
         </div>
-      </template>
-    </GovernanceWorkbenchShell>
+
+        <!-- 安全警示 -->
+        <footer class="cert-footer">
+          <div class="safety-notices">
+            <div v-for="item in safetyGuide" :key="item.title" class="safety-notice">
+              <icon-info-circle />
+              <div>
+                <strong>{{ item.title }}</strong>
+                <p>{{ item.description }}</p>
+              </div>
+            </div>
+          </div>
+          
+          <div class="cert-actions">
+            <a-button size="large" class="btn-bundle" @click="copyCredentialBundle">
+              <template #icon><icon-copy /></template>
+              复制整套凭证
+            </a-button>
+            <a-button type="primary" size="large" class="btn-done" @click="closeModal">
+              我已安全保存
+            </a-button>
+          </div>
+        </footer>
+      </main>
+    </div>
   </a-modal>
 </template>
 
 <script lang="ts" setup>
 import { computed } from 'vue';
 import { Message } from '@arco-design/web-vue';
-import ApiEnvironmentWhitelistCards from './ApiEnvironmentWhitelistCards.vue';
-import GovernanceFactGrid from '../governance/GovernanceFactGrid.vue';
-import GovernancePanel from '../governance/GovernancePanel.vue';
-import GovernanceWorkbenchShell from '../governance/GovernanceWorkbenchShell.vue';
+import { 
+  IconCheckCircleFill, 
+  IconSafe, 
+  IconLock, 
+  IconCopy, 
+  IconIdcard, 
+  IconSettings, 
+  IconInfoCircle 
+} from '@arco-design/web-vue/es/icon';
+import EllipsisTooltipText from '../common/EllipsisTooltipText.vue';
 import type { AccessEnvironment, ApiCredentialPayload } from '../../types/apiAccount';
-import type { FactCard, WorkbenchStatCard } from '../../types/governance';
+import type { FactCard } from '../../types/governance';
 import {
   getAccessEnvironmentLabel,
   getClientTypeLabels,
@@ -191,12 +190,6 @@ type CredentialGuideItem = {
   description: string;
 };
 
-type CredentialHeaderItem = {
-  name: string;
-  value: string;
-  description: string;
-};
-
 const props = defineProps<{
   visible: boolean;
   payload: ApiCredentialPayload | null;
@@ -211,48 +204,18 @@ const visibleModel = computed({
   set: value => emit('update:visible', value)
 });
 
-// 凭证交付组件内部统一维护提示文案、请求头说明和摘要卡映射，避免多个页面重复拼装同一份安全交付逻辑。
-const heroTags = ['SecretKey 仅回传一次', '支持整套复制', '建议立即入库', '环境白名单独立治理'];
 const safetyGuide: CredentialGuideItem[] = [
-  { title: '先复制，再关闭', description: '建议优先点击“复制整套凭证”，确保 AccessKey 与 SecretKey 一并被安全留存。' },
-  { title: '仅在安全域内分发', description: 'SecretKey 不应通过聊天工具、明文邮件或工单评论传播，推荐录入企业密钥平台。' },
-  { title: '按环境完成联调', description: '核对当前接入环境、白名单和回调地址后，再向业务方交付正式调用能力。' }
+  { title: '先复制，再关闭', description: 'SecretKey 仅在本次交付窗口中可见。' },
+  { title: '仅在安全域内分发', description: '推荐录入企业密钥管理平台（如 Apollo / Vault）。' },
+  { title: '核对接入环境', description: '确保白名单已包含当前调用方的来源 IP。' }
 ];
-const requestHeaders: CredentialHeaderItem[] = [
-  { name: 'X-Bml-App-Key', value: 'AccessKey', description: '调用方身份标识，所有签名请求都必须携带。' },
-  { name: 'X-Bml-Sign-Version', value: '签名算法版本', description: '需与当前账号配置的签名版本保持一致。' },
-  { name: 'X-Bml-Timestamp', value: '当前毫秒时间戳', description: '用于防重放校验，建议与服务端时间保持同步。' },
-  { name: 'X-Bml-Nonce', value: '每次请求唯一随机串', description: '同一请求不可复用，避免签名被重复消费。' },
-  { name: 'X-Bml-Sign', value: '签名结果', description: '按请求方法、路径、Query 与 Body 计算出的最终签名值。' }
-];
-
-const summaryCards = computed<WorkbenchStatCard[]>(() => {
-  const payload = props.payload;
-  if (!payload) return [];
-  return [
-    { label: '系统账号ID', value: `#${payload.id}`, hint: '用于日志检索、工单排查与授权追踪', tone: 'blue' },
-    {
-      label: '当前环境',
-      value: getAccessEnvironmentLabel(payload.accessEnvironment),
-      hint: `${getWhitelistByEnvironment(payload, payload.accessEnvironment as AccessEnvironment).length} 条白名单命中此环境`,
-      tone: 'green'
-    },
-    {
-      label: '客户端范围',
-      value: payload.clientTypes?.length ? `${payload.clientTypes.length} 类终端` : '未维护',
-      hint: payload.clientTypes?.length ? getClientTypeLabels(payload.clientTypes).join('、') : '当前账号未维护客户端范围',
-      tone: 'gold'
-    },
-    { label: '签名版本', value: payload.signVersion || 'v1', hint: '调用方需按此版本生成请求签名', tone: 'violet' }
-  ];
-});
 
 const keyCards = computed<CredentialKeyCard[]>(() => {
   const payload = props.payload;
   if (!payload) return [];
   return [
-    { label: 'AccessKey', value: payload.accessKey, hint: '作为请求身份标识，可在调用链路中公开传输。', tone: 'blue' },
-    { label: 'SecretKey', value: payload.secretKey, hint: '仅本次返回，必须安全保管，系统不会再次回显旧值。', tone: 'violet' }
+    { label: 'AccessKey', value: payload.accessKey, hint: '公开身份标识', tone: 'blue' },
+    { label: 'SecretKey', value: payload.secretKey, hint: '机密私钥，请严格保密', tone: 'violet' }
   ];
 });
 
@@ -260,36 +223,37 @@ const profileCards = computed<FactCard[]>(() => {
   const payload = props.payload;
   if (!payload) return [];
   return [
-    { label: '账号名称', value: payload.accountName, hint: '当前凭证绑定的业务接入账号。' },
-    { label: '业务系统名称', value: payload.systemName, hint: '用于识别所属业务系统与接入主体。' },
-    { label: '业务系统编码', value: payload.systemCode, hint: '建议在调用方配置中心中保持同一编码。', copyable: true },
-    { label: '接入方负责人', value: payload.ownerName, hint: '用于联调、异常处理和责任人追踪。' },
-    { label: '联系方式', value: payload.ownerContact, hint: '推荐填写手机号、邮箱或企业微信。', copyable: true },
-    { label: '系统账号ID', value: `#${payload.id}`, hint: '可直接用于后台检索账号详情与授权记录。', copyable: true }
+    { label: '账号名称', value: payload.accountName, hint: '' },
+    { label: '业务系统', value: payload.systemName, hint: '' },
+    { label: '负责人', value: payload.ownerName, hint: '' },
+    { label: '系统ID', value: `#${payload.id}`, hint: '', copyable: true },
+    { label: '系统编码', value: payload.systemCode, hint: '', copyable: true },
+    { label: '联系方式', value: payload.ownerContact, hint: '', copyable: true }
   ];
 });
 
-const clientLabels = computed(() => getClientTypeLabels(props.payload?.clientTypes));
-const callbackValue = computed(() => props.payload?.callbackUrl || '未配置');
+const currentEnvWhitelist = computed(() => {
+  if (!props.payload) return [];
+  return getWhitelistByEnvironment(props.payload, props.payload.accessEnvironment as AccessEnvironment);
+});
+
 const credentialBundleText = computed(() => {
   const payload = props.payload;
   if (!payload) return '';
   return [
+    `【BML API账号凭证交付】`,
     `账号名称: ${payload.accountName}`,
     `系统账号ID: #${payload.id}`,
-    `业务系统名称: ${payload.systemName}`,
-    `业务系统编码: ${payload.systemCode}`,
-    `接入方负责人: ${payload.ownerName}`,
-    `联系方式: ${payload.ownerContact}`,
+    `业务系统: ${payload.systemName} (${payload.systemCode})`,
+    `负责人: ${payload.ownerName} (${payload.ownerContact})`,
     `接入环境: ${getAccessEnvironmentLabel(payload.accessEnvironment)}`,
+    `调用方范围: ${getClientTypeLabels(payload.clientTypes).join('、') || '未限制'}`,
     `签名算法版本: ${payload.signVersion || 'v1'}`,
-    `测试环境白名单: ${getWhitelistByEnvironment(payload, 'test').join('、') || '未限制'}`,
-    `预发环境白名单: ${getWhitelistByEnvironment(payload, 'staging').join('、') || '未限制'}`,
-    `生产环境白名单: ${getWhitelistByEnvironment(payload, 'production').join('、') || '未限制'}`,
-    `业务回调地址: ${payload.callbackUrl || '未配置'}`,
+    `限流配置 (QPS): ${payload.rateLimit || 1000}`,
     `AccessKey: ${payload.accessKey}`,
-    `调用客户端: ${getClientTypeLabels(payload.clientTypes).join('、') || '未维护'}`,
-    `SecretKey: ${payload.secretKey}`
+    `SecretKey: ${payload.secretKey}`,
+    `--------------------------`,
+    `注意：SecretKey 仅展示一次，请务必妥善保存。`
   ].join('\n');
 });
 
@@ -316,352 +280,416 @@ async function writeClipboardText(value: string) {
 async function copyCredentialValue(label: string, value?: string | null) {
   if (!value) return;
   await writeClipboardText(value);
-  Message.success(`${label}已复制到剪贴板`);
+  Message.success(`${label}已复制`);
 }
 
 async function copyCredentialBundle() {
   if (!credentialBundleText.value) return;
   await writeClipboardText(credentialBundleText.value);
-  Message.success('凭证已复制到剪贴板');
+  Message.success('完整凭证已复制');
 }
 </script>
 
 <style scoped>
-:deep(.credential-delivery-modal .arco-modal) {
-  overflow: hidden;
-  border-radius: 32px;
-  box-shadow: 0 36px 96px rgba(15, 23, 42, 0.2);
-}
-
-:deep(.credential-delivery-modal .arco-modal-header) {
-  padding: 22px 28px 0;
-  border-bottom: 0;
-}
-
-:deep(.credential-delivery-modal .arco-modal-body) {
-  padding: 20px 28px 28px;
-  background:
-    radial-gradient(circle at top right, rgba(59, 130, 246, 0.07), transparent 28%),
-    linear-gradient(180deg, #f7fafc, #f3f6fb);
-}
-
-.credential-delivery-modal__title {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  width: 100%;
-}
-
-.credential-delivery-modal__title-main {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.credential-delivery-modal__title-main p {
-  margin: 0;
-  font-size: 12px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: #64748b;
-}
-
-.credential-delivery-modal__title-main strong {
-  font-size: 20px;
-  color: #0f172a;
-}
-
-.credential-delivery-modal__badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 8px 14px;
-  border-radius: 999px;
-  background: linear-gradient(135deg, rgba(37, 99, 235, 0.1), rgba(16, 185, 129, 0.1));
-  border: 1px solid rgba(37, 99, 235, 0.12);
-  font-size: 12px;
-  font-weight: 600;
-  color: #0f766e;
-}
-
-.credential-delivery-workbench,
-.credential-delivery-main {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-}
-
-.credential-delivery-panel {
-  padding: 22px;
-  border-radius: 28px;
-  border: 1px solid rgba(226, 232, 240, 0.9);
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.06);
-}
-
-.credential-delivery-panel--attention {
-  background:
-    radial-gradient(circle at top right, rgba(56, 189, 248, 0.08), transparent 34%),
-    linear-gradient(180deg, #f8fbff, #ffffff);
-}
-
-.credential-delivery-panel--keys {
-  background:
-    radial-gradient(circle at top right, rgba(99, 102, 241, 0.07), transparent 30%),
-    linear-gradient(180deg, #fbfdff, #ffffff);
-}
-
-.credential-delivery-step-list,
-.credential-delivery-header-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.credential-delivery-step,
-.credential-delivery-header-item {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 16px 18px;
-  border-radius: 20px;
-  border: 1px solid rgba(226, 232, 240, 0.92);
-  background: linear-gradient(180deg, #fbfdff, #f8fbff);
-}
-
-.credential-delivery-step strong,
-.credential-delivery-header-item strong {
-  color: #0f172a;
-  font-size: 15px;
-}
-
-.credential-delivery-step p,
-.credential-delivery-header-item small {
-  margin: 0;
-  color: #64748b;
-  line-height: 1.75;
-}
-
-.credential-delivery-header-item__top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-}
-
-.credential-delivery-header-item__top span {
-  display: inline-flex;
-  align-items: center;
-  padding: 6px 10px;
-  border-radius: 999px;
-  background: #eef6ff;
-  color: #2563eb;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.credential-delivery-key-grid,
-.credential-delivery-aux-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-}
-
-.credential-delivery-key-card,
-.credential-delivery-profile-card,
-.credential-delivery-aux-card {
-  border: 1px solid rgba(226, 232, 240, 0.9);
-  background: linear-gradient(180deg, #ffffff, #fbfdff);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
-}
-
-.credential-delivery-key-card {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  min-height: 182px;
-  padding: 20px;
+/* 弹窗基础重置 */
+:deep(.credential-delivery-modal-v2 .arco-modal) {
   border-radius: 24px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 40px 100px rgba(15, 23, 42, 0.25);
 }
 
-.credential-delivery-key-card.tone-blue {
-  background: linear-gradient(180deg, rgba(239, 246, 255, 0.95), rgba(255, 255, 255, 0.98));
-  border-color: rgba(59, 130, 246, 0.2);
+:deep(.credential-delivery-modal-v2 .arco-modal-body) {
+  padding: 0;
+  background: #fff;
 }
 
-.credential-delivery-key-card.tone-violet {
-  background: linear-gradient(180deg, rgba(245, 243, 255, 0.95), rgba(255, 255, 255, 0.98));
-  border-color: rgba(139, 92, 246, 0.2);
+.credential-cert {
+  display: flex;
+  flex-direction: column;
+  background: #f8fafc;
 }
 
-.credential-delivery-key-card__head {
+/* 顶部 Header：冰川蓝渐变 + 装饰性光球 */
+.cert-header {
+  position: relative;
+  padding: 16px 48px;
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  color: #fff;
+  overflow: hidden;
+}
+
+.cert-header__decoration .orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  z-index: 0;
+}
+
+.orb--1 {
+  width: 200px;
+  height: 200px;
+  top: -50px;
+  right: -50px;
+  background: rgba(59, 130, 246, 0.3);
+}
+
+.orb--2 {
+  width: 150px;
+  height: 150px;
+  bottom: -30px;
+  left: 10%;
+  background: rgba(139, 92, 246, 0.2);
+}
+
+.cert-header__main {
+  position: relative;
+  z-index: 1;
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 14px;
 }
 
-.credential-delivery-key-card__head span {
-  display: block;
-  color: #0f172a;
-  font-size: 18px;
-  font-weight: 700;
-}
-
-.credential-delivery-key-card__head small {
-  display: block;
-  margin-top: 6px;
-  color: #64748b;
-  line-height: 1.65;
-}
-
-.credential-delivery-key-card code {
-  display: block;
-  padding: 16px 18px;
-  border-radius: 18px;
-  background: rgba(15, 23, 42, 0.92);
-  color: #f8fafc;
-  font-size: 20px;
-  line-height: 1.65;
-  word-break: break-all;
-  white-space: pre-wrap;
-}
-
-.credential-delivery-profile-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
-}
-
-.credential-delivery-profile-card,
-.credential-delivery-aux-card {
+.cert-status {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 18px 20px;
-  border-radius: 22px;
-}
-
-.credential-delivery-profile-card span,
-.credential-delivery-aux-card span,
-.credential-delivery-footer__tip span {
-  color: #64748b;
-  font-size: 12px;
-  line-height: 1.7;
-}
-
-.credential-delivery-profile-card strong,
-.credential-delivery-aux-card strong,
-.credential-delivery-footer__tip strong {
-  color: #0f172a;
-  font-size: 18px;
-  line-height: 1.5;
-  word-break: break-word;
-}
-
-.credential-delivery-profile-card__copy {
-  font-size: 18px;
-  font-weight: 700;
-  line-height: 1.5;
-  color: #0f172a;
-  word-break: break-word;
-}
-
-.credential-delivery-aux-card {
-  min-height: 148px;
-  justify-content: space-between;
-}
-
-.credential-delivery-footer {
-  display: flex;
-  justify-content: space-between;
   align-items: center;
-  gap: 18px;
-  padding: 18px 22px;
-  border-radius: 24px;
-  border: 1px solid rgba(226, 232, 240, 0.92);
-  background: linear-gradient(180deg, #ffffff, #fbfdff);
-  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.05);
+  gap: 20px;
 }
 
-.credential-delivery-footer__tip {
+.cert-status__icon {
+  font-size: 36px;
+  color: #10b981;
+  filter: drop-shadow(0 0 15px rgba(16, 185, 129, 0.4));
+}
+
+.cert-status__text p {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  color: rgba(255, 255, 255, 0.6);
+  text-transform: uppercase;
+}
+
+.cert-status__text h2 {
+  margin: 4px 0 0;
+  font-size: 24px;
+  font-weight: 800;
+}
+
+.cert-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 999px;
+  backdrop-filter: blur(10px);
+  font-size: 13px;
+  font-weight: 600;
+  color: #fbbf24;
+}
+
+/* 主体内容 */
+.cert-content {
+  padding: 16px 48px;
+}
+
+.cert-section {
+  margin-bottom: 16px;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.section-title .arco-icon {
+  font-size: 20px;
+  color: #3b82f6;
+}
+
+.section-title h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.section-title small {
+  margin-left: 8px;
+  font-size: 11px;
+  color: #94a3b8;
+  letter-spacing: 0.05em;
+}
+
+/* 凭证卡片：强调安全性与现代感 */
+.key-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+.key-card {
+  padding: 12px 20px;
+  border-radius: 20px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.key-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.08);
+}
+
+.key-card.is-blue {
+  background: linear-gradient(135deg, #f0f9ff 0%, #ffffff 100%);
+  border-left: 6px solid #3b82f6;
+}
+
+.key-card.is-violet {
+  background: linear-gradient(135deg, #f5f3ff 0%, #ffffff 100%);
+  border-left: 6px solid #8b5cf6;
+}
+
+.key-card__info strong {
+  display: block;
+  font-size: 15px;
+  color: #1e293b;
+}
+
+.key-card__info p {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.key-card__value {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.key-card__value code {
+  flex: 1;
+  padding: 6px 10px;
+  background: #0f172a;
+  color: #f8fafc;
+  border-radius: 12px;
+  font-size: 14px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  word-break: break-all;
+}
+
+.key-copy-btn {
+  flex-shrink: 0;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  color: #64748b;
+}
+
+.key-copy-btn:hover {
+  background: #f8fafc;
+  color: #3b82f6;
+  border-color: #3b82f6;
+}
+
+/* 详情网格 */
+.cert-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 40px;
+}
+
+.profile-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 12px;
+  background: #fff;
+  border-radius: 20px;
+  border: 1px solid #e2e8f0;
+}
+
+.profile-item {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  max-width: 720px;
 }
 
-.credential-delivery-footer__actions {
+.profile-item__label {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.profile-item__value {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 12px;
-}
-
-.credential-delivery-footer__actions :deep(.arco-btn),
-.credential-delivery-key-card__head :deep(.arco-btn) {
-  border-radius: 999px;
-}
-
-.section-heading {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 16px;
-}
-
-.section-heading--row {
   align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e293b;
 }
 
-.section-heading h3 {
-  margin: 0;
-  font-size: 18px;
+.copy-mini {
+  font-size: 14px;
+  color: #cbd5e1;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.copy-mini:hover {
+  color: #3b82f6;
+}
+
+.runtime-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.runtime-item {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+  background: #fff;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+}
+
+.runtime-item__label {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.runtime-item strong {
+  font-size: 16px;
   color: #0f172a;
 }
 
-.section-heading p {
-  margin: 6px 0 0;
-  color: #64748b;
-  line-height: 1.7;
+.whitelist-summary {
+  padding: 10px;
+  background: rgba(241, 245, 249, 0.5);
+  border-radius: 16px;
+  border: 1px dashed #cbd5e1;
 }
 
-.tags {
+.whitelist-summary p {
+  margin: 0 0 10px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.ip-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
 }
 
-@media (max-width: 1280px) {
-  .credential-delivery-modal__title,
-  .credential-delivery-footer {
-    flex-direction: column;
-    align-items: stretch;
-  }
+.empty-text {
+  font-size: 12px;
+  color: #94a3b8;
+  font-style: italic;
+}
 
-  .credential-delivery-key-grid,
-  .credential-delivery-aux-grid,
-  .credential-delivery-profile-grid {
+/* 底部功能区 */
+.cert-footer {
+  margin-top: 4px;
+  padding-top: 16px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.safety-notices {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.safety-notice {
+  display: flex;
+  gap: 12px;
+}
+
+.safety-notice .arco-icon {
+  margin-top: 2px;
+  font-size: 18px;
+  color: #64748b;
+}
+
+.safety-notice strong {
+  display: block;
+  font-size: 14px;
+  color: #1e293b;
+}
+
+.safety-notice p {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: #64748b;
+  line-height: 1.6;
+}
+
+.cert-actions {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+}
+
+.btn-bundle {
+  min-width: 180px;
+  height: 38px;
+  border-radius: 12px;
+  font-weight: 700;
+  border: 1px solid #e2e8f0;
+}
+
+.btn-done {
+  min-width: 220px;
+  height: 38px;
+  border-radius: 12px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  box-shadow: 0 10px 25px rgba(37, 99, 235, 0.25);
+  border: none;
+}
+
+.btn-done:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 15px 30px rgba(37, 99, 235, 0.35);
+}
+
+/* 响应式适配 */
+@media (max-width: 1024px) {
+  .cert-grid {
     grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 768px) {
-  :deep(.credential-delivery-modal .arco-modal-header) {
-    padding: 18px 18px 0;
+  .cert-header {
+    padding: 32px 24px;
   }
-
-  :deep(.credential-delivery-modal .arco-modal-body) {
-    padding: 16px 18px 18px;
+  .cert-content {
+    padding: 24px;
   }
-
-  .credential-delivery-panel,
-  .credential-delivery-footer {
-    padding: 18px;
+  .key-cards {
+    grid-template-columns: 1fr;
   }
-
-  .credential-delivery-key-card code {
-    font-size: 16px;
+  .safety-notices {
+    grid-template-columns: 1fr;
+  }
+  .cert-actions {
+    flex-direction: column;
   }
 }
 </style>

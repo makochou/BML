@@ -55,6 +55,13 @@ public class SysApiAccountController extends BaseController {
         return Result.ok(accountService.getAccountDetail(id));
     }
 
+    @Operation(summary = "按 ID 复制 API 账号副本")
+    @PreAuthorize("@ss.hasPermi('api:account:add')")
+    @GetMapping("/{id}/copy")
+    public Result<SysApiAccountDetailVO> copy(@PathVariable Long id) {
+        return Result.ok(accountService.getAccountCopy(id));
+    }
+
     @Operation(summary = "新增API账号")
     @PreAuthorize("@ss.hasPermi('api:account:add')")
     @PostMapping
@@ -72,7 +79,8 @@ public class SysApiAccountController extends BaseController {
     @Operation(summary = "修改API账号状态")
     @PreAuthorize("@ss.hasPermi('api:account:edit')")
     @PutMapping("/{id}/status")
-    public Result<Void> updateStatus(@PathVariable Long id, @Valid @RequestBody UpdateSysApiAccountStatusCommand command) {
+    public Result<Void> updateStatus(@PathVariable Long id,
+            @Valid @RequestBody UpdateSysApiAccountStatusCommand command) {
         return toAjax(accountService.updateAccountStatus(id, command.getStatus()));
     }
 

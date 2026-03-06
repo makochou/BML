@@ -13,6 +13,7 @@ export type ConfigurableTableColumn<Kind extends string> = {
   kind: Kind;
   width: number;
   dataIndex?: string;
+  slotName?: string;
   fixed?: ColumnFix;
   ellipsis?: boolean;
   tooltip?: boolean;

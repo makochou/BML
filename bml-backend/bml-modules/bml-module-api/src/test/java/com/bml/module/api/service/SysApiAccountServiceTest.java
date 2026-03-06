@@ -7,6 +7,7 @@ import com.bml.module.api.entity.SysApiAccount;
 import com.bml.module.api.mapper.SysApiAccountMapper;
 import com.bml.module.api.mapper.SysApiPermissionMapper;
 import com.bml.module.api.vo.ApiCredentialVO;
+import com.bml.module.api.vo.SysApiAccountDetailVO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -168,6 +169,29 @@ class SysApiAccountServiceTest {
         ArgumentCaptor<SysApiAccount> captor = ArgumentCaptor.forClass(SysApiAccount.class);
         verify(accountMapper).updateById(captor.capture());
         assertEquals(0, captor.getValue().getStatus());
+    }
+
+    @Test
+    void shouldGetAccountCopyReadyForCreation() {
+        SysApiAccount account = new SysApiAccount();
+        account.setId(4001L);
+        account.setAccountName("Original-Account");
+        account.setAccessKey("ak_original");
+        account.setSystemName("Enterprise Portal");
+        account.setSystemCode("ENTERPRISE_PORTAL");
+        account.setAccessEnvironment("production");
+
+        when(accountMapper.selectById(4001L)).thenReturn(account);
+        when(permissionMapper.selectAuthorizedCountList(any())).thenReturn(List.of());
+
+        SysApiAccountDetailVO copy = service.getAccountCopy(4001L);
+
+        assertEquals("Original-Account_Copy", copy.getAccountName());
+        assertEquals(null, copy.getId());
+        assertEquals(null, copy.getAccessKey());
+        assertEquals(0L, copy.getAuthorizedApiCount());
+        assertEquals("Enterprise Portal", copy.getSystemName());
+        assertEquals("production", copy.getAccessEnvironment());
     }
 
     private CreateSysApiAccountCommand buildCreateCommand() {

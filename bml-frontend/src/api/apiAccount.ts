@@ -29,6 +29,10 @@ export const fetchApiAccountDetail = (id: number): ApiPromise<ApiAccountDetail> 
     return request.get(`/account/${id}`) as ApiPromise<ApiAccountDetail>;
 };
 
+export const fetchApiAccountCopy = (id: number): ApiPromise<ApiAccountDetail> => {
+    return request.get(`/account/${id}/copy`) as ApiPromise<ApiAccountDetail>;
+};
+
 export const createApiAccount = (payload: SaveApiAccountPayload): ApiPromise<ApiCredentialPayload> => {
     return request.post('/account', payload) as ApiPromise<ApiCredentialPayload>;
 };

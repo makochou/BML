@@ -25,6 +25,7 @@
 
         <div class="account-preview-modal__actions">
           <a-button :disabled="!account" @click="emit('edit')">编辑账号</a-button>
+          <a-button :disabled="!account" @click="emit('copy')">复制新建</a-button>
           <a-button type="primary" :disabled="!account" @click="emit('authorization')">接口授权</a-button>
           <a-button :disabled="!account" @click="emit('callback')">回调日志</a-button>
 
@@ -120,6 +121,7 @@ defineProps<{
 const emit = defineEmits<{
   (event: 'update:visible', value: boolean): void;
   (event: 'edit'): void;
+  (event: 'copy'): void;
   (event: 'authorization'): void;
   (event: 'callback'): void;
   (event: 'reset-secret'): void;
