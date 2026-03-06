@@ -40,9 +40,9 @@ const staticRoutes: RouteRecordRaw[] = [
             },
             {
                 path: 'api/list',
-                name: 'LegacyApiListRedirect',
-                redirect: API_ACCOUNT_MANAGE_FULL_PATH,
-                meta: { title: 'API账号管理', hidden: true }
+                name: 'ApiList',
+                component: () => import('../views/api/ApiList.vue'),
+                meta: { title: 'API接口列表' }
             },
             {
                 path: 'api/debug',

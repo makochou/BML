@@ -7,6 +7,8 @@ import com.bml.core.common.support.ApiRegistryPathSupport;
 import com.bml.module.api.dto.OpenApiRegistryTreeQuery;
 import com.bml.module.api.entity.SysApiRegistry;
 import com.bml.module.api.mapper.SysApiRegistryMapper;
+import com.bml.module.api.support.ApiCatalogDisplayNameSupport;
+import com.bml.module.api.vo.ApiCatalogTreeNodeVO;
 import com.bml.module.api.vo.OpenApiControllerGroupVO;
 import com.bml.module.api.vo.OpenApiGroupVO;
 import com.bml.module.api.vo.OpenApiRegistryItemVO;
@@ -23,7 +25,6 @@ import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandl
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -87,6 +88,63 @@ public class SysOpenApiRegistryService extends ServiceImpl<SysApiRegistryMapper,
             controllerGroup.getApis().add(toRegistryItem(registry));
         }
         return new ArrayList<>(moduleMap.values());
+    }
+
+    /**
+     * 查询 API 接口目录树（用于「API 接口列表」页展示）。
+     * <p>
+     * 返回三层结构：模块（如系统管理）→ 业务资源（如用户管理）→ 具体接口（如用户列表、新增用户）。
+     * 模块与控制器名称会通过 {@link ApiCatalogDisplayNameSupport} 解析为中文展示名。
+     * </p>
+     *
+     * @param query 查询条件（关键词、方法、状态、模块名等），可为空
+     * @return 树形节点列表，每个一级节点为模块，其 children 为资源，资源的 children 为接口叶子节点
+     */
+    public List<ApiCatalogTreeNodeVO> listApiCatalogTree(OpenApiRegistryTreeQuery query) {
+        List<SysApiRegistry> registries = this.list(buildRegistryQueryWrapper(query));
+        if (registries.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        Map<String, ApiCatalogTreeNodeVO> moduleMap = new LinkedHashMap<>();
+        for (SysApiRegistry registry : registries) {
+            String moduleName = StrUtil.blankToDefault(registry.getModuleName(), "common");
+            String controllerName = StrUtil.blankToDefault(registry.getControllerName(), "");
+
+            ApiCatalogTreeNodeVO moduleNode = moduleMap.computeIfAbsent(moduleName, mn -> {
+                ApiCatalogTreeNodeVO node = ApiCatalogTreeNodeVO.module(mn,
+                        ApiCatalogDisplayNameSupport.getModuleDisplayName(mn));
+                return node;
+            });
+
+            ApiCatalogTreeNodeVO resourceNode = moduleNode.getChildren().stream()
+                    .filter(n -> controllerName.equals(extractControllerNameFromId(n.getId())))
+                    .findFirst()
+                    .orElseGet(() -> {
+                        ApiCatalogTreeNodeVO node = ApiCatalogTreeNodeVO.resource(controllerName,
+                                ApiCatalogDisplayNameSupport.getControllerDisplayName(controllerName));
+                        moduleNode.getChildren().add(node);
+                        return node;
+                    });
+
+            ApiCatalogTreeNodeVO apiNode = ApiCatalogTreeNodeVO.api(
+                    registry.getId(),
+                    StrUtil.blankToDefault(registry.getApiName(), registry.getMethodName()),
+                    registry.getHttpMethod(),
+                    registry.getApiUrl(),
+                    registry.getDescription(),
+                    registry.getStatus());
+            resourceNode.getChildren().add(apiNode);
+        }
+
+        return new ArrayList<>(moduleMap.values());
+    }
+
+    private static String extractControllerNameFromId(String nodeId) {
+        if (StrUtil.isBlank(nodeId) || !nodeId.startsWith("resource:")) {
+            return "";
+        }
+        return nodeId.substring("resource:".length());
     }
 
     /**
