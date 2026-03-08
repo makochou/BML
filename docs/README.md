@@ -29,6 +29,8 @@
 | 12 | [12-unified-response-exception-spec.md](./12-unified-response-exception-spec.md) | 统一响应、统一异常、统一返回规范 |
 | 13 | [13-encoding-and-comment-guidelines.md](./13-encoding-and-comment-guidelines.md) | 编码规范、中文注释规范与排查指南 |
 | 14 | [14-stage-c-implementation-guide.md](./14-stage-c-implementation-guide.md) | 阶段 C 实施教程（VO 收口、数据权限、动态路由） |
+| 27 | [27-api-debug-panel-guide.md](./27-api-debug-panel-guide.md) | API 调试面板使用说明（接口列表页右侧 Postman 风格调试） |
+| 37 | [37-api-catalog-hierarchy-guide.md](./37-api-catalog-hierarchy-guide.md) | API 接口目录层级映射文档说明（菜单层级 → 接口展示名） |
 
 ## 文档使用原则
 

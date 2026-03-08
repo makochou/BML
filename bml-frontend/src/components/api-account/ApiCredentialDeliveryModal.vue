@@ -291,32 +291,99 @@ async function copyCredentialBundle() {
 </script>
 
 <style scoped>
-/* 弹窗基础重置 */
+/* 全局重置 - 移除所有边框和轮廓 */
+:deep(.credential-delivery-modal-v2 *) {
+  box-sizing: border-box;
+}
+
+/* 最高优先级 - 移除所有可能的红色边框 */
+:deep(.arco-modal-wrapper.credential-delivery-modal-v2),
+:deep(.credential-delivery-modal-v2),
+:deep(.credential-delivery-modal-v2 .arco-modal-container),
+:deep(.credential-delivery-modal-v2 .arco-modal) {
+  border: 0 !important;
+  border-top: 0 !important;
+  border-bottom: 0 !important;
+  border-left: 0 !important;
+  border-right: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+}
+
+/* 弹窗最外层容器 - 移除所有边框 */
+:deep(.arco-modal-wrapper .credential-delivery-modal-v2) {
+  border: none !important;
+}
+
+/* 弹窗基础重置 - 移除所有可能的边框 */
+:deep(.credential-delivery-modal-v2.arco-modal-wrapper) {
+  border: none !important;
+}
+
+:deep(.credential-delivery-modal-v2 .arco-modal-container) {
+  border: none !important;
+  outline: none !important;
+}
+
 :deep(.credential-delivery-modal-v2 .arco-modal) {
   border-radius: 24px;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  box-shadow: 0 40px 100px rgba(15, 23, 42, 0.25);
+  border: none !important; /* 强制移除所有边框 */
+  border-top: none !important; /* 特别移除顶部边框 */
+  box-shadow: 0 40px 100px rgba(15, 23, 42, 0.25) !important;
+  outline: none !important; /* 移除可能的轮廓线 */
+}
+
+/* 移除 Modal 所有可能的边框样式 */
+:deep(.credential-delivery-modal-v2 .arco-modal::before),
+:deep(.credential-delivery-modal-v2 .arco-modal::after) {
+  display: none !important;
+}
+
+:deep(.credential-delivery-modal-v2 .arco-modal-header) {
+  border: none !important; /* 移除 header 边框 */
+  border-bottom: none !important;
+  border-top: none !important;
+  display: none !important; /* 完全隐藏 header，因为我们使用自定义的 */
 }
 
 :deep(.credential-delivery-modal-v2 .arco-modal-body) {
   padding: 0;
   background: #fff;
+  max-height: 85vh; /* 限制最大高度 */
+  overflow-y: auto; /* 允许内部滚动 */
+  border: none !important; /* 移除 body 边框 */
+  border-top: none !important;
+  border-bottom: none !important;
+  border-left: none !important;
+  border-right: none !important;
+  border-radius: 24px; /* 添加圆角 */
 }
 
 .credential-cert {
   display: flex;
   flex-direction: column;
   background: #f8fafc;
+  border: none !important; /* 确保没有边框 */
+  outline: none !important; /* 确保没有轮廓线 */
+  margin: 0 !important; /* 移除外边距 */
+  padding: 0 !important; /* 移除内边距 */
+  border-radius: 24px; /* 添加圆角以匹配弹窗 */
+  overflow: hidden; /* 确保子元素不会溢出圆角 */
 }
 
 /* 顶部 Header：冰川蓝渐变 + 装饰性光球 */
 .cert-header {
   position: relative;
-  padding: 16px 48px;
+  padding: 20px 40px; /* 减少 padding，从 16px 48px 改为 20px 40px */
   background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
   color: #fff;
   overflow: hidden;
+  border: none !important; /* 确保没有边框 */
+  border-top: none !important; /* 特别移除顶部边框 */
+  margin-top: 0 !important; /* 移除顶部外边距 */
+  border-top-left-radius: 24px; /* 添加顶部圆角 */
+  border-top-right-radius: 24px; /* 添加顶部圆角 */
 }
 
 .cert-header__decoration .orb {
@@ -393,11 +460,11 @@ async function copyCredentialBundle() {
 
 /* 主体内容 */
 .cert-content {
-  padding: 16px 48px;
+  padding: 20px 40px; /* 减少 padding，从 16px 48px 改为 20px 40px */
 }
 
 .cert-section {
-  margin-bottom: 16px;
+  margin-bottom: 20px; /* 减少间距，从 16px 改为 20px */
 }
 
 .section-title {
@@ -430,7 +497,7 @@ async function copyCredentialBundle() {
 .key-cards {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 24px;
+  gap: 16px; /* 减少间距，从 24px 改为 16px */
 }
 
 .key-card {
@@ -504,7 +571,7 @@ async function copyCredentialBundle() {
 .cert-grid {
   display: grid;
   grid-template-columns: 1.2fr 1fr;
-  gap: 40px;
+  gap: 24px; /* 减少间距，从 40px 改为 24px */
 }
 
 .profile-grid {
@@ -603,16 +670,16 @@ async function copyCredentialBundle() {
 
 /* 底部功能区 */
 .cert-footer {
-  margin-top: 4px;
-  padding-top: 16px;
+  margin-top: 8px; /* 减少间距，从 4px 改为 8px */
+  padding-top: 20px; /* 减少 padding，从 16px 改为 20px */
   border-top: 1px solid #e2e8f0;
 }
 
 .safety-notices {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  margin-bottom: 12px;
+  gap: 12px; /* 增加间距，从 10px 改为 12px */
+  margin-bottom: 16px; /* 减少间距，从 12px 改为 16px */
 }
 
 .safety-notice {

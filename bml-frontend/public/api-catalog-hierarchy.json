@@ -1,0 +1,71 @@
+{
+  "GET /open/api/ping": {
+    "topMenu": "API 管理",
+    "parentMenu": "OpenAPI 示例",
+    "apiName": "OpenAPI 签名链路健康检查"
+  },
+
+  "GET /account/page": {
+    "topMenu": "API 管理",
+    "parentMenu": "API 账号管理",
+    "apiName": "分页查询 API 账号"
+  },
+  "GET /account/{id}": {
+    "topMenu": "API 管理",
+    "parentMenu": "API 账号管理",
+    "apiName": "查看 API 账号详情"
+  },
+  "GET /account/{id}/copy": {
+    "topMenu": "API 管理",
+    "parentMenu": "API 账号管理",
+    "apiName": "复制 API 账号副本"
+  },
+  "POST /account": {
+    "topMenu": "API 管理",
+    "parentMenu": "API 账号管理",
+    "apiName": "新增 API 账号"
+  },
+  "PUT /account/{id}": {
+    "topMenu": "API 管理",
+    "parentMenu": "API 账号管理",
+    "apiName": "编辑 API 账号"
+  },
+  "PUT /account/status": {
+    "topMenu": "API 管理",
+    "parentMenu": "API 账号管理",
+    "apiName": "修改 API 账号状态"
+  },
+  "DELETE /account/{id}": {
+    "topMenu": "API 管理",
+    "parentMenu": "API 账号管理",
+    "apiName": "删除 API 账号"
+  },
+
+  "GET /account/{id}/authorization": {
+    "topMenu": "API 管理",
+    "parentMenu": "API 账号授权",
+    "apiName": "查看账号授权快照"
+  },
+  "PUT /account/{id}/authorization": {
+    "topMenu": "API 管理",
+    "parentMenu": "API 账号授权",
+    "apiName": "保存账号授权"
+  },
+
+  "GET /account/{id}/callback-log/page": {
+    "topMenu": "API 管理",
+    "parentMenu": "API 回调日志",
+    "apiName": "分页查询回调日志"
+  },
+  "POST /account/{id}/callback/test": {
+    "topMenu": "API 管理",
+    "parentMenu": "API 回调日志",
+    "apiName": "发送测试回调"
+  },
+  "POST /account/callback-log/{logId}/retry": {
+    "topMenu": "API 管理",
+    "parentMenu": "API 回调日志",
+    "apiName": "手动重试回调日志"
+  }
+}
+

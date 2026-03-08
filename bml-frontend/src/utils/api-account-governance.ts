@@ -87,3 +87,55 @@ export function getEffectiveWhitelist(record: Pick<ApiAccountItem, 'accessEnviro
   const whitelist = record.environmentIpWhitelist?.[env];
   return whitelist?.length ? whitelist : (record.ipWhitelist || []);
 }
+
+/**
+ * 模块名称中文映射表
+ * 与后端 ApiCatalogDisplayNameSupport 保持一致
+ */
+const MODULE_DISPLAY_NAMES: Record<string, string> = {
+  'api': 'API管理',
+  'system': '系统管理',
+  'enterprise': '企业管理',
+  'monitor': '系统监控',
+  'openapi': 'OpenAPI'
+};
+
+/**
+ * 控制器名称中文映射表
+ * 与后端 ApiCatalogDisplayNameSupport 保持一致
+ */
+const CONTROLLER_DISPLAY_NAMES: Record<string, string> = {
+  'OpenApiDemoController': '演示接口',
+  'SysApiAccountAuthorizationController': '获取账号与授权信息',
+  'SysApiAccountCallbackController': '保存账号与授权信息',
+  'SysApiAccountCallbackLogController': '分页查询回调失败的回调日志',
+  'SysApiAccountController': '发送测试回调',
+  'SysApiListController': 'API接口列表',
+  'SysUserController': '用户管理',
+  'SysRoleController': '角色管理',
+  'SysDeptController': '部门管理',
+  'SysMenuController': '菜单管理',
+  'SysConfigController': '配置管理',
+  'SysDictController': '字典管理',
+  'SysLogController': '日志管理'
+};
+
+/**
+ * 获取模块的中文显示名称
+ * @param moduleName 模块名称（英文）
+ * @returns 中文显示名称，未配置时返回原始名称
+ */
+export function getModuleDisplayName(moduleName: string): string {
+  if (!moduleName) return '未分类';
+  return MODULE_DISPLAY_NAMES[moduleName] || moduleName;
+}
+
+/**
+ * 获取控制器的中文显示名称
+ * @param controllerName 控制器名称（英文）
+ * @returns 中文显示名称，未配置时返回原始名称
+ */
+export function getControllerDisplayName(controllerName: string): string {
+  if (!controllerName) return '未命名';
+  return CONTROLLER_DISPLAY_NAMES[controllerName] || controllerName;
+}

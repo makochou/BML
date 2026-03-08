@@ -449,7 +449,49 @@ const handleMarkAllRead = async () => {
 
 
 /* ================= 滚动区域与基础间隔 ================= */
-.h-scrollable { flex: 1; overflow-y: auto; padding: 12px 20px 24px; display: flex; flex-direction: column; }
+.h-scrollable { 
+  flex: 1; 
+  overflow-y: auto; 
+  overflow-x: hidden; /* 隐藏水平滚动条 */
+  padding: 12px 20px 24px; 
+  display: flex; 
+  flex-direction: column; 
+}
+
+/* 详情区域滚动样式优化 */
+.detail-scroll-area {
+  /* 自定义滚动条样式 - 精致美观 */
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: rgba(134, 144, 156, 0.3) transparent; /* Firefox */
+}
+
+/* Webkit 浏览器滚动条样式 */
+.detail-scroll-area::-webkit-scrollbar {
+  width: 6px;
+}
+
+.detail-scroll-area::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 10px;
+  margin: 4px 0;
+}
+
+.detail-scroll-area::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(134, 144, 156, 0.3) 0%, rgba(134, 144, 156, 0.5) 100%);
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background-clip: content-box;
+  transition: background 0.3s ease;
+}
+
+.detail-scroll-area::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(134, 144, 156, 0.5) 0%, rgba(134, 144, 156, 0.7) 100%);
+}
+
+.detail-scroll-area::-webkit-scrollbar-thumb:active {
+  background: linear-gradient(180deg, rgba(134, 144, 156, 0.7) 0%, rgba(134, 144, 156, 0.9) 100%);
+}
+
 .no-top-pad { padding-top: 0px; }
 
 /* ================= Column 1：月历看板 ================= */
@@ -537,6 +579,35 @@ const handleMarkAllRead = async () => {
 
 /* ================= Column 2：列表视图瀑布流 ================= */
 .h-col-header { padding: 12px 20px 8px; border-bottom: 1px dashed rgba(0,0,0,0.04); margin-bottom: 8px; display: flex; flex-direction: column; gap: 8px;}
+
+/* 列表滚动区域样式优化 */
+.h-col-list .h-scrollable {
+  /* 自定义滚动条样式 */
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: rgba(134, 144, 156, 0.3) transparent; /* Firefox */
+}
+
+.h-col-list .h-scrollable::-webkit-scrollbar {
+  width: 6px;
+}
+
+.h-col-list .h-scrollable::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 10px;
+  margin: 4px 0;
+}
+
+.h-col-list .h-scrollable::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(134, 144, 156, 0.3) 0%, rgba(134, 144, 156, 0.5) 100%);
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background-clip: content-box;
+}
+
+.h-col-list .h-scrollable::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(134, 144, 156, 0.5) 0%, rgba(134, 144, 156, 0.7) 100%);
+}
+
 /* 隐藏无用的列标题，但保留 CSS 以防万一他日复用 */
 .col-title { display: none; margin: 0; font-family: 'Inter', monospace; }
 

@@ -58,7 +58,12 @@ export const useAppStore = defineStore('app', {
          * 从 localStorage 恢复保存的主题色并应用 CSS 变量
          */
         initTheme() {
-            applyThemeColor(this.themeColor);
+            try {
+                applyThemeColor(this.themeColor);
+            } catch (error) {
+                console.error('Error initializing theme:', error);
+                // 即使主题初始化失败，也不应该阻止应用启动
+            }
         }
     },
 });

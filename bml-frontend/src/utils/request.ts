@@ -22,7 +22,11 @@ type RetryableRequestConfig = InternalAxiosRequestConfig & {
     _skipErrorMessage?: boolean;
 };
 
-const apiBaseURL = import.meta.env.VITE_API_BASE_URL || '/api';
+/**
+ * 接口请求根路径，与后端 server.servlet.context-path 一致。
+ * 用于 API 调试面板等需要自行拼接 URL 的场景。
+ */
+export const apiBaseURL = import.meta.env.VITE_API_BASE_URL || '/api';
 
 const service = axios.create({
     baseURL: apiBaseURL,
@@ -143,5 +147,27 @@ service.interceptors.request.use(
         return Promise.reject(error);
     }
 );
+
+/**
+ * 获取用于 API 调试的 HTTP 客户端。
+ * 该实例仅注入 Authorization 头，不做响应体统一解析与 401 自动刷新，
+ * 便于调试面板展示原始 HTTP 状态码、响应头与响应体。
+ *
+ * @returns 带 baseURL 与 Token 注入的 axios 实例，调用方将得到完整 AxiosResponse
+ */
+export function getDebugHttpClient() {
+    const client = axios.create({
+        baseURL: apiBaseURL,
+        timeout: 30000
+    });
+    client.interceptors.request.use(config => {
+        const token = getAccessToken();
+        if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
+        }
+        return config;
+    }, error => Promise.reject(error));
+    return client;
+}
 
 export default service;

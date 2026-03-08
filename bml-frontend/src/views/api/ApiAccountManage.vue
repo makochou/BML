@@ -483,6 +483,7 @@ import { splitGovernanceSectionsByPriority } from '../../composables/useGovernan
 import { defineTableColumns, useTableColumns } from '../../composables/useTableColumns';
 import { useResizableModal } from '../../composables/useResizableModal';
 import { buildUserScopedStorageKey } from '../../utils/userScopedStorage';
+import { getModuleDisplayName, getControllerDisplayName } from '../../utils/api-account-governance';
 import type {
   AccessEnvironment,
   ApiAccountDetail,
@@ -496,11 +497,12 @@ import type {
   EnvironmentIpWhitelistTextMap,
   OpenApiGroupNode
 } from '../../types/apiAccount';
+import type { ApiCatalogTreeNode } from '../../types/apiList';
 import type { FactCard, WorkbenchStatCard } from '../../types/governance';
 
 type AccountModalMode = 'create' | 'edit';
 type ManageRouteAction = 'edit' | 'copy' | 'authorization' | 'callback' | 'reset-secret';
-type AuthorizationTreeNode = { key: string; title: string; nodeType: 'module' | 'controller' | 'api'; description?: string; httpMethod?: string; apiUrl?: string; disableCheckbox?: boolean; children?: AuthorizationTreeNode[] };
+
 type AuthorizationModuleCard = { moduleName: string; apiCount: number; controllerCount: number; selectedCount: number };
 type AccountColumnKind =
   | 'index'
@@ -1273,9 +1275,30 @@ function handleAccountBottomScrollbarScroll(event: Event) {
     accountBottomScrollbarSyncing = false;
   });
 }
-const moduleOptions = computed(() => authorizationDrawer.snapshot?.groups.map(item => ({ label: item.moduleName, value: item.moduleName })) || []);
+const moduleOptions = computed(() => authorizationDrawer.snapshot?.groups.map(item => ({ 
+  label: getModuleDisplayName(item.moduleName), 
+  value: item.moduleName 
+})) || []);
 const filteredAuthorizationGroups = computed(() => { const groups = authorizationDrawer.snapshot?.groups || []; const keyword = authorizationFilters.keyword.trim().toLowerCase(); return groups.filter(group => !authorizationFilters.moduleName || group.moduleName === authorizationFilters.moduleName).map(group => ({ ...group, controllers: group.controllers.map(controller => ({ ...controller, apis: controller.apis.filter(api => { const keywordMatched = !keyword || api.apiName.toLowerCase().includes(keyword) || api.apiUrl.toLowerCase().includes(keyword) || (api.description || '').toLowerCase().includes(keyword) || controller.controllerName.toLowerCase().includes(keyword) || group.moduleName.toLowerCase().includes(keyword); const methodMatched = !authorizationFilters.method || api.httpMethod === authorizationFilters.method; return keywordMatched && methodMatched; }) })).filter(controller => controller.apis.length > 0) })).filter(group => group.controllers.length > 0); });
-const authorizationTreeData = computed<AuthorizationTreeNode[]>(() => filteredAuthorizationGroups.value.map(group => ({ key: `module:${group.moduleName}`, title: group.moduleName, nodeType: 'module', description: `${countApisInGroup(group)} 个可授权接口`, disableCheckbox: true, children: group.controllers.map(controller => ({ key: `controller:${group.moduleName}:${controller.controllerName}`, title: controller.controllerName, nodeType: 'controller', description: `${controller.apis.length} 个接口`, disableCheckbox: true, children: controller.apis.map(api => ({ key: buildApiKey(api.id), title: api.apiName, nodeType: 'api', httpMethod: api.httpMethod, apiUrl: api.apiUrl })) })) })));
+const authorizationTreeData = computed<ApiCatalogTreeNode[]>(() => filteredAuthorizationGroups.value.map(group => ({
+  id: `module:${group.moduleName}`,
+  label: getModuleDisplayName(group.moduleName),
+  type: 'MODULE',
+  description: `${countApisInGroup(group)} 个可授权接口`,
+  children: group.controllers.map(controller => ({
+    id: `controller:${group.moduleName}:${controller.controllerName}`,
+    label: getControllerDisplayName(controller.controllerName),
+    type: 'RESOURCE',
+    description: `${controller.apis.length} 个接口`,
+    children: controller.apis.map(api => ({
+      id: buildApiKey(api.id),
+      label: api.apiName,
+      type: 'API',
+      httpMethod: api.httpMethod,
+      apiUrl: api.apiUrl
+    }))
+  }))
+})));
 const selectedAuthorizationCount = computed(() => parseCheckedApiIds(authorizationDrawer.checkedKeys).length);
 const moduleCards = computed<AuthorizationModuleCard[]>(() => { const selectedIds = new Set(parseCheckedApiIds(authorizationDrawer.checkedKeys)); return (authorizationDrawer.snapshot?.groups || []).map(group => { const apiIds = collectGroupApiIds(group); return { moduleName: group.moduleName, apiCount: apiIds.length, controllerCount: group.controllers.length, selectedCount: apiIds.filter(id => selectedIds.has(id)).length }; }); });
 // 接口授权抽屉统一改成治理工作台布局，概览卡、账号画像和建议信息全部由此处集中维护。
@@ -2367,36 +2390,58 @@ onBeforeUnmount(() => {
   display: none !important;
 }
 
+/**
+ * 自定义横向滚动条样式优化
+ * 使用现代化设计，与授权抽屉的滚动条风格保持一致
+ */
 .table-shell__x-scrollbar {
   flex-shrink: 0;
-  height: 12px;
-  margin-top: 8px;
+  height: 14px; /* 从 12px 增加到 14px，提供更好的可点击区域 */
+  margin-top: 10px; /* 从 8px 增加到 10px，与表格保持更好的间距 */
   overflow-x: auto;
   overflow-y: hidden;
-  border-radius: 999px;
+  border-radius: 10px; /* 从 999px 改为 10px，更现代的圆角 */
+  background: rgba(241, 245, 249, 0.6); /* 添加背景色，让滚动条轨道更明显 */
+  padding: 2px; /* 添加内边距，让滚动条滑块与轨道有间隙 */
 }
 
 .table-shell__x-scrollbar-track {
   height: 1px;
 }
 
+/**
+ * Webkit 浏览器（Chrome, Safari, Edge）滚动条样式
+ */
 .table-shell__x-scrollbar::-webkit-scrollbar {
-  height: 10px;
+  height: 10px; /* 保持 10px 高度 */
 }
 
 .table-shell__x-scrollbar::-webkit-scrollbar-track {
-  background: rgba(226, 232, 240, 0.84);
-  border-radius: 999px;
+  background: rgba(241, 245, 249, 0.6); /* 使用更柔和的轨道颜色 */
+  border-radius: 10px;
+  margin: 0 4px; /* 添加左右边距，让滚动条不贴边 */
 }
 
 .table-shell__x-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.92);
-  border-radius: 999px;
+  background: linear-gradient(180deg, #cbd5e1 0%, #94a3b8 100%); /* 使用渐变色，更有质感 */
+  border-radius: 10px;
+  transition: background 0.3s ease; /* 添加过渡动画 */
 }
 
+.table-shell__x-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #94a3b8 0%, #64748b 100%); /* 悬停时颜色加深 */
+}
+
+.table-shell__x-scrollbar::-webkit-scrollbar-thumb:active {
+  background: linear-gradient(180deg, #64748b 0%, #475569 100%); /* 点击时颜色更深 */
+}
+
+/**
+ * Firefox 浏览器滚动条样式
+ */
 .table-shell__x-scrollbar {
-  scrollbar-color: rgba(148, 163, 184, 0.92) rgba(226, 232, 240, 0.84);
-  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 rgba(241, 245, 249, 0.6); /* 滑块颜色 轨道颜色 */
+  scrollbar-width: thin; /* 使用细滚动条 */
 }
 
 .table-shell__footer {
@@ -2427,10 +2472,16 @@ onBeforeUnmount(() => {
  * 列设置面板：
  * 在列表第①层右上角提供字段显隐、排序和恢复默认入口，
  * 支持业务用户按场景自定义列表信息密度。
+ * 
+ * 设计优化（V6 - 根据最新红线标注）：
+ * 1. 弹窗宽度调整到红线位置（约280px）
+ * 2. 弹窗高度保持合适尺寸
+ * 3. 字体大小清晰易读
+ * 4. 间距紧凑但不拥挤
  */
 .table-column-setting-panel {
-  width: 312px;
-  padding: 10px 12px;
+  width: 280px; /* 调整为 280px，对齐到红线位置 */
+  padding: 10px 12px; /* 调整内边距以适应更窄的宽度 */
   border-radius: 12px;
   border: 1px solid rgba(209, 220, 235, 0.9);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(245, 250, 255, 0.96));
@@ -2453,22 +2504,70 @@ onBeforeUnmount(() => {
   font-weight: 700;
 }
 
+/**
+ * 列设置面板列表容器样式优化
+ * 
+ * V5 优化（根据实际红线标注）：
+ * 1. 最大高度调整为 320px，精确对齐到表格底部滚动条上方
+ * 2. 避免弹窗过高导致超出表格范围
+ * 3. 保持美观的滚动条样式
+ */
 .table-column-setting-panel__list {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  max-height: 280px;
-  overflow: auto;
+  max-height: 320px; /* 调整为 320px，精确对齐到表格底部滚动条上方 */
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 4px;
+  /* 自定义滚动条样式 */
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 rgba(241, 245, 249, 0.6);
 }
 
+/**
+ * Webkit 浏览器滚动条样式
+ */
+.table-column-setting-panel__list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.table-column-setting-panel__list::-webkit-scrollbar-track {
+  background: rgba(241, 245, 249, 0.6);
+  border-radius: 10px;
+  margin: 4px 0;
+}
+
+.table-column-setting-panel__list::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #cbd5e1 0%, #94a3b8 100%);
+  border-radius: 10px;
+  transition: background 0.3s ease;
+}
+
+.table-column-setting-panel__list::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #94a3b8 0%, #64748b 100%);
+}
+
+.table-column-setting-panel__list::-webkit-scrollbar-thumb:active {
+  background: linear-gradient(180deg, #64748b 0%, #475569 100%);
+}
+
+/**
+ * 列设置面板单项容器样式优化
+ * 
+ * V6 优化（适配更窄的宽度）：
+ * 1. 调整间距以适应 280px 的宽度
+ * 2. 保持舒适的点击区域
+ */
 .table-column-setting-panel__item {
   position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  padding: 8px 10px;
-  border-radius: 10px;
+  gap: 4px; /* 减少到 4px，适应更窄的宽度 */
+  padding: 6px 8px; /* 调整为 6px 8px，适应更窄的宽度 */
+  min-height: 36px;
+  border-radius: 6px;
   border: 1px solid rgba(220, 230, 243, 0.92);
   background: rgba(255, 255, 255, 0.92);
   transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
@@ -2502,25 +2601,39 @@ onBeforeUnmount(() => {
   bottom: -1px;
 }
 
+/**
+ * 列设置面板标签区域样式
+ * 
+ * V6 优化（适配更窄的宽度）：
+ * 1. 减少间距到 4px，适应更窄的宽度
+ */
 .table-column-setting-panel__label {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px; /* 减少到 4px，适应更窄的宽度 */
   min-width: 0;
+  flex: 1;
 }
 
+/**
+ * 列设置面板拖拽手柄样式
+ * 
+ * V6 优化（适配更窄的宽度）：
+ * 1. 调整手柄尺寸以适应更窄的宽度
+ */
 .table-column-setting-panel__drag-handle {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
-  border-radius: 6px;
+  width: 16px; /* 调整为 16px，适应更窄的宽度 */
+  height: 16px;
+  border-radius: 4px;
   color: #94a3b8;
   cursor: grab;
   user-select: none;
   flex: 0 0 auto;
   transition: color 0.2s ease, background-color 0.2s ease;
+  font-size: 11px;
 }
 
 .table-column-setting-panel__drag-handle:hover {
@@ -2534,35 +2647,92 @@ onBeforeUnmount(() => {
 
 .table-column-setting-panel__label span {
   color: #334155;
-  font-size: 12px;
+  font-size: 12px; /* 调整为 12px，适应更窄的宽度 */
   font-weight: 600;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .table-column-setting-panel__label small {
-  padding: 1px 6px;
+  padding: 1px 4px; /* 调整为 1px 4px，适应更窄的宽度 */
   border-radius: 999px;
   background: rgba(226, 232, 240, 0.9);
   color: #64748b;
-  font-size: 10px;
+  font-size: 9px; /* 调整为 9px，适应更窄的宽度 */
   font-weight: 700;
+  flex-shrink: 0;
 }
 
+/**
+ * 列设置面板操作按钮区域样式优化
+ * 
+ * V6 优化（适配更窄的宽度）：
+ * 1. 减少按钮间距到 3px，适应更窄的宽度
+ */
 .table-column-setting-panel__actions {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 3px; /* 减少到 3px，适应更窄的宽度 */
+  flex-shrink: 0;
 }
 
+/**
+ * 列设置面板开关样式优化
+ * 确保开关按钮使用主题色，清晰可见且美观
+ */
+.table-column-setting-panel__actions :deep(.arco-switch) {
+  flex-shrink: 0; /* 防止开关被压缩 */
+}
+
+.table-column-setting-panel__actions :deep(.arco-switch-checked) {
+  background-color: var(--color-primary, #165dff) !important;
+}
+
+.table-column-setting-panel__actions :deep(.arco-switch-checked:hover) {
+  background-color: var(--color-primary-light-4, #4080ff) !important;
+}
+
+.table-column-setting-panel__actions :deep(.arco-switch:not(.arco-switch-checked)) {
+  background-color: #e5e6eb !important;
+}
+
+.table-column-setting-panel__actions :deep(.arco-switch:not(.arco-switch-checked):hover) {
+  background-color: #c9cdd4 !important;
+}
+
+/**
+ * 列设置面板按钮尺寸优化
+ * 
+ * V6 优化（适配更窄的宽度）：
+ * 1. 调整按钮尺寸以适应更窄的宽度
+ */
+.table-column-setting-panel__fixed-btn,
+.table-column-setting-panel__order-btn {
+  width: 20px !important; /* 调整为 20px，适应更窄的宽度 */
+  min-width: 20px !important;
+  height: 20px !important;
+  padding: 0 !important;
+  border-radius: 4px !important;
+  font-size: 11px !important;
+}
+
+/**
+ * 列设置面板固定按钮样式
+ * 
+ * V6 优化（适配更窄的宽度）：
+ * 1. 调整按钮尺寸以适应更窄的宽度
+ */
 .table-column-setting-panel__fixed-btn {
-  width: 24px;
-  min-width: 24px;
-  height: 24px;
+  width: 20px;
+  min-width: 20px;
+  height: 20px;
   padding: 0;
-  border-radius: 8px;
+  border-radius: 4px;
   color: #64748b;
   border-color: rgba(203, 213, 225, 0.88);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(244, 249, 255, 0.96));
+  font-size: 11px;
 }
 
 .table-column-setting-panel__fixed-btn:hover {
@@ -2585,12 +2755,19 @@ onBeforeUnmount(() => {
   box-shadow: none;
 }
 
+/**
+ * 列设置面板排序按钮样式
+ * 
+ * V6 优化（适配更窄的宽度）：
+ * 1. 调整按钮尺寸以适应更窄的宽度
+ */
 .table-column-setting-panel__order-btn {
-  width: 24px;
-  min-width: 24px;
-  height: 24px;
+  width: 20px;
+  min-width: 20px;
+  height: 20px;
   padding: 0;
-  border-radius: 8px;
+  border-radius: 4px;
+  font-size: 11px;
 }
 
 .account-table {
@@ -2684,6 +2861,65 @@ onBeforeUnmount(() => {
 .table-action-btn {
   flex-shrink: 0;
   white-space: nowrap;
+}
+
+/**
+ * 主要操作按钮样式强化
+ * 确保按钮在任何主题下都清晰可见
+ */
+.table-action-btn--primary {
+  background: var(--color-primary, #165dff) !important;
+  border-color: var(--color-primary, #165dff) !important;
+  color: #fff !important;
+}
+
+.table-action-btn--primary:hover {
+  background: var(--color-primary-light-4, #4080ff) !important;
+  border-color: var(--color-primary-light-4, #4080ff) !important;
+  color: #fff !important;
+}
+
+.table-action-btn--primary:active {
+  background: var(--color-primary-dark-1, #0e42d2) !important;
+  border-color: var(--color-primary-dark-1, #0e42d2) !important;
+  color: #fff !important;
+}
+
+/**
+ * 更多按钮样式
+ * 使用默认灰色边框样式
+ */
+.table-action-btn--more {
+  background: #fff !important;
+  border-color: #e5e6eb !important;
+  color: #4e5969 !important;
+}
+
+.table-action-btn--more:hover {
+  background: #f7f8fa !important;
+  border-color: #c9cdd4 !important;
+  color: #1d2129 !important;
+}
+
+.table-action-btn--more:active {
+  background: #f2f3f5 !important;
+  border-color: #a9aeb8 !important;
+  color: #1d2129 !important;
+}
+
+/**
+ * 按钮图标颜色确保可见
+ */
+.table-action-btn--primary .arco-icon {
+  color: #fff !important;
+}
+
+.table-action-btn--more .arco-icon {
+  color: #4e5969 !important;
+}
+
+.table-action-btn--more:hover .arco-icon {
+  color: #1d2129 !important;
 }
 
 /** 删除选项标红警示 */

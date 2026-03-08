@@ -297,14 +297,18 @@ withDefaults(
 }
 
 .governance-workbench__layout {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
 }
 
 .governance-workbench__layout.has-aside {
   display: grid;
   grid-template-columns: minmax(280px, 0.84fr) minmax(0, 1.56fr);
   gap: 20px;
-  align-items: start;
+  align-items: stretch;
+  grid-template-rows: 1fr;
 }
 
 .governance-workbench__aside,
@@ -313,6 +317,7 @@ withDefaults(
   flex-direction: column;
   gap: 20px;
   min-width: 0;
+  min-height: 0;
 }
 
 .governance-workbench__footer {

@@ -1,0 +1,15 @@
+method,path,backendController,backendMethod,displayName,apiName,parentMenu,topMenu,remark
+GET,/open/api/ping,OpenApiDemoController,ping,,OpenAPI 签名链路健康检查,OpenAPI 示例,API 管理,
+GET,/account/page,SysApiAccountController,page,,分页查询 API 账号,API 账号管理,API 管理,
+GET,/account/{id},SysApiAccountController,getInfo,,查看 API 账号详情,API 账号管理,API 管理,
+GET,/account/{id}/copy,SysApiAccountController,copy,,复制 API 账号副本,API 账号管理,API 管理,
+POST,/account,SysApiAccountController,create,,新增 API 账号,API 账号管理,API 管理,
+PUT,/account/{id},SysApiAccountController,update,,编辑 API 账号,API 账号管理,API 管理,
+PUT,/account/status,SysApiAccountController,updateStatus,,修改 API 账号状态,API 账号管理,API 管理,
+DELETE,/account/{id},SysApiAccountController,remove,,删除 API 账号,API 账号管理,API 管理,
+GET,/account/{id}/authorization,SysApiAccountAuthorizationController,getAuthorization,,查看账号授权快照,API 账号授权,API 管理,
+PUT,/account/{id}/authorization,SysApiAccountAuthorizationController,saveAuthorization,,保存账号授权,API 账号授权,API 管理,
+GET,/account/{id}/callback-log/page,SysApiAccountCallbackController,pageLogs,,分页查询回调日志,API 回调日志,API 管理,
+POST,/account/{id}/callback/test,SysApiAccountCallbackController,triggerTestCallback,,发送测试回调,API 回调日志,API 管理,
+POST,/account/callback-log/{logId}/retry,SysApiAccountCallbackController,retryCallback,,手动重试回调日志,API 回调日志,API 管理,
+

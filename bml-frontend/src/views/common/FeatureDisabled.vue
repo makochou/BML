@@ -58,4 +58,111 @@ const primaryActionLabel = computed(() => {
   min-height: 420px;
   padding: 24px;
 }
+
+/**
+ * 空状态页面按钮样式优化
+ * 确保按钮在任何主题下都清晰可见且美观
+ */
+.feature-disabled :deep(.arco-btn-primary) {
+  background: var(--color-primary, #165dff) !important;
+  border-color: var(--color-primary, #165dff) !important;
+  color: #fff !important;
+  border-radius: 10px;
+  font-weight: 500;
+  padding: 0 24px;
+  height: 40px;
+  font-size: 15px;
+  box-shadow: 0 4px 12px var(--bml-shadow, rgba(22, 93, 255, 0.25));
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.feature-disabled :deep(.arco-btn-primary:hover) {
+  background: var(--color-primary-light-4, #4080ff) !important;
+  border-color: var(--color-primary-light-4, #4080ff) !important;
+  color: #fff !important;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px var(--bml-shadow, rgba(22, 93, 255, 0.35));
+}
+
+.feature-disabled :deep(.arco-btn-primary:active) {
+  background: var(--color-primary-dark-1, #0e42d2) !important;
+  border-color: var(--color-primary-dark-1, #0e42d2) !important;
+  color: #fff !important;
+  transform: translateY(0);
+}
+
+/**
+ * 次要按钮样式 - 使用主题色轮廓样式
+ * 让次要按钮也能清晰可见，与主题色保持一致
+ */
+.feature-disabled :deep(.arco-btn:not(.arco-btn-primary)) {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border: 2px solid var(--color-primary, #165dff) !important;
+  color: var(--color-primary, #165dff) !important;
+  border-radius: 10px;
+  font-weight: 500;
+  padding: 0 24px;
+  height: 40px;
+  font-size: 15px;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.feature-disabled :deep(.arco-btn:not(.arco-btn-primary):hover) {
+  background: var(--color-primary, #165dff) !important;
+  border-color: var(--color-primary, #165dff) !important;
+  color: #fff !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px var(--bml-shadow, rgba(22, 93, 255, 0.25));
+}
+
+.feature-disabled :deep(.arco-btn:not(.arco-btn-primary):active) {
+  background: var(--color-primary-dark-1, #0e42d2) !important;
+  border-color: var(--color-primary-dark-1, #0e42d2) !important;
+  color: #fff !important;
+  transform: translateY(0);
+}
+
+/**
+ * 按钮图标颜色
+ */
+.feature-disabled :deep(.arco-btn .arco-icon) {
+  color: inherit !important;
+}
+
+/**
+ * 按钮间距优化
+ */
+.feature-disabled :deep(.arco-space) {
+  gap: 16px !important;
+}
+
+/**
+ * Result组件标题和副标题样式优化
+ */
+.feature-disabled :deep(.arco-result-title) {
+  font-size: 24px;
+  font-weight: 600;
+  color: #1d2129;
+  margin-bottom: 12px;
+}
+
+.feature-disabled :deep(.arco-result-subtitle) {
+  font-size: 15px;
+  color: #4e5969;
+  line-height: 1.6;
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+/**
+ * Result图标样式优化
+ */
+.feature-disabled :deep(.arco-result-icon) {
+  margin-bottom: 24px;
+}
+
+.feature-disabled :deep(.arco-result-icon svg) {
+  width: 80px;
+  height: 80px;
+}
 </style>
