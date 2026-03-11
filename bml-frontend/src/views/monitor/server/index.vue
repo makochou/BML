@@ -1,5 +1,5 @@
 <template>
-  <div class="monitor-dashboard">
+  <div class="monitor-dashboard" ref="dashboardRef" :class="{ 'is-fullscreen': isFullscreen }">
     <!-- Star-field / Tech Background -->
     <div class="tech-bg"></div>
 
@@ -22,6 +22,9 @@
              <span class="hardware-text" style="margin-left: 4px">{{ serverInfo?.sys?.computerIp || '解析中...' }}</span> 
              <span style="color: #e5e6eb; margin: 0 6px;">|</span> 
              <span class="text-green" style="font-weight:bold">{{ serverInfo?.sys?.computerWanIp || '测算中...' }}</span>
+          </div>
+          <div class="info-pill action-pill" @click="toggleFullscreen" :title="isFullscreen ? '退出全屏' : '全屏模式'">
+            <component :is="isFullscreen ? IconFullscreenExit : IconFullscreen" style="font-size: 18px;"/>
           </div>
        </div>
     </header>
@@ -167,7 +170,8 @@
 <script lang="ts" setup>
 import { ref, onMounted, onUnmounted } from 'vue';
 import { Message } from '@arco-design/web-vue';
-import { IconDesktop, IconComputer, IconLayers, IconStorage, IconLoading, IconSwap, IconDelete, IconThunderbolt } from '@arco-design/web-vue/es/icon';
+import { IconDesktop, IconComputer, IconLayers, IconStorage, IconLoading, IconSwap, IconDelete, IconThunderbolt, IconFullscreen, IconFullscreenExit } from '@arco-design/web-vue/es/icon';
+import { useFullscreen } from '../../../composables/useFullscreen';
 import request from '../../../utils/request';
 import { use } from 'echarts/core';
 import { GaugeChart } from 'echarts/charts';
@@ -185,6 +189,10 @@ defineOptions({ name: 'ServerMonitoring' });
 
 // 服务器状态模型响应数据
 const serverInfo = ref<any>(null);
+
+// 全屏控制
+const dashboardRef = ref<HTMLElement | null>(null);
+const { isFullscreen, toggle: toggleFullscreen } = useFullscreen({ target: dashboardRef });
 
 // 提取共用的深黑科技质感图表工厂方法
 const createTechGauge = (name: string, color: string): ECOption => ({
@@ -302,9 +310,25 @@ onUnmounted(() => {
   background: #f2f3f5;
   color: #1d2129;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  overflow: hidden;
+  overflow: hidden; /* 禁用外部滚动条 */
   padding: 14px 20px;
   border-radius: 8px;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  display: flex;
+  flex-direction: column; /* 垂直排列，方便空间分配 */
+}
+
+/* 全屏状态下的特殊布局 */
+.monitor-dashboard.is-fullscreen {
+  height: 100vh !important;
+  border-radius: 0;
+  padding: 24px 32px;
+  background: #f2f3f5; /* 确保全屏时背景色一致 */
+}
+
+/* 全屏切换时网格高度不再需要手动指定 calc，靠 flex: 1 自动适配 */
+.is-fullscreen .monitor-grid {
+  height: auto !important;
 }
 
 /* 动态网格背景特效 (浅色版) */
@@ -327,9 +351,10 @@ onUnmounted(() => {
   justify-content: space-between;
   align-items: center;
   gap: 10px;
-  margin-bottom: 24px;
+  margin-bottom: 20px; /* 略微减小间距 */
   padding-bottom: 12px;
   border-bottom: 1px solid rgba(0,0,0,0.05);
+  flex-shrink: 0; /* 标题栏高度固定，不收缩 */
 }
 
 .header-left {
@@ -393,13 +418,44 @@ onUnmounted(() => {
   font-weight: 500;
 }
 
+/* 可交互的操作丸子 */
+.action-pill {
+  cursor: pointer;
+  background: var(--bml-primary, #165dff);
+  color: white !important;
+  border: none;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  padding: 4px 8px; /* 缩减内边距，适应纯图标 */
+  min-width: 32px;
+  justify-content: center;
+}
+.action-pill:hover {
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 0 4px 12px var(--bml-shadow, rgba(22, 93, 255, 0.3));
+  background: #3c7eff;
+}
+.action-pill:active {
+  transform: scale(0.95);
+}
+.action-pill svg {
+  color: white !important;
+}
+.action-pill .action-text {
+  color: white !important;
+  font-family: inherit;
+  font-weight: 600;
+  margin-left: 2px;
+}
+
 /* ==================== 三列主网格 ==================== */
 .monitor-grid {
   position: relative;
   z-index: 10;
   display: flex;
   gap: 16px;
-  height: calc(100vh - 170px);
+  flex: 1; /* 占据剩余全部空间 */
+  min-height: 0; /* 关键：允许 flex 子项在需要时收缩 */
+  margin-bottom: 4px;
 }
 
 .grid-left, .grid-right {
@@ -425,9 +481,10 @@ onUnmounted(() => {
   width: 44%;
   display: flex;
   flex-direction: column;
+  min-height: 0;
 }
 .mt-20 { margin-top: 16px; }
-.full-height { height: 100%; flex: 1; }
+.full-height { height: 100%; flex: 1; display: flex; flex-direction: column; min-height: 0; }
 
 /* 通用玻璃态卡片容器 (亮色版) */
 .tech-card {
@@ -439,6 +496,9 @@ onUnmounted(() => {
   padding: 16px;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.05);
   transition: transform 0.3s, box-shadow 0.3s;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 .tech-card:hover { 
   box-shadow: 0 8px 24px rgba(var(--bml-primary-rgb, 22,93,255), 0.1); 
@@ -545,6 +605,7 @@ onUnmounted(() => {
   gap: 16px;
   overflow-y: auto;
   padding-right: 4px;
+  flex: 1; /* 撑满卡片剩余高度 */
 }
 .disk-list::-webkit-scrollbar { width: 4px; }
 .disk-list::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 4px; }
@@ -587,12 +648,13 @@ onUnmounted(() => {
     backdrop-filter: blur(10px);
     border: 1px solid rgba(var(--bml-primary-rgb), 0.08);
     border-radius: 16px;
-    padding: 20px 28px;
-    margin: 16px;
+    padding: 12px 24px; /* 缩减 padding 节省高度 */
+    margin: 12px 16px;
     position: relative;
     overflow: hidden;
     transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+    flex-shrink: 0;
 }
 
 .gc-action-bar::before {
