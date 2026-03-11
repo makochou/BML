@@ -72,7 +72,7 @@ export const fetchAuthorizationSnapshot = (id: number): ApiPromise<ApiAuthorizat
     return request.get(`/account/${id}/authorization`) as ApiPromise<ApiAuthorizationSnapshot>;
 };
 
-export const saveAuthorization = (id: number, apiIds: number[]): ApiPromise<void> => {
+export const saveAuthorization = (id: number, apiIds: (number | string)[]): ApiPromise<void> => {
     return request.put(`/account/${id}/authorization`, { apiIds }) as ApiPromise<void>;
 };
 

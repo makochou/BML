@@ -23,6 +23,10 @@
           <template #icon><icon-refresh /></template>
           刷新
         </a-button>
+        <a-button :loading="syncingRegistry" @click="handleSyncRegistry">
+          <template #icon><icon-sync /></template>
+          同步
+        </a-button>
       </div>
       <div class="toolbar-right">
         <span class="stat-text" v-if="catalogTree.length">
@@ -40,7 +44,7 @@
           <!-- 左栏：接口目录（三级树，模块 → 业务分组 → 接口，整合原中间栏） -->
           <div class="hierarchy-col hierarchy-col-catalog">
             <div class="col-title">
-              <span class="title-text">接口目录</span>
+              <span class="title-text">资产全量目录</span>
               <div class="title-actions">
                 <a-button type="text" size="mini" @click="toggleAll" class="action-btn">
                   <template #icon>
@@ -133,7 +137,7 @@
         </div>
         <a-empty
           v-else-if="!loading"
-          description="暂无接口数据，请先在「开放接口目录」中同步接口"
+          description="暂无资产数据，请先通过「资产全量发现」同步元数据"
           class="empty-block"
         />
       </a-spin>
@@ -144,8 +148,9 @@
 <script lang="ts" setup>
 import { ref, computed, onMounted } from 'vue';
 import { Message } from '@arco-design/web-vue';
-import { IconRefresh, IconRight, IconExpand, IconShrink, IconSend, IconLeft } from '@arco-design/web-vue/es/icon';
+import { IconRefresh, IconRight, IconExpand, IconShrink, IconSend, IconLeft, IconSync } from '@arco-design/web-vue/es/icon';
 import { fetchApiListTree } from '../../api/apiList';
+import { syncOpenApiRegistry } from '../../api/apiAccount';
 import type { ApiCatalogTreeNode } from '../../types/apiList';
 import { methodOptions } from '../../utils/api-account-governance';
 import ApiDebugPanel from '../../components/api-debug/ApiDebugPanel.vue';
@@ -522,6 +527,21 @@ const apiCount = computed(() => {
   return countApis(catalogTree.value);
 });
 
+const syncingRegistry = ref(false);
+
+async function handleSyncRegistry() {
+  syncingRegistry.value = true;
+  try {
+    const { data } = await syncOpenApiRegistry();
+    Message.success(`项目接口目录同步完成，本次共纳管 ${data.totalDiscovered} 个接口`);
+    await loadTree();
+  } catch (e) {
+    Message.error((e as Error)?.message || '同步接口目录失败');
+  } finally {
+    syncingRegistry.value = false;
+  }
+}
+
 async function loadTree() {
   loading.value = true;
   try {
@@ -565,10 +585,14 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 16px 20px;
-  background: #fff;
+  padding: 14px 24px;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
   border-radius: 12px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 
+    0 4px 12px rgba(0, 0, 0, 0.03),
+    0 1px 2px rgba(0, 0, 0, 0.02);
   margin-bottom: 20px;
 }
 
@@ -602,12 +626,17 @@ onMounted(() => {
 
 .toolbar-right .stat-text {
   font-size: 13px;
-  color: #4e5969;
+  color: #86909c;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .toolbar-right strong {
-  color: #165dff;
-  font-weight: 600;
+  color: var(--bml-primary, #165dff);
+  font-weight: 700;
+  font-family: 'JetBrains Mono', 'Inter', sans-serif;
+  font-size: 15px;
 }
 
 /* 卡片区域：占据剩余高度，内容超出时在列内上下滚动 */
@@ -869,16 +898,31 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 16px;
+  padding: 12px 16px;
   background: #f7f8fa;
-  border-bottom: 1px solid #e5e6eb;
+  border-bottom: 1px solid #f2f3f5;
+  position: relative;
+}
+
+.col-title::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 14px;
+    background: var(--bml-primary, #165dff);
+    border-radius: 0 2px 2px 0;
 }
 
 .title-text {
-  font-size: 13px;
-  font-weight: 600;
-  color: #1d2129;
-  letter-spacing: 0.02em;
+  font-size: 12px;
+  font-weight: 700;
+  color: #4e5969;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-left: 4px;
 }
 
 .title-actions {

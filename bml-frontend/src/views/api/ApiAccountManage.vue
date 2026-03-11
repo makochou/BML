@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <div ref="apiAccountPageRef" class="page api-account-page">
     <GovernanceCompactQueryPanel class="query-panel" :max-width="accountWorkspaceMaxWidth" density="ultra"
       theme="aurora">
@@ -44,7 +44,7 @@
       <template #actions>
         <a-button :loading="syncingRegistry" @click="handleSyncRegistry">
           <template #icon><icon-sync /></template>
-          同步接口目录
+          资产全量发现
         </a-button>
         <a-popover trigger="click" position="bl" :popup-style="{ padding: '0' }">
           <a-button class="table-column-setting-btn">
@@ -1300,7 +1300,7 @@ const authorizationTreeData = computed<ApiCatalogTreeNode[]>(() => filteredAutho
   }))
 })));
 const selectedAuthorizationCount = computed(() => parseCheckedApiIds(authorizationDrawer.checkedKeys).length);
-const moduleCards = computed<AuthorizationModuleCard[]>(() => { const selectedIds = new Set(parseCheckedApiIds(authorizationDrawer.checkedKeys)); return (authorizationDrawer.snapshot?.groups || []).map(group => { const apiIds = collectGroupApiIds(group); return { moduleName: group.moduleName, apiCount: apiIds.length, controllerCount: group.controllers.length, selectedCount: apiIds.filter(id => selectedIds.has(id)).length }; }); });
+const moduleCards = computed<AuthorizationModuleCard[]>(() => { const selectedIds = new Set(parseCheckedApiIds(authorizationDrawer.checkedKeys)); return (authorizationDrawer.snapshot?.groups || []).map(group => { const apiIds = collectGroupApiIds(group); return { moduleName: group.moduleName, apiCount: apiIds.length, controllerCount: group.controllers.length, selectedCount: apiIds.filter(id => selectedIds.has(String(id))).length }; }); });
 // 接口授权抽屉统一改成治理工作台布局，概览卡、账号画像和建议信息全部由此处集中维护。
 const authorizationHeroTags = ['模块维度批量授权', '按方法与关键字筛选', '保存后即时生效', '全项目接口统一纳管'];
 const authorizationVisibleApiCount = computed(() => collectApiIdsFromFilteredGroups(filteredAuthorizationGroups.value).length);
@@ -1856,8 +1856,8 @@ function selectModuleApis(moduleName: string) { const group = (authorizationDraw
 function clearModuleApis(moduleName: string) { const group = (authorizationDrawer.snapshot?.groups || []).find(item => item.moduleName === moduleName); if (group) removeCheckedKeys(collectGroupApiIds(group)); }
 function selectVisibleApis() { mergeCheckedKeys(collectApiIdsFromFilteredGroups(filteredAuthorizationGroups.value)); }
 function clearVisibleApis() { removeCheckedKeys(collectApiIdsFromFilteredGroups(filteredAuthorizationGroups.value)); }
-function mergeCheckedKeys(apiIds: number[]) { const merged = new Set(authorizationDrawer.checkedKeys); apiIds.forEach(id => merged.add(buildApiKey(id))); authorizationDrawer.checkedKeys = Array.from(merged); }
-function removeCheckedKeys(apiIds: number[]) { const removing = new Set(apiIds.map(id => buildApiKey(id))); authorizationDrawer.checkedKeys = authorizationDrawer.checkedKeys.filter(key => !removing.has(key)); }
+function mergeCheckedKeys(apiIds: (number | string)[]) { const merged = new Set(authorizationDrawer.checkedKeys); apiIds.forEach(id => merged.add(buildApiKey(id))); authorizationDrawer.checkedKeys = Array.from(merged); }
+function removeCheckedKeys(apiIds: (number | string)[]) { const removing = new Set(apiIds.map(id => buildApiKey(id))); authorizationDrawer.checkedKeys = authorizationDrawer.checkedKeys.filter(key => !removing.has(key)); }
 async function openCallbackLogDrawer(record: ApiAccountItem) { callbackLogDrawer.visible = true; callbackLogDrawer.account = record; callbackLogDrawer.pagination.current = 1; callbackLogFilters.callbackStatus = undefined; await loadCallbackLogs(); }
 async function loadCallbackLogs() { if (!callbackLogDrawer.account) return; callbackLogDrawer.loading = true; try { const { data } = await fetchApiCallbackLogs(callbackLogDrawer.account.id, { pageNum: callbackLogDrawer.pagination.current, pageSize: callbackLogDrawer.pagination.pageSize, callbackStatus: callbackLogFilters.callbackStatus }); callbackLogDrawer.logs = data.page.records || []; callbackLogDrawer.pagination.total = data.page.total || 0; callbackLogDrawer.summary = data.summary || createSummary(); } finally { callbackLogDrawer.loading = false; } }
 async function handleCallbackLogSearch() { callbackLogDrawer.pagination.current = 1; await loadCallbackLogs(); }
@@ -1873,13 +1873,13 @@ function normalizeQueryText(value: string) {
   const normalized = value.trim();
   return normalized ? normalized : undefined;
 }
-function buildApiKey(apiId: number) { return `api:${apiId}`; }
-function parseCheckedApiIds(keys: string[]) { return keys.filter(key => key.startsWith('api:')).map(key => Number(key.slice(4))).filter(id => Number.isFinite(id)); }
+function buildApiKey(apiId: number | string) { return `api:${apiId}`; }
+function parseCheckedApiIds(keys: string[]) { return keys.filter(key => key.startsWith('api:')).map(key => key.slice(4)); }
 function collectGroupApiIds(group: OpenApiGroupNode) { return group.controllers.flatMap(controller => controller.apis.map(api => api.id)); }
 function collectApiIdsFromFilteredGroups(groups: OpenApiGroupNode[]) { return groups.flatMap(group => collectGroupApiIds(group)); }
 function countApisInGroup(group: OpenApiGroupNode) { return collectGroupApiIds(group).length; }
 
-function isEnabledApiId(apiId: number, groups: OpenApiGroupNode[]) { return groups.some(group => group.controllers.some(controller => controller.apis.some(api => api.id === apiId && api.status === 1))); }
+function isEnabledApiId(apiId: number | string, groups: OpenApiGroupNode[]) { const searchId = String(apiId); return groups.some(group => group.controllers.some(controller => controller.apis.some(api => String(api.id) === searchId && api.status === 1))); }
 function getAccountTypeLabel(value: number) { return accountTypeOptions.find(item => item.value === value)?.label || '未知类型'; }
 function getAccountTypeTagColor(value: number) { return value === 1 ? 'arcoblue' : 'purple'; }
 function getClientTypeLabels(values?: string[]) { return (values || []).map(value => clientTypeOptions.find(item => item.value === value)?.label || value); }
@@ -3107,7 +3107,23 @@ onBeforeUnmount(() => {
 .account-table :deep(.arco-table-tr:hover td),
 .account-table :deep(.arco-table-tr:hover td.arco-table-col-fixed-right),
 .account-table :deep(.arco-table-tr:hover td.arco-table-col-fixed-left) {
-  background: #f5faff !important;
+  /* 使用纯色背景，防止固定列(如右侧操作列)在滚动时透出下方被遮挡的列内容 */
+  background-color: #f5faff !important;
+  transition: background-color 0.2s ease;
+}
+
+/**
+ * 账号列表复选框选中样式增强 (Premium Look)
+ */
+.account-table :deep(.arco-checkbox-checked .arco-checkbox-icon) {
+  background-color: var(--color-primary, #165dff) !important;
+  border-color: var(--color-primary, #165dff) !important;
+  box-shadow: 0 0 8px rgba(22, 93, 255, 0.3); /* 添加微光效果 */
+}
+
+.account-table :deep(.arco-table-tr.arco-table-tr-checked .arco-table-td) {
+  /* 确保勾选行同步使用高亮背景 */
+  background-color: #f0f7ff !important;
 }
 
 .account-table :deep(tbody .arco-table-tr:hover) {
@@ -6652,19 +6668,33 @@ onBeforeUnmount(() => {
 /**
  * 账号列表行选中高亮样式 (光标显示)
  * 采用下沉到 td 的渲染方案，确保 tr 在 relative 定位下不破坏表格布局。
+ * V2 增强版：增加左侧物理指示条与更明显的色差
  */
-:deep(.account-table .arco-table-tr.is-row-active .arco-table-td) {
-  background-color: var(--color-primary-light-1) !important;
+:deep(.account-table .arco-table-tr.is-row-active .arco-table-td),
+:deep(.account-table .arco-table-tr.is-row-active .arco-table-col-fixed-right),
+:deep(.account-table .arco-table-tr.is-row-active .arco-table-col-fixed-left),
+:deep(.account-table .arco-table-tr.arco-table-tr-checked .arco-table-td),
+:deep(.account-table .arco-table-tr.arco-table-tr-checked .arco-table-col-fixed-right),
+:deep(.account-table .arco-table-tr.arco-table-tr-checked .arco-table-col-fixed-left) {
+  /* 选中行使用不透明背景色，防止固定列出现内容重叠透视 */
+  background-color: #f0f7ff !important;
   transition: background-color 0.2s ease;
 }
 
 /* 即使在有斑马纹或鼠标悬停时，也强制保持选中色 */
-:deep(.account-table .arco-table-tr.is-row-active:hover .arco-table-td) {
-  background-color: var(--color-primary-light-1) !important;
+:deep(.account-table .arco-table-tr.is-row-active:hover .arco-table-td),
+:deep(.account-table .arco-table-tr.is-row-active:hover .arco-table-col-fixed-right),
+:deep(.account-table .arco-table-tr.is-row-active:hover .arco-table-left),
+:deep(.account-table .arco-table-tr.arco-table-tr-checked:hover .arco-table-td),
+:deep(.account-table .arco-table-tr.arco-table-tr-checked:hover .arco-table-col-fixed-right),
+:deep(.account-table .arco-table-tr.arco-table-tr-checked:hover .arco-table-col-fixed-left) {
+  background-color: #f0f7ff !important;
 }
 
 /* 在第一列单元格使用内阴影实现侧边指示条，这种方式不会改变单元格尺寸或导致布局崩坏 */
-:deep(.account-table .arco-table-tr.is-row-active .arco-table-td:first-child) {
-  box-shadow: inset 3px 0 0 var(--color-primary-light-4);
+:deep(.account-table .arco-table-tr.is-row-active .arco-table-td:first-child),
+:deep(.account-table .arco-table-tr.arco-table-tr-checked .arco-table-td:first-child) {
+  position: relative;
+  box-shadow: inset 4px 0 0 var(--color-primary, #165dff); /* 加粗到 4px，颜色更深，更明显 */
 }
 </style>

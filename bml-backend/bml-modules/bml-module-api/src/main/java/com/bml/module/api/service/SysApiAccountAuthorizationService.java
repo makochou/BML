@@ -8,6 +8,7 @@ import com.bml.module.api.mapper.SysApiPermissionMapper;
 import com.bml.module.api.vo.ApiAccountAuthorizationVO;
 import com.bml.module.api.vo.ApiAuthorizationSummaryVO;
 import com.bml.module.api.vo.SysApiAccountVO;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,6 +20,7 @@ import java.util.Set;
 /**
  * API账号授权服务。
  */
+@Slf4j
 @Service
 public class SysApiAccountAuthorizationService {
 
@@ -62,6 +64,9 @@ public class SysApiAccountAuthorizationService {
         if (!apiIds.isEmpty()) {
             List<SysApiRegistry> enabledApis = openApiRegistryService.listEnabledByIds(apiIds);
             if (enabledApis.size() != apiIds.size()) {
+                List<Long> foundIds = enabledApis.stream().map(SysApiRegistry::getId).toList();
+                log.error("API Authorization validation failed for account {}. Requested IDs: {}, but found only: {}", 
+                        accountId, apiIds, foundIds);
                 throw new BusinessException("授权接口包含不存在或已停用的开放接口");
             }
         }

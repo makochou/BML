@@ -93,11 +93,21 @@ export function getEffectiveWhitelist(record: Pick<ApiAccountItem, 'accessEnviro
  * 与后端 ApiCatalogDisplayNameSupport 保持一致
  */
 const MODULE_DISPLAY_NAMES: Record<string, string> = {
-  'api': 'API管理',
-  'system': '系统管理',
-  'enterprise': '企业管理',
-  'monitor': '系统监控',
-  'openapi': 'OpenAPI'
+  // 业务核心
+  'api': '开放接口核心',
+  'system': '系统运维基石',
+  'enterprise': '企业运营中心',
+  'common': '通用业务基建',
+  'openapi': 'OpenAPI 枢纽',
+  
+  // 基础设施与监控
+  'monitor': '系统监控中心',
+  'actuate': '运行态在线监测',
+  'servlet': '运行态引擎服务',
+  'springdoc': 'OpenAPI 接口文档',
+  'v3': 'OpenAPI 协议中心',
+  'error': '平台异常中枢',
+  'ui': 'Swagger UI 门户'
 };
 
 /**
@@ -105,19 +115,44 @@ const MODULE_DISPLAY_NAMES: Record<string, string> = {
  * 与后端 ApiCatalogDisplayNameSupport 保持一致
  */
 const CONTROLLER_DISPLAY_NAMES: Record<string, string> = {
-  'OpenApiDemoController': '演示接口',
-  'SysApiAccountAuthorizationController': '获取账号与授权信息',
-  'SysApiAccountCallbackController': '保存账号与授权信息',
-  'SysApiAccountCallbackLogController': '分页查询回调失败的回调日志',
-  'SysApiAccountController': '发送测试回调',
-  'SysApiListController': 'API接口列表',
-  'SysUserController': '用户管理',
-  'SysRoleController': '角色管理',
-  'SysDeptController': '部门管理',
-  'SysMenuController': '菜单管理',
-  'SysConfigController': '配置管理',
-  'SysDictController': '字典管理',
-  'SysLogController': '日志管理'
+  // 核心认证与管理
+  'AuthController': '身份认证与授权',
+  'SysUserController': '平台账户体系',
+  'SysRoleController': '岗位角色定义',
+  'SysMenuController': '功能菜单矩阵',
+  'SysDeptController': '组织架构树图',
+  'SysAlertController': '系统告警终端',
+  'SysServerMonitorController': '服务器效能监测',
+  
+  // 资产治理与 API 运维
+  'SysApiAccountController': '应用账户管理',
+  'SysApiAccountAuthorizationController': '资产授权策略',
+  'SysApiAccountCallbackController': '数据回调追踪',
+  'SysApiListController': '接口资产清单',
+  'SysOpenApiRegistryController': '接口目录治理',
+  'OpenApiDemoController': '接入示例场景',
+  'SysApiAccountCallbackLogController': '回调履约日志', // 补充
+  
+  // 经营数据大盘
+  'OpenEnterpriseDashboardController': '经营数据大盘',
+  'OpenEnterpriseCompanyController': '企业主体档案',
+  'OpenEnterpriseSystemAccountController': '子系统互联账号',
+
+  // 运行态探针与基础设施 (Actuator & Swagger)
+  'HealthEndpoint': '核心健康状态探针',
+  'BasicErrorController': '标准异常处理中枢',
+  'OpenApiWebMvcResource': 'OpenAPI 映射引擎',
+  'SwaggerConfigResource': '文档配置热加载',
+  'EnvironmentEndpoint': '环境依赖变量探针',
+  'BeansEndpoint': 'IoC 容器组件审计',
+  'InfoEndpoint': '应用元数据快照',
+  'LoggersEndpoint': '日志治理实时面板',
+  'MappingsEndpoint': '路由终点分布矩阵',
+  'MetricsEndpoint': '性能度量指标集',
+  'PrometheusScrapableEndpoint': 'Prometheus 数据面',
+  'RestartEndpoint': '服务热重启指令集',
+  'ShutdownEndpoint': '安全有序下线协议',
+  'ThreadDumpEndpoint': '线程栈快照诊断'
 };
 
 /**

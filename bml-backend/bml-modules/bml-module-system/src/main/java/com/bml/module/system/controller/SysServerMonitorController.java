@@ -12,12 +12,16 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 物理服务器硬件与环境监控主控入口
- * 天然被全局拦截器保护、强鉴权验证
+ * 服务器监控治理控制器。
+ * <p>
+ * 提供服务器基础硬件（CPU、内存、磁盘）以及 JVM 运行时的实时监控数据。
+ * 支持强制触发 JVM 垃圾回收（GC）以优化内存占用。
+ * 所有接口均受到 Spring Security 权限框架保护。
+ * </p>
  *
  * @author BML Team
  */
-@Tag(name = "服务器监控资源获取接口")
+@Tag(name = "服务器监控", description = "提供硬件、环境监控及 JVM 治理功能")
 @RestController
 @RequestMapping("/system/monitor")
 public class SysServerMonitorController {
@@ -28,14 +32,24 @@ public class SysServerMonitorController {
         this.serverMonitorService = serverMonitorService;
     }
 
-    @Operation(summary = "全量抓取服务器、JVM、磁盘最新硬件物理探针态")
+    /**
+     * 获取服务器全量监控信息。
+     *
+     * @return 统一响应载荷 {@link ServerInfoVO}
+     */
+    @Operation(summary = "全量抓取服务器监控数据")
     @PreAuthorize("@ss.hasPermi('monitor:server:list')")
     @GetMapping("/server")
     public Result<ServerInfoVO> getServerInfo() {
         return Result.ok(serverMonitorService.getServerInfo());
     }
 
-    @Operation(summary = "强制发送JVM垃圾回收指令(GC)，尝试释放内存")
+    /**
+     * 强制发送 JVM 垃圾回收指令 (GC)。
+     *
+     * @return 状态消息提醒
+     */
+    @Operation(summary = "强制发送JVM垃圾回收指令(GC)")
     @PreAuthorize("@ss.hasPermi('monitor:server:gc')")
     @PostMapping("/gc")
     public Result<String> cleanJvmMemory() {

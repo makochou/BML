@@ -433,7 +433,7 @@ onUnmounted(() => {
 }
 .layout-demo :deep(.arco-menu-item) {
     height: 46px;
-    line-height: 46px;
+    line-height: normal;
     margin-bottom: 8px;
     width: 92%;
     margin-left: 4%;
@@ -442,6 +442,9 @@ onUnmounted(() => {
     font-weight: 500;
     transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
     border: 1px solid transparent;
+    display: flex;
+    align-items: center;
+    padding: 0 12px !important; /* Recover space on the left */
 }
 .layout-demo :deep(.arco-menu-item:hover) {
     background-color: rgba(255, 255, 255, 0.6);
@@ -462,12 +465,84 @@ onUnmounted(() => {
 }
 .layout-demo :deep(.arco-menu-item .arco-icon) {
     font-size: 18px;
-    margin-right: 12px;
+    margin-right: 4px; /* Move text closer to icon */
+    flex-shrink: 0;
     transition: all 0.3s;
 }
 .layout-demo :deep(.arco-menu-item.arco-menu-selected .arco-icon) {
     fill: #fff;
     transform: scale(1.1);
+}
+
+/* 
+ * Parent Menu Active State (Selected Sub-menu Header)
+ * 核心修复：Arco Vue 实际会将 .arco-menu-selected 加在 .arco-menu-inline-header 上
+ */
+/* 基础一级菜单结构对齐普通 menu-item */
+.layout-demo :deep(.arco-menu-inline-header) {
+    height: 46px;
+    line-height: normal;
+    margin-bottom: 8px;
+    width: 92%;
+    margin-left: 4%;
+    border-radius: 12px;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    display: flex;
+    align-items: center;
+    padding: 0 12px !important;
+}
+
+/* 覆盖子级菜单左侧间距，平衡层级感与展示空间 (12px + 16px = 28px) */
+.layout-demo :deep(.arco-menu-inline-content .arco-menu-item) {
+    padding-left: 28px !important; 
+}
+
+/* 彻底移除 Arco 定义的各种横向占位符，杜绝 text-align 无效的问题 */
+.layout-demo :deep(.arco-menu-indent),
+.layout-demo :deep(.arco-menu-icon-empty),
+.layout-demo :deep(.arco-menu-indent-list) {
+    display: none !important;
+    width: 0 !important;
+}
+
+.layout-demo :deep(.arco-menu-inline-header.arco-menu-selected) {
+    background-color: rgba(22, 93, 255, 0.08) !important; /* 加深背景，确保可见 */
+    color: var(--bml-primary, #165dff) !important;
+    font-weight: 700 !important;
+    border: 1px solid rgba(22, 93, 255, 0.1) !important;
+    box-shadow: 0 4px 10px rgba(22, 93, 255, 0.05);
+}
+
+/* 在激活的父级菜单左侧增加一个小批注/标志，使其更显眼 */
+.layout-demo :deep(.arco-menu-inline-header.arco-menu-selected)::before {
+    content: '';
+    position: absolute;
+    left: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 16px;
+    background: var(--bml-primary, #165dff);
+    border-radius: 2px;
+}
+
+/* 激活状态下的图标强制变色 */
+.layout-demo :deep(.arco-menu-inline-header.arco-menu-selected .arco-icon) {
+    color: var(--bml-primary, #165dff) !important;
+    fill: var(--bml-primary, #165dff) !important;
+    transform: scale(1.1);
+}
+
+/* 箭头也要变色 */
+.layout-demo :deep(.arco-menu-inline-header.arco-menu-selected .arco-menu-icon-suffix) {
+    color: var(--bml-primary, #165dff) !important;
+}
+
+/* 悬浮效果增强 */
+.layout-demo :deep(.arco-menu-inline-header:hover) {
+    background-color: rgba(255, 255, 255, 0.6);
+    color: #1d2129;
+    transform: translateX(4px);
 }
 
 /* =================================================================
@@ -773,7 +848,22 @@ onUnmounted(() => {
 }
 .sidebar-primary :deep(.arco-icon) { color: inherit !important; }
 .sidebar-primary .logo { color: #fff !important; }
-/* Resolve submenu icon color in primary sidebar */
-.sidebar-primary :deep(.arco-menu-inline-header) { color: rgba(255,255,255,0.8); }
-.sidebar-primary :deep(.arco-menu-inline-header:hover) { color: #fff; background: rgba(255,255,255,0.1); }
+
+/* Resolve submenu icon color in primary sidebar and active state */
+.sidebar-primary :deep(.arco-menu-inline-header) { 
+    color: rgba(255,255,255,0.8); 
+}
+.sidebar-primary :deep(.arco-menu-inline-header.arco-menu-selected) {
+    background: rgba(255, 255, 255, 0.15) !important;
+    color: #fff !important;
+    border-color: rgba(255, 255, 255, 0.2) !important;
+}
+.sidebar-primary :deep(.arco-menu-inline-header.arco-menu-selected .arco-icon),
+.sidebar-primary :deep(.arco-menu-inline-header.arco-menu-selected .arco-menu-icon-suffix) {
+    color: #fff !important;
+}
+.sidebar-primary :deep(.arco-menu-inline-header:hover) { 
+    color: #fff; 
+    background: rgba(255,255,255,0.1); 
+}
 </style>

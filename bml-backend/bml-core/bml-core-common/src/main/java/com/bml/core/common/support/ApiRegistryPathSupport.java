@@ -18,28 +18,16 @@ public final class ApiRegistryPathSupport {
     /**
      * Spring Boot / 平台基础设施路径前缀。
      * <p>
-     * 这些路径不属于业务接口授权目录，不应出现在 API 账号授权工作台中。
+     * 响应用户要求，现已允许纳管登录、监控、健康检查等路径。
      * </p>
      */
-    private static final List<String> EXCLUDED_PREFIXES = List.of(
-            "/auth/",
-            "/actuator/",
-            "/v3/api-docs",
-            "/swagger-ui",
-            "/error",
-            "/open/api/test/");
+    private static final List<String> EXCLUDED_PREFIXES = List.of();
 
     /**
      * 需要精确排除的单一路径。
      */
     private static final List<String> EXCLUDED_EXACT_PATHS = List.of(
-            "/auth/login",
-            "/auth/refresh",
-            "/auth/register",
-            "/captchaImage",
-            "/swagger-ui.html",
-            "/favicon.ico",
-            "/error");
+            "/favicon.ico");
 
     private ApiRegistryPathSupport() {
     }
@@ -58,17 +46,28 @@ public final class ApiRegistryPathSupport {
         if (EXCLUDED_EXACT_PATHS.contains(normalizedPath)) {
             return false;
         }
+        if (EXCLUDED_PREFIXES.isEmpty()) {
+            return true;
+        }
         return EXCLUDED_PREFIXES.stream().noneMatch(normalizedPath::startsWith);
     }
 
     /**
-     * 判断控制器包名是否属于项目自身代码。
+     * 判断控制器包名是否属于纳管范围（项目代码或指定的基础设施代码）。
      *
      * @param packageName 控制器包名
-     * @return {@code true} 表示属于 BML 自身控制器
+     * @return {@code true} 表示纳入扫描范围
      */
     public static boolean isProjectControllerPackage(String packageName) {
-        return StrUtil.startWith(StrUtil.blankToDefault(packageName, StrUtil.EMPTY), "com.bml.");
+        if (StrUtil.isBlank(packageName)) {
+            return false;
+        }
+        return packageName.startsWith("com.bml.") 
+                || packageName.startsWith("org.springframework.boot.actuate")
+                || packageName.startsWith("org.springframework.boot.autoconfigure.web")
+                || packageName.startsWith("org.springframework.boot.web")
+                || packageName.startsWith("org.springdoc.")
+                || packageName.startsWith("org.springframework.web.servlet.resource");
     }
 
     /**

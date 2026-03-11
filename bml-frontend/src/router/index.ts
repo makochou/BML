@@ -36,31 +36,31 @@ const staticRoutes: RouteRecordRaw[] = [
                 path: 'dashboard',
                 name: 'Dashboard',
                 component: () => import('../views/dashboard/Workplace.vue'),
-                meta: { title: '仪表盘', affix: true }
+                meta: { title: '工作台', affix: true }
             },
             {
                 path: 'api/list',
                 name: 'ApiList',
                 component: () => import('../views/api/ApiList.vue'),
-                meta: { title: 'API接口列表' }
+                meta: { title: '全源资产目录' }
             },
             {
                 path: 'api/debug',
                 name: 'LegacyApiDebugRedirect',
                 redirect: API_ACCOUNT_MANAGE_FULL_PATH,
-                meta: { title: 'API账号管理', hidden: true }
+                meta: { title: '授权治理中心', hidden: true }
             },
             {
                 path: 'api/account/:id',
                 name: 'ApiAccountDetail',
                 component: () => import('../views/api/ApiAccountDetail.vue'),
-                meta: { title: 'API账号详情', hidden: true }
+                meta: { title: '凭证画像详情', hidden: true }
             },
             {
                 path: 'app',
                 name: 'LegacyAppListRedirect',
                 redirect: API_ACCOUNT_MANAGE_FULL_PATH,
-                meta: { title: 'API账号管理', hidden: true }
+                meta: { title: '授权治理中心', hidden: true }
             }
         ]
     }

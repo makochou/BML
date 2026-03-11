@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
+import org.springframework.web.servlet.mvc.method.RequestMappingInfoHandlerMapping;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 
 import java.lang.reflect.Method;
@@ -32,7 +33,7 @@ class SysOpenApiRegistryServiceTest {
     @Test
     void shouldGroupRegistryTreeByModuleAndController() {
         RequestMappingHandlerMapping handlerMapping = mock(RequestMappingHandlerMapping.class);
-        SysOpenApiRegistryService service = org.mockito.Mockito.spy(new SysOpenApiRegistryService(handlerMapping));
+        SysOpenApiRegistryService service = org.mockito.Mockito.spy(new SysOpenApiRegistryService(List.of(handlerMapping), List.of()));
 
         SysApiRegistry apiOne = buildRegistry(1L, "system", "MockSystemController", "查询用户列表", "/system/user/list", "GET", 1);
         SysApiRegistry apiTwo = buildRegistry(2L, "system", "MockSystemController", "新增用户", "/system/user", "POST", 1);
@@ -63,8 +64,8 @@ class SysOpenApiRegistryServiceTest {
                 RequestMappingInfo.paths("/open/api/test/ignore").methods(RequestMethod.GET).build(),
                 buildHandlerMethod("ignoredOpenApiTest"));
         when(handlerMapping.getHandlerMethods()).thenReturn(handlerMethods);
-
-        SysOpenApiRegistryService service = org.mockito.Mockito.spy(new SysOpenApiRegistryService(handlerMapping));
+ 
+        SysOpenApiRegistryService service = org.mockito.Mockito.spy(new SysOpenApiRegistryService(List.of(handlerMapping), List.of()));
         SysApiRegistry existing = buildRegistry(10L, "system", "MockProjectController", "旧名称", "/system/mock/items", "GET", 0);
         SysApiRegistry stale = buildRegistry(11L, "system", "LegacyController", "过期接口", "/system/stale", "POST", 1);
         doReturn(List.of(existing, stale)).when(service).list(anyWrapper());
@@ -72,12 +73,12 @@ class SysOpenApiRegistryServiceTest {
         doReturn(true).when(service).updateById(any(SysApiRegistry.class));
 
         OpenApiRegistrySyncResultVO result = service.syncRegistry();
-
-        assertEquals(1L, result.getTotalDiscovered());
-        assertEquals(0L, result.getInsertedCount());
+ 
+        assertEquals(3L, result.getTotalDiscovered());
+        assertEquals(2L, result.getInsertedCount());
         assertEquals(1L, result.getUpdatedCount());
         assertEquals(1L, result.getDisabledCount());
-        assertEquals(2L, result.getSkippedCount());
+        assertEquals(0L, result.getSkippedCount());
         assertEquals("List Mock Items", existing.getApiName());
         assertEquals(1, existing.getStatus());
         assertEquals(0, stale.getStatus());

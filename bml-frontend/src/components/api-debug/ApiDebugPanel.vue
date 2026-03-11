@@ -51,6 +51,9 @@
             class="send-btn"
             @click="sendRequest"
           >
+            <template #icon>
+              <icon-send v-if="!sending" />
+            </template>
             发送
           </a-button>
         </div>
@@ -533,33 +536,33 @@ async function sendRequest() {
 /* 根据不同方法分配专属的“招牌”色系，参考 Postman 视觉规范 */
 .method-type-get {
   color: #165dff;
-  background-color: rgba(22, 93, 255, 0.08);
+  background-color: rgba(22, 93, 255, 0.05);
 }
-.method-type-get:hover { background-color: rgba(22, 93, 255, 0.12); }
+.method-type-get:hover { background-color: rgba(22, 93, 255, 0.1); }
 
 .method-type-post {
   color: #00b42a;
-  background-color: rgba(0, 180, 42, 0.08);
+  background-color: rgba(0, 180, 42, 0.05);
 }
-.method-type-post:hover { background-color: rgba(0, 180, 42, 0.12); }
+.method-type-post:hover { background-color: rgba(0, 180, 42, 0.1); }
 
 .method-type-put {
   color: #ff7d00;
-  background-color: rgba(255, 125, 0, 0.08);
+  background-color: rgba(255, 125, 0, 0.05);
 }
-.method-type-put:hover { background-color: rgba(255, 125, 0, 0.12); }
+.method-type-put:hover { background-color: rgba(255, 125, 0, 0.1); }
 
 .method-type-delete {
   color: #f53f3f;
-  background-color: rgba(245, 63, 63, 0.08);
+  background-color: rgba(245, 63, 63, 0.05);
 }
-.method-type-delete:hover { background-color: rgba(245, 63, 63, 0.12); }
+.method-type-delete:hover { background-color: rgba(245, 63, 63, 0.1); }
 
 .method-type-patch {
   color: #722ed1;
-  background-color: rgba(114, 46, 209, 0.08);
+  background-color: rgba(114, 46, 209, 0.05);
 }
-.method-type-patch:hover { background-color: rgba(114, 46, 209, 0.12); }
+.method-type-patch:hover { background-color: rgba(114, 46, 209, 0.1); }
 
 .method-icon-down {
   margin-left: 8px;
@@ -593,10 +596,37 @@ async function sendRequest() {
 .send-btn {
   height: 100%;
   border-radius: 0;
-  padding: 0 24px;
+  padding: 0 28px;
   font-weight: 600;
-  font-size: 13px;
-  letter-spacing: 0.5px;
+  font-size: 14px;
+  letter-spacing: 0.8px;
+  background: linear-gradient(135deg, #165dff 0%, #00b42a 100%); /* 渐变色提升活力感 */
+  border: none;
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.send-btn:hover {
+  transform: translateY(0);
+  background: linear-gradient(135deg, #3491fa 0%, #00d02f 100%);
+  box-shadow: 0 4px 12px rgba(22, 93, 255, 0.2);
+  filter: brightness(1.1);
+}
+
+.send-btn:active {
+  transform: scale(0.96);
+  opacity: 0.9;
+}
+
+.send-btn :deep(.arco-icon) {
+  font-size: 16px;
+  margin-right: 2px;
+  transition: transform 0.3s;
+}
+
+.send-btn:hover :deep(.arco-icon) {
+  transform: translateX(3px) rotate(-15deg);
 }
 
 
@@ -631,14 +661,19 @@ async function sendRequest() {
   font-weight: 600;
 }
 
-.postman-config-tabs :deep(.arco-tabs-nav-ink) {
-  background-color: #f77234; /* 采用经典 Postman 橙色小彩蛋 */
+.postman-config.kv-grid :deep(.arco-checkbox-checked .arco-checkbox-icon) {
+    background-color: var(--bml-primary, #165dff);
+    border-color: var(--bml-primary, #165dff);
 }
 
 .postman-config-tabs :deep(.arco-tabs-content) {
   padding: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+}
+
+.postman-config-tabs :deep(.arco-tabs-nav-ink) {
+  background-color: #f77234; /* 采用经典 Postman 橙色小彩蛋 */
 }
 
 .postman-config-section {
@@ -661,26 +696,42 @@ async function sendRequest() {
 
 /* KV 表格构造 */
 .kv-grid {
-  border: 1px solid #e5e6eb;
-  border-radius: 4px;
+  border: 1px solid #f2f3f5;
+  border-radius: 8px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  transition: all 0.3s;
+}
+
+.kv-grid:focus-within {
+    border-color: #e5e6eb;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+}
+
+.input-wrap:focus-within {
+    border-color: var(--bml-primary, #165dff);
+    box-shadow: 0 0 0 3px rgba(var(--bml-primary-rgb), 0.1);
+    background: #fff;
 }
 
 .kv-grid-header {
   display: flex;
-  background: #fdfdfe;
-  border-bottom: 1px solid #e5e6eb;
-  font-size: 12px;
-  color: #4e5969;
-  font-weight: 600;
+  background: #f7f8fa;
+  border-bottom: 1px solid #f2f3f5;
+  font-size: 11px;
+  color: #86909c;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .kv-grid-row {
   display: flex;
-  border-bottom: 1px solid #f2f3f5;
+  border-bottom: 1px solid #f7f8fa;
   background: #fff;
+  transition: background-color 0.2s;
+  position: relative;
 }
 
 .kv-grid-row:last-child {
@@ -692,8 +743,8 @@ async function sendRequest() {
 }
 
 .kv-col {
-  padding: 6px 8px;
-  border-right: 1px solid #f2f3f5;
+  padding: 4px 8px;
+  border-right: 1px solid #f7f8fa;
   display: flex;
   align-items: center;
 }
@@ -702,44 +753,63 @@ async function sendRequest() {
   border-right: none;
 }
 
-.check-col { width: 40px; justify-content: center; }
-.key-col { flex: 0.4; }
-.val-col { flex: 0.6; }
-.action-col { width: 40px; justify-content: center; }
+.check-col { width: 36px; justify-content: center; }
+.key-col { flex: 1; }
+.val-col { flex: 1; }
+.action-col { width: 36px; justify-content: center; }
 
 /* 单元格内部的隐形 input */
 .input-wrap {
   padding: 0;
+  flex: 1;
+  display: flex;
 }
 .input-wrap input {
   width: 100%;
-  height: 100%;
+  height: 32px;
   border: none;
   background: transparent;
   outline: none;
-  padding: 8px 12px;
+  padding: 4px 12px;
   font-size: 13px;
   color: #1d2129;
-  font-family: 'SF Mono', 'Monaco', 'Menlo', 'Consolas', monospace; /* IDE 字体感 */
+  font-family: 'JetBrains Mono', 'SF Mono', 'Monaco', 'Consolas', monospace; /* Professional Mono */
+  transition: all 0.2s;
+  border-bottom: 2px solid transparent;
 }
+
+.input-wrap input:focus {
+    background: rgba(22, 93, 255, 0.02);
+    border-bottom-color: rgba(22, 93, 255, 0.4);
+}
+
 .input-wrap input::placeholder {
   color: #c9cdd4;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 11px;
 }
 
 .delete-icon {
   color: #c9cdd4;
   cursor: pointer;
-  font-size: 14px;
-  display: none; /* 悬浮时显现 */
+  font-size: 12px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  opacity: 0;
+  transition: all 0.2s;
 }
 
 .kv-grid-row:hover .delete-icon {
-  display: flex;
+  opacity: 1;
 }
 
 .delete-icon:hover {
   color: #f53f3f;
+  background: rgba(245, 63, 63, 0.08);
 }
 
 /* Header/Body tabs 特殊样式 */

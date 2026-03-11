@@ -19,8 +19,12 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.ClassUtils;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.method.HandlerMethod;
+import org.springframework.boot.actuate.endpoint.web.WebEndpointsSupplier;
+import org.springframework.boot.actuate.endpoint.web.ExposableWebEndpoint;
+import org.springframework.boot.actuate.endpoint.web.WebOperation;
 import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
-import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
+import org.springframework.web.servlet.mvc.method.RequestMappingInfoHandlerMapping;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -44,13 +48,17 @@ import java.util.Set;
  * 这样后续新增控制器方法后，无需手工维护目录，即可自动进入 API 账号授权工作台。
  * </p>
  */
+@Slf4j
 @Service
 public class SysOpenApiRegistryService extends ServiceImpl<SysApiRegistryMapper, SysApiRegistry> {
 
-    private final RequestMappingHandlerMapping requestMappingHandlerMapping;
+    private final List<RequestMappingInfoHandlerMapping> handlerMappings;
+    private final List<WebEndpointsSupplier> webEndpointsSuppliers;
 
-    public SysOpenApiRegistryService(RequestMappingHandlerMapping requestMappingHandlerMapping) {
-        this.requestMappingHandlerMapping = requestMappingHandlerMapping;
+    public SysOpenApiRegistryService(List<RequestMappingInfoHandlerMapping> handlerMappings,
+                                     List<WebEndpointsSupplier> webEndpointsSuppliers) {
+        this.handlerMappings = handlerMappings;
+        this.webEndpointsSuppliers = webEndpointsSuppliers;
     }
 
     /**
@@ -183,26 +191,60 @@ public class SysOpenApiRegistryService extends ServiceImpl<SysApiRegistryMapper,
         Map<String, OpenApiMappingDescriptor> discoveredMap = new LinkedHashMap<>();
         long skippedCount = 0L;
 
-        for (Map.Entry<RequestMappingInfo, HandlerMethod> entry : requestMappingHandlerMapping.getHandlerMethods().entrySet()) {
-            List<OpenApiMappingDescriptor> descriptors = extractDescriptors(entry.getKey(), entry.getValue());
-            if (descriptors.isEmpty()) {
-                skippedCount++;
-                continue;
-            }
-            for (OpenApiMappingDescriptor descriptor : descriptors) {
-                discoveredMap.put(descriptor.uniqueKey(), descriptor);
+        // 1. 标准路由映射扫描
+        for (RequestMappingInfoHandlerMapping mapping : handlerMappings) {
+            log.debug("Scanning mapping bean: {}", mapping.getClass().getSimpleName());
+            for (Map.Entry<RequestMappingInfo, HandlerMethod> entry : mapping.getHandlerMethods().entrySet()) {
+                List<OpenApiMappingDescriptor> descriptors = extractDescriptors(entry.getKey(), entry.getValue());
+                if (descriptors.isEmpty()) {
+                    skippedCount++;
+                    continue;
+                }
+                for (OpenApiMappingDescriptor descriptor : descriptors) {
+                    discoveredMap.put(descriptor.uniqueKey(), descriptor);
+                }
             }
         }
 
+        // 2. Actuator 端点扫描 (处理 management.server.port 隔离情况)
+        for (WebEndpointsSupplier supplier : webEndpointsSuppliers) {
+            log.debug("Scanning Actuator endpoints from supplier: {}", supplier.getClass().getSimpleName());
+            for (ExposableWebEndpoint endpoint : supplier.getEndpoints()) {
+                for (WebOperation operation : endpoint.getOperations()) {
+                    OpenApiMappingDescriptor descriptor = mapActuatorEndpoint(endpoint, operation);
+                    if (descriptor != null) {
+                        discoveredMap.put(descriptor.uniqueKey(), descriptor);
+                    }
+                }
+            }
+        }
+
+        log.info("API Sync: discovered {} unique APIs, skipped {} methods", discoveredMap.size(), skippedCount);
+
         List<SysApiRegistry> existingRegistries = this.list();
-        Map<String, SysApiRegistry> existingMap = existingRegistries.stream()
-                .collect(LinkedHashMap::new,
-                        (map, item) -> map.put(buildUniqueKey(item.getApiUrl(), item.getHttpMethod()), item),
-                        Map::putAll);
+        Map<String, SysApiRegistry> existingMap = new LinkedHashMap<>();
+        List<SysApiRegistry> redundantToDisable = new ArrayList<>();
+
+        for (SysApiRegistry registry : existingRegistries) {
+            String key = buildUniqueKey(registry.getApiUrl(), registry.getHttpMethod());
+            SysApiRegistry duplicate = existingMap.put(key, registry);
+            if (duplicate != null) {
+                // 如果发现多个 active 记录对应同一个 key，保留当前的，禁用之前的那个
+                if (Objects.equals(duplicate.getStatus(), 1)) {
+                    duplicate.setStatus(0);
+                    redundantToDisable.add(duplicate);
+                    log.warn("API Sync: found redundant active record for key {}, disabling previous one (ID: {})", 
+                            key, duplicate.getId());
+                } else if (Objects.equals(registry.getStatus(), 0)) {
+                    // 如果当前是 0，之前也是 0 或 1，为了确保 existingMap 里的 key 尽可能对应一个能用的或者最新的记录，
+                    // 我们可以根据 ID 或时间戳进一步微调，但这里核心是清理 redundant active。
+                }
+            }
+        }
 
         List<SysApiRegistry> toInsert = new ArrayList<>();
-        List<SysApiRegistry> toUpdate = new ArrayList<>();
-        long disabledCount = 0L;
+        List<SysApiRegistry> toUpdate = new ArrayList<>(redundantToDisable);
+        long disabledCount = (long) redundantToDisable.size();
 
         for (OpenApiMappingDescriptor descriptor : discoveredMap.values()) {
             SysApiRegistry existing = existingMap.remove(descriptor.uniqueKey());
@@ -234,7 +276,7 @@ public class SysOpenApiRegistryService extends ServiceImpl<SysApiRegistryMapper,
         OpenApiRegistrySyncResultVO resultVO = new OpenApiRegistrySyncResultVO();
         resultVO.setTotalDiscovered(discoveredMap.size());
         resultVO.setInsertedCount(toInsert.size());
-        resultVO.setUpdatedCount(toUpdate.size() - disabledCount);
+        resultVO.setUpdatedCount(toUpdate.size() - (int) disabledCount);
         resultVO.setDisabledCount(disabledCount);
         resultVO.setSkippedCount(skippedCount);
         return resultVO;
@@ -284,7 +326,10 @@ public class SysOpenApiRegistryService extends ServiceImpl<SysApiRegistryMapper,
         if (beanType.isAnonymousClass() || beanType.isSynthetic()) {
             return Collections.emptyList();
         }
-        if (!ApiRegistryPathSupport.isProjectControllerPackage(beanType.getPackageName())) {
+        String packageName = beanType.getPackageName();
+        if (!ApiRegistryPathSupport.isProjectControllerPackage(packageName)) {
+            log.trace("Skipping handler {}.{} in package {} (not in managed package range)", 
+                    beanType.getSimpleName(), handlerMethod.getMethod().getName(), packageName);
             return Collections.emptyList();
         }
 
@@ -294,25 +339,27 @@ public class SysOpenApiRegistryService extends ServiceImpl<SysApiRegistryMapper,
         }
 
         Set<RequestMethod> methods = mappingInfo.getMethodsCondition().getMethods();
-        if (methods.size() != 1) {
-            return Collections.emptyList();
-        }
-        String httpMethod = methods.iterator().next().name();
+        List<String> httpMethods = methods.isEmpty() 
+                ? List.of("ANY") 
+                : methods.stream().map(Enum::name).toList();
 
         List<OpenApiMappingDescriptor> descriptors = new ArrayList<>();
-        for (String pattern : patterns.stream().sorted().toList()) {
-            String normalizedPath = normalizePath(pattern);
-            if (!ApiRegistryPathSupport.isManagedApiPath(normalizedPath)) {
-                continue;
+        for (String httpMethod : httpMethods) {
+            for (String pattern : patterns.stream().sorted().toList()) {
+                String normalizedPath = normalizePath(pattern);
+                if (!ApiRegistryPathSupport.isManagedApiPath(normalizedPath)) {
+                    log.trace("Skipping path {} (explicitly excluded by path support)", normalizedPath);
+                    continue;
+                }
+                descriptors.add(new OpenApiMappingDescriptor(
+                        resolveApiName(handlerMethod),
+                        normalizedPath,
+                        httpMethod,
+                        resolveModuleName(beanType),
+                        beanType.getSimpleName(),
+                        handlerMethod.getMethod().getName(),
+                        resolveDescription(handlerMethod)));
             }
-            descriptors.add(new OpenApiMappingDescriptor(
-                    resolveApiName(handlerMethod),
-                    normalizedPath,
-                    httpMethod,
-                    resolveModuleName(beanType),
-                    beanType.getSimpleName(),
-                    handlerMethod.getMethod().getName(),
-                    resolveDescription(handlerMethod)));
         }
         return descriptors;
     }
@@ -340,11 +387,15 @@ public class SysOpenApiRegistryService extends ServiceImpl<SysApiRegistryMapper,
     }
 
     private String resolveApiName(HandlerMethod handlerMethod) {
+        // 优先使用 Swagger @Operation(summary = "...") 注解作为接口名
         Operation operation = handlerMethod.getMethodAnnotation(Operation.class);
         if (operation != null && StrUtil.isNotBlank(operation.summary())) {
             return operation.summary();
         }
-        return handlerMethod.getMethod().getName();
+        
+        // 兜底逻辑：将 camelCase 格式的方法名（例：listItems）转换为更易读的格式（例：List Items）
+        String methodName = handlerMethod.getMethod().getName();
+        return StrUtil.upperFirst(StrUtil.toSymbolCase(methodName, ' '));
     }
 
     private String resolveDescription(HandlerMethod handlerMethod) {
@@ -359,6 +410,8 @@ public class SysOpenApiRegistryService extends ServiceImpl<SysApiRegistryMapper,
 
     private String resolveModuleName(Class<?> beanType) {
         String packageName = beanType.getPackageName();
+        
+        // 1. 业务模块：符合 com.bml.module.[moduleName].xxx 规范
         if (StrUtil.contains(packageName, ".module.")) {
             String afterModule = StrUtil.subAfter(packageName, ".module.", false);
             String moduleSegment = StrUtil.subBefore(afterModule, ".", false);
@@ -366,9 +419,24 @@ public class SysOpenApiRegistryService extends ServiceImpl<SysApiRegistryMapper,
                 return moduleSegment;
             }
         }
-        String fallback = StrUtil.subAfter(packageName, ".", true);
-        return StrUtil.blankToDefault(StrUtil.subSuf(packageName, packageName.lastIndexOf('.') + 1),
-                StrUtil.blankToDefault(fallback, "common"));
+        
+        // 2. 基础设施：针对 Actuator, SpringDoc 等知名框架进行归类映射
+        if (packageName.startsWith("org.springframework.boot.actuate")) {
+            return "actuate";
+        }
+        if (packageName.startsWith("org.springdoc") || packageName.contains("swagger")) {
+            return "springdoc";
+        }
+        if (packageName.contains(".web.servlet.error")) {
+            return "error";
+        }
+        if (packageName.startsWith("org.springframework.")) {
+            return "system"; // 其他 Spring 内部接口归类到系统
+        }
+
+        // 3. 兜底策略：取包名最后一段
+        String lastSegment = StrUtil.subAfter(packageName, ".", true);
+        return StrUtil.blankToDefault(lastSegment, "common");
     }
 
     private boolean applyDescriptor(SysApiRegistry target, OpenApiMappingDescriptor descriptor) {
@@ -393,6 +461,23 @@ public class SysOpenApiRegistryService extends ServiceImpl<SysApiRegistryMapper,
         }
         consumer.accept(newValue);
         return true;
+    }
+
+    private OpenApiMappingDescriptor mapActuatorEndpoint(ExposableWebEndpoint endpoint, WebOperation operation) {
+        String endpointId = endpoint.getEndpointId().toString();
+        String path = "/actuator/" + endpointId;
+        // Actuator 端点通常由 Spring Boot 自动生成名称。
+        String apiName = StrUtil.upperFirst(endpointId);
+        
+        return new OpenApiMappingDescriptor(
+                apiName,
+                path,
+                operation.getRequestPredicate().getHttpMethod().name(),
+                "actuate",
+                StrUtil.toCamelCase(endpointId) + "Endpoint",
+                endpointId + "_" + operation.getType().name(),
+                "Spring Boot Actuator " + endpointId + " endpoint"
+        );
     }
 
     private String normalizeMethod(String method) {

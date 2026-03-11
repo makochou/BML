@@ -35,28 +35,59 @@ public final class ApiCatalogDisplayNameSupport {
     private static final Map<String, String> CONTROLLER_DISPLAY_NAMES = new ConcurrentHashMap<>();
 
     static {
-        // 模块展示名：与 bml-module-* 及 resolveModuleName 产出保持一致
-        MODULE_DISPLAY_NAMES.put("system", "系统管理");
-        MODULE_DISPLAY_NAMES.put("api", "API 管理");
-        MODULE_DISPLAY_NAMES.put("enterprise", "企业管理");
-        MODULE_DISPLAY_NAMES.put("common", "通用");
+        // 核心业务模块展示名：由技术标识映射为专业化中文称谓
+        MODULE_DISPLAY_NAMES.put("api", "开放接口核心");
+        MODULE_DISPLAY_NAMES.put("system", "系统运维基石");
+        MODULE_DISPLAY_NAMES.put("enterprise", "企业运营中心");
+        MODULE_DISPLAY_NAMES.put("common", "通用业务基建");
+        MODULE_DISPLAY_NAMES.put("openapi", "OpenAPI 枢纽");
 
-        // 控制器展示名：与现有 Controller 类名对应，便于「业务模块 > 增删改查」层级展示
-        CONTROLLER_DISPLAY_NAMES.put("AuthController", "认证中心");
-        CONTROLLER_DISPLAY_NAMES.put("SysUserController", "用户管理");
-        CONTROLLER_DISPLAY_NAMES.put("SysRoleController", "角色管理");
-        CONTROLLER_DISPLAY_NAMES.put("SysMenuController", "菜单管理");
-        CONTROLLER_DISPLAY_NAMES.put("SysDeptController", "部门管理");
-        CONTROLLER_DISPLAY_NAMES.put("SysAlertController", "告警中心");
-        CONTROLLER_DISPLAY_NAMES.put("SysServerMonitorController", "服务器监控");
-        CONTROLLER_DISPLAY_NAMES.put("SysApiAccountController", "API 账号管理");
-        CONTROLLER_DISPLAY_NAMES.put("SysApiAccountAuthorizationController", "API 账号授权");
-        CONTROLLER_DISPLAY_NAMES.put("SysApiAccountCallbackController", "API 回调日志");
-        CONTROLLER_DISPLAY_NAMES.put("SysOpenApiRegistryController", "开放接口目录");
-        CONTROLLER_DISPLAY_NAMES.put("OpenApiDemoController", "OpenAPI 示例");
-        CONTROLLER_DISPLAY_NAMES.put("OpenEnterpriseDashboardController", "企业概览");
-        CONTROLLER_DISPLAY_NAMES.put("OpenEnterpriseCompanyController", "企业档案");
-        CONTROLLER_DISPLAY_NAMES.put("OpenEnterpriseSystemAccountController", "企业系统账号");
+        // 基础设施与监控
+        MODULE_DISPLAY_NAMES.put("monitor", "系统监控中心");
+        MODULE_DISPLAY_NAMES.put("actuate", "运行态在线监测");
+        MODULE_DISPLAY_NAMES.put("servlet", "运行态引擎服务");
+        MODULE_DISPLAY_NAMES.put("springdoc", "OpenAPI 接口文档");
+        MODULE_DISPLAY_NAMES.put("v3", "OpenAPI 协议中心");
+        MODULE_DISPLAY_NAMES.put("error", "平台异常中枢");
+        MODULE_DISPLAY_NAMES.put("ui", "Swagger UI 门户");
+
+        // 业务控制器展示名：面向管理维度的语义化 rebranding
+        CONTROLLER_DISPLAY_NAMES.put("AuthController", "身份认证与授权");
+        CONTROLLER_DISPLAY_NAMES.put("SysUserController", "平台账户体系");
+        CONTROLLER_DISPLAY_NAMES.put("SysRoleController", "岗位角色定义");
+        CONTROLLER_DISPLAY_NAMES.put("SysMenuController", "功能菜单矩阵");
+        CONTROLLER_DISPLAY_NAMES.put("SysDeptController", "组织架构树图");
+        CONTROLLER_DISPLAY_NAMES.put("SysAlertController", "系统告警终端");
+        CONTROLLER_DISPLAY_NAMES.put("SysServerMonitorController", "服务器效能监测");
+        
+        CONTROLLER_DISPLAY_NAMES.put("SysApiAccountController", "应用账户管理");
+        CONTROLLER_DISPLAY_NAMES.put("SysApiAccountAuthorizationController", "资产授权策略");
+        CONTROLLER_DISPLAY_NAMES.put("SysApiAccountCallbackController", "数据回调追踪");
+        CONTROLLER_DISPLAY_NAMES.put("SysApiListController", "接口资产清单");
+        CONTROLLER_DISPLAY_NAMES.put("SysOpenApiRegistryController", "接口目录治理");
+        CONTROLLER_DISPLAY_NAMES.put("OpenApiDemoController", "接入示例场景");
+        CONTROLLER_DISPLAY_NAMES.put("SysApiAccountCallbackLogController", "回调履约日志");
+
+        // 经营数据大盘
+        CONTROLLER_DISPLAY_NAMES.put("OpenEnterpriseDashboardController", "经营数据大盘");
+        CONTROLLER_DISPLAY_NAMES.put("OpenEnterpriseCompanyController", "企业主体档案");
+        CONTROLLER_DISPLAY_NAMES.put("OpenEnterpriseSystemAccountController", "子系统互联账号");
+
+        // 运行态探针与基础设施 (Actuator & Swagger)
+        CONTROLLER_DISPLAY_NAMES.put("HealthEndpoint", "核心健康状态探针");
+        CONTROLLER_DISPLAY_NAMES.put("BasicErrorController", "标准异常处理中枢");
+        CONTROLLER_DISPLAY_NAMES.put("OpenApiWebMvcResource", "OpenAPI 映射引擎");
+        CONTROLLER_DISPLAY_NAMES.put("SwaggerConfigResource", "文档配置热加载");
+        CONTROLLER_DISPLAY_NAMES.put("EnvironmentEndpoint", "环境依赖变量探针");
+        CONTROLLER_DISPLAY_NAMES.put("BeansEndpoint", "IoC 容器组件审计");
+        CONTROLLER_DISPLAY_NAMES.put("InfoEndpoint", "应用元数据快照");
+        CONTROLLER_DISPLAY_NAMES.put("LoggersEndpoint", "日志治理实时面板");
+        CONTROLLER_DISPLAY_NAMES.put("MappingsEndpoint", "路由终点分布矩阵");
+        CONTROLLER_DISPLAY_NAMES.put("MetricsEndpoint", "性能度量指标集");
+        CONTROLLER_DISPLAY_NAMES.put("PrometheusScrapableEndpoint", "Prometheus 数据面");
+        CONTROLLER_DISPLAY_NAMES.put("RestartEndpoint", "服务热重启指令集");
+        CONTROLLER_DISPLAY_NAMES.put("ShutdownEndpoint", "安全有序下线协议");
+        CONTROLLER_DISPLAY_NAMES.put("ThreadDumpEndpoint", "线程栈快照诊断");
     }
 
     private ApiCatalogDisplayNameSupport() {
