@@ -171,7 +171,7 @@ import { Message } from '@arco-design/web-vue';
 import {
     IconList, IconBug, IconApps, IconExport, IconDashboard,
     IconLeft, IconRight, IconNotification, IconFullscreen, IconFullscreenExit, IconUser, IconDown,
-    IconSettings, IconSearch
+    IconSettings, IconSearch, IconSafe, IconLayers, IconDesktop, IconIdcard, IconBranch
 } from '@arco-design/web-vue/es/icon';
 import request from '../utils/request';
 import TagsView from '../components/TagsView.vue';
@@ -200,6 +200,7 @@ const sidebarMenus = computed(() => permissionStore.sidebarMenus);
 const currentRouteName = computed(() => (route.name as string) || '');
 
 const menuIconMap: Record<string, any> = {
+  // 通用
   dashboard: IconDashboard,
   monitor: IconDashboard,
   list: IconList,
@@ -209,6 +210,14 @@ const menuIconMap: Record<string, any> = {
   setting: IconSettings,
   settings: IconSettings,
   user: IconUser,
+  // 新增菜单图标
+  layers: IconLayers,
+  safe: IconSafe,
+  desktop: IconDesktop,
+  idcard: IconIdcard,
+  branch: IconBranch,
+  menu: IconList,
+  // 兜底
   peoples: IconUser,
   tree: IconApps,
   'tree-table': IconApps,

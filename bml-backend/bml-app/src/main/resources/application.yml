@@ -1,72 +1,168 @@
+# =============================================================================
+# BML 企业中台管理系统 — 应用配置
+# =============================================================================
+# 配置说明：
+#   1. 所有敏感配置（密码、密钥）必须通过环境变量注入，禁止硬编码到代码仓库；
+#   2. 冒号后的默认值仅用于本地开发，生产环境必须通过环境变量覆盖；
+#   3. 环境变量命名规范：BML_ 前缀 + 大写下划线形式。
+# =============================================================================
+
 spring:
   application:
     name: bml-backend
     version: "@project.version@"
+
+  # ── 数据源配置 ──
   datasource:
     driver-class-name: org.mariadb.jdbc.Driver
-    url: ${BML_DB_URL:jdbc:mariadb://localhost:3306/bml_system?useUnicode=true&characterEncoding=utf-8&useSSL=false}
+    # 生产环境通过 BML_DB_URL 注入，示例：jdbc:mariadb://db-host:3306/bml_system?...
+    url: ${BML_DB_URL:jdbc:mariadb://localhost:3306/bml_system?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai}
     username: ${BML_DB_USERNAME:root}
     password: ${BML_DB_PASSWORD:sa@123}
+    hikari:
+      # 连接池最大连接数，根据数据库服务器配置调整
+      maximum-pool-size: ${BML_DB_POOL_MAX:20}
+      # 最小空闲连接数
+      minimum-idle: ${BML_DB_POOL_MIN:5}
+      # 连接超时时间（毫秒）
+      connection-timeout: 30000
+      # 空闲连接超时时间（毫秒）
+      idle-timeout: 600000
+      # 连接最大存活时间（毫秒）
+      max-lifetime: 1800000
+
+  # ── Redis 配置 ──
   data:
     redis:
       host: ${BML_REDIS_HOST:localhost}
       port: ${BML_REDIS_PORT:6379}
       password: ${BML_REDIS_PASSWORD:}
       database: ${BML_REDIS_DATABASE:0}
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+          max-wait: -1ms
 
+  # ── Flyway 数据库迁移配置 ──
+  flyway:
+    # 是否启用 Flyway（生产环境建议保持 true，确保数据库结构始终最新）
+    enabled: true
+    # 迁移脚本位置
+    locations: classpath:db/migration
+    # 允许在已有数据的数据库上执行迁移（首次部署时需要）
+    baseline-on-migrate: true
+    # 基线版本（低于此版本的脚本不会执行）
+    baseline-version: 0
+    # 编码
+    encoding: UTF-8
+    # 是否允许乱序执行（建议 false，强制按版本顺序）
+    out-of-order: false
+
+# ── 服务器配置 ──
 server:
   port: ${BML_SERVER_PORT:8080}
   servlet:
+    # 所有 API 接口统一加 /api 前缀，与前端代理配置对应
     context-path: /api
   mvc:
+    # 找不到 Handler 时抛出异常，由 GlobalExceptionHandler 统一处理 404
     throw-exception-if-no-handler-found: true
   web:
     resources:
+      # 禁用静态资源映射，纯后端服务不需要
       add-mappings: false
+  # 开启 HTTP/2 支持（需要 HTTPS，生产环境建议开启）
+  # http2:
+  #   enabled: true
 
+# ── Spring Boot Actuator 监控端点配置 ──
 management:
   server:
+    # 管理端口与业务端口隔离，避免管理接口暴露到公网
     port: ${BML_MANAGEMENT_PORT:18080}
     address: ${BML_MANAGEMENT_ADDRESS:127.0.0.1}
   endpoints:
     web:
       exposure:
+        # 仅暴露健康检查和基本信息端点
         include: health,info
   endpoint:
     health:
+      # 生产环境不暴露详细健康信息，防止信息泄露
       show-details: never
 
+# ── MyBatis-Plus 配置 ──
 mybatis-plus:
+  # Mapper XML 文件位置（支持多模块）
   mapper-locations: classpath*:mapper/**/*.xml
   global-config:
+    # 关闭 MyBatis-Plus 启动 Banner
     banner: false
     db-config:
+      # 逻辑删除字段名
       logic-delete-field: deleted
+      # 已删除的值
       logic-delete-value: 1
+      # 未删除的值
       logic-not-delete-value: 0
+  configuration:
+    # 开启驼峰命名自动映射（数据库 user_name → Java userName）
+    map-underscore-to-camel-case: true
+    # 日志实现（开发环境可改为 org.apache.ibatis.logging.stdout.StdOutImpl 查看 SQL）
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
 
+# ── BML 自定义配置 ──
 bml:
+  # ── Swagger/OpenAPI 文档 ──
   swagger:
+    # 生产环境建议关闭，通过 BML_SWAGGER_ENABLED=true 在开发/测试环境开启
     enabled: ${BML_SWAGGER_ENABLED:false}
+
+  # ── 跨域配置 ──
   web:
     cors:
-      allowed-origin-patterns: "http://localhost:5173"
+      # 允许的前端来源，多个用逗号分隔，生产环境替换为实际域名
+      allowed-origin-patterns: "${BML_CORS_ORIGINS:http://localhost:5173}"
+
+  # ── JWT 配置 ──
   jwt:
+    # JWT 签名密钥，生产环境必须通过 BML_JWT_SECRET 注入，长度至少 32 位
     secret: ${BML_JWT_SECRET:rFryVZQIdhPrrgpWhV43BIbPK3DtxDnV8l3hpL5f2izYggoqedCHpwy3YPOVBiv2}
-    access-token-expiration: 7200000
-    refresh-token-expiration: 604800000
+    # AccessToken 有效期（毫秒），默认 2 小时
+    access-token-expiration: ${BML_JWT_ACCESS_EXPIRATION:7200000}
+    # RefreshToken 有效期（毫秒），默认 7 天
+    refresh-token-expiration: ${BML_JWT_REFRESH_EXPIRATION:604800000}
+
+  # ── OpenAPI 签名配置 ──
   openapi:
+    # Nonce 防重放 TTL（毫秒），默认 5 分钟，与时间戳有效期保持一致
     nonce-ttl-ms: ${BML_OPENAPI_NONCE_TTL_MS:300000}
+    # SecretKey 加密密钥（AES），生产环境必须通过环境变量注入，长度至少 16 位
     secret-encryption-key: ${BML_OPENAPI_SECRET_ENCRYPTION_KEY:wYti1sv73JhRan4vxgooytG95IZp20pn}
+    # 回调重试配置
     callback:
+      # 是否启用自动重试
       retry-enabled: ${BML_OPENAPI_CALLBACK_RETRY_ENABLED:true}
+      # 最大重试次数
       max-retry-count: ${BML_OPENAPI_CALLBACK_MAX_RETRY_COUNT:3}
+      # 重试间隔（秒）
       retry-interval-seconds: ${BML_OPENAPI_CALLBACK_RETRY_INTERVAL_SECONDS:60}
+      # 回调处理器轮询间隔（毫秒）
       processor-fixed-delay-ms: ${BML_OPENAPI_CALLBACK_PROCESSOR_FIXED_DELAY_MS:30000}
+      # 每批处理数量
       batch-size: ${BML_OPENAPI_CALLBACK_BATCH_SIZE:20}
+    # 接口注册表配置
     registry:
+      # 是否在应用启动时自动同步接口目录（推荐开启，确保目录与代码一致）
       auto-sync-on-startup: ${BML_OPENAPI_REGISTRY_AUTO_SYNC_ON_STARTUP:true}
+
+  # ── 服务器监控配置 ──
   monitor:
+    # 监控数据刷新间隔（毫秒），默认 3 秒
     refresh-interval-ms: ${BML_MONITOR_REFRESH_INTERVAL_MS:3000}
+    # 是否获取公网 IP（需要访问外网，内网环境可关闭）
     public-ip-enabled: ${BML_MONITOR_PUBLIC_IP_ENABLED:true}
+    # 公网 IP 查询服务地址
     public-ip-provider-url: ${BML_MONITOR_PUBLIC_IP_PROVIDER_URL:http://checkip.amazonaws.com}

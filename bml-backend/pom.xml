@@ -4,10 +4,27 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
+    <!--
+        BML 企业中台管理系统 — 父 POM
+        =====================================================================
+        职责：
+          1. 统一所有子模块的 JDK 版本、编码、构建参数；
+          2. 通过 <dependencyManagement> 锁定全部三方依赖版本，子模块禁止重复声明版本号；
+          3. 通过 <pluginManagement> 统一 Maven 插件版本，避免各子模块版本漂移；
+          4. 在 <build/plugins> 中集中声明公共插件配置，子模块直接继承。
+
+        模块结构：
+          bml-core        — 核心框架层（common / base / framework）
+          bml-modules     — 业务模块层（system / api）
+          bml-app         — 应用启动层（Spring Boot 入口）
+        =====================================================================
+    -->
+
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.2.3</version>
+        <!-- Spring Boot 3.3.x 是当前 LTS 主线，对应 Spring Framework 6.1.x -->
+        <version>3.3.6</version>
         <relativePath/>
     </parent>
 
@@ -18,58 +35,93 @@
     <name>bml-backend</name>
     <description>BML Enterprise Management System Backend</description>
 
+    <!-- =====================================================================
+         子模块声明（按依赖顺序排列，Maven 会按此顺序构建）
+         ===================================================================== -->
     <modules>
         <module>bml-core</module>
         <module>bml-modules</module>
-        <module>bml-extensions</module>
-        <module>bml-customization</module>
         <module>bml-app</module>
     </modules>
 
+    <!-- =====================================================================
+         全局属性：版本号统一在此处维护，子模块通过 ${xxx.version} 引用
+         ===================================================================== -->
     <properties>
-        <!-- 构建基础参数：统一 JDK、编码与测试期 JVM 参数。 -->
+        <!-- ── 构建基础参数 ── -->
+        <!-- JDK 21 是当前 LTS 版本，支持虚拟线程、Record、Pattern Matching 等新特性 -->
         <java.version>21</java.version>
         <maven.compiler.release>${java.version}</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <!-- 测试期 JVM 参数：允许动态 Agent 加载，消除 JDK 21 的警告噪声 -->
         <surefire.argLine>-XX:+EnableDynamicAgentLoading</surefire.argLine>
 
-        <!-- 业务与框架依赖版本统一在父 POM 锁定，子模块禁止重复声明版本号。 -->
-        <spring-boot.version>3.2.3</spring-boot.version>
-        <lombok.version>1.18.30</lombok.version>
-        <mybatis-plus.version>3.5.5</mybatis-plus.version>
-        <shardingsphere.version>5.4.1</shardingsphere.version>
-        <flyway.version>10.8.1</flyway.version>
-        <mariadb.version>3.3.2</mariadb.version>
-        <redisson.version>3.27.0</redisson.version>
-        <hutool.version>5.8.26</hutool.version>
-        <mapstruct.version>1.5.5.Final</mapstruct.version>
-        <guava.version>33.0.0-jre</guava.version>
-        <springdoc.version>2.3.0</springdoc.version>
-        <swagger.core.version>2.2.19</swagger.core.version>
-        <jjwt.version>0.12.5</jjwt.version>
-        <bouncycastle.version>1.77</bouncycastle.version>
-        <oshi.version>6.4.13</oshi.version>
+        <!-- ── Spring 生态 ── -->
+        <!-- 与 parent 中的 spring-boot-starter-parent 版本保持一致 -->
+        <spring-boot.version>3.3.6</spring-boot.version>
 
-        <!-- Maven 插件版本全部由父 POM 统一收口，避免子模块自行漂移。 -->
-        <maven-clean-plugin.version>3.3.2</maven-clean-plugin.version>
+        <!-- ── ORM 与数据库 ── -->
+        <!-- MyBatis-Plus 3.5.9 支持 Spring Boot 3.x，提供 Lambda 查询、逻辑删除、乐观锁等 -->
+        <mybatis-plus.version>3.5.9</mybatis-plus.version>
+        <!-- Flyway 10.x 支持 MariaDB，用于数据库版本化迁移管理 -->
+        <flyway.version>10.20.1</flyway.version>
+        <!-- MariaDB JDBC 驱动 -->
+        <mariadb.version>3.4.1</mariadb.version>
+
+        <!-- ── 缓存与分布式 ── -->
+        <!-- Redisson 提供 Redis 分布式锁、分布式集合等高级功能 -->
+        <redisson.version>3.37.0</redisson.version>
+
+        <!-- ── 工具库 ── -->
+        <!-- Lombok：编译期代码生成，减少样板代码 -->
+        <lombok.version>1.18.34</lombok.version>
+        <!-- MapStruct：编译期类型安全的对象映射，替代手写 BeanUtils.copyProperties -->
+        <mapstruct.version>1.6.3</mapstruct.version>
+        <!-- Hutool：国产 Java 工具库，提供加密、字符串、集合等常用工具 -->
+        <hutool.version>5.8.35</hutool.version>
+        <!-- Guava：Google 工具库，提供不可变集合、缓存、函数式编程等 -->
+        <guava.version>33.3.1-jre</guava.version>
+
+        <!-- ── API 文档 ── -->
+        <!-- SpringDoc 2.x 基于 OpenAPI 3.0，自动生成 Swagger UI -->
+        <springdoc.version>2.6.0</springdoc.version>
+        <!-- Swagger Core 注解库，用于 @Schema、@Operation 等注解 -->
+        <swagger.core.version>2.2.25</swagger.core.version>
+
+        <!-- ── 安全与认证 ── -->
+        <!-- JJWT 0.12.x 是当前稳定版，支持 JDK 21，提供 JWT 创建与解析 -->
+        <jjwt.version>0.12.6</jjwt.version>
+        <!-- BouncyCastle：提供 AES/RSA 等高强度加密算法，用于 SecretKey 加密存储 -->
+        <bouncycastle.version>1.79</bouncycastle.version>
+
+        <!-- ── 系统监控 ── -->
+        <!-- OSHI：跨平台系统信息库，用于采集 CPU/内存/磁盘/JVM 等指标 -->
+        <oshi.version>6.6.5</oshi.version>
+
+        <!-- ── Maven 插件版本 ── -->
+        <!-- 所有插件版本统一在此处锁定，避免子模块自行漂移 -->
+        <maven-clean-plugin.version>3.4.0</maven-clean-plugin.version>
         <maven-resources-plugin.version>3.3.1</maven-resources-plugin.version>
-        <maven-compiler-plugin.version>3.11.0</maven-compiler-plugin.version>
-        <maven-surefire-plugin.version>3.1.2</maven-surefire-plugin.version>
-        <maven-failsafe-plugin.version>3.1.2</maven-failsafe-plugin.version>
-        <maven-jar-plugin.version>3.3.0</maven-jar-plugin.version>
-        <maven-install-plugin.version>3.1.1</maven-install-plugin.version>
-        <maven-enforcer-plugin.version>3.4.1</maven-enforcer-plugin.version>
+        <maven-compiler-plugin.version>3.13.0</maven-compiler-plugin.version>
+        <maven-surefire-plugin.version>3.5.1</maven-surefire-plugin.version>
+        <maven-failsafe-plugin.version>3.5.1</maven-failsafe-plugin.version>
+        <maven-jar-plugin.version>3.4.2</maven-jar-plugin.version>
+        <maven-install-plugin.version>3.1.3</maven-install-plugin.version>
+        <maven-enforcer-plugin.version>3.5.0</maven-enforcer-plugin.version>
     </properties>
 
-    <!--
-        统一依赖版本管理中心：
-        1. 所有三方依赖版本只允许在此处维护。
-        2. 所有内部模块依赖版本只允许继承 ${project.version}。
-        3. 子模块引用依赖时默认不再写 <version>，由父层统一兜底。
-    -->
+    <!-- =====================================================================
+         依赖版本管理中心
+         规则：
+           1. 所有三方依赖版本只允许在此处维护；
+           2. 所有内部模块依赖版本只允许继承 ${project.version}；
+           3. 子模块引用依赖时不再写 <version>，由父层统一兜底。
+         ===================================================================== -->
     <dependencyManagement>
         <dependencies>
+
+            <!-- ── Spring Boot BOM（统一管理 Spring 生态全部依赖版本） ── -->
             <dependency>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-dependencies</artifactId>
@@ -78,57 +130,73 @@
                 <scope>import</scope>
             </dependency>
 
+            <!-- ── MyBatis-Plus（Spring Boot 3.x 专用 Starter） ── -->
             <dependency>
                 <groupId>com.baomidou</groupId>
                 <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
                 <version>${mybatis-plus.version}</version>
             </dependency>
+            <!-- MyBatis-Plus 注解库（@TableId、@TableField 等注解，无 Spring 依赖） -->
             <dependency>
                 <groupId>com.baomidou</groupId>
                 <artifactId>mybatis-plus-annotation</artifactId>
                 <version>${mybatis-plus.version}</version>
             </dependency>
+            <!--
+                MyBatis-Plus Spring 集成模块。
+                重要说明（3.5.9 架构变更）：
+                  IService / ServiceImpl 在 3.5.9 中已从 mybatis-plus-extension
+                  迁移到 mybatis-plus-spring 模块。
+                  凡是需要继承 IService / ServiceImpl 的模块，必须依赖此 artifact，
+                  而不是 mybatis-plus-extension。
+            -->
+            <dependency>
+                <groupId>com.baomidou</groupId>
+                <artifactId>mybatis-plus-spring</artifactId>
+                <version>${mybatis-plus.version}</version>
+            </dependency>
+            <!-- MyBatis-Plus 扩展工具库（分页插件、乐观锁插件等） -->
             <dependency>
                 <groupId>com.baomidou</groupId>
                 <artifactId>mybatis-plus-extension</artifactId>
                 <version>${mybatis-plus.version}</version>
             </dependency>
 
-            <dependency>
-                <groupId>org.apache.shardingsphere</groupId>
-                <artifactId>shardingsphere-jdbc-core</artifactId>
-                <version>${shardingsphere.version}</version>
-            </dependency>
-
+            <!-- ── Flyway（数据库版本化迁移） ── -->
             <dependency>
                 <groupId>org.flywaydb</groupId>
                 <artifactId>flyway-core</artifactId>
                 <version>${flyway.version}</version>
             </dependency>
+            <!-- flyway-mysql 同时支持 MySQL 和 MariaDB -->
             <dependency>
                 <groupId>org.flywaydb</groupId>
                 <artifactId>flyway-mysql</artifactId>
                 <version>${flyway.version}</version>
             </dependency>
 
+            <!-- ── MariaDB JDBC 驱动 ── -->
             <dependency>
                 <groupId>org.mariadb.jdbc</groupId>
                 <artifactId>mariadb-java-client</artifactId>
                 <version>${mariadb.version}</version>
             </dependency>
 
+            <!-- ── Redisson（Redis 客户端，支持分布式锁、分布式集合） ── -->
             <dependency>
                 <groupId>org.redisson</groupId>
                 <artifactId>redisson-spring-boot-starter</artifactId>
                 <version>${redisson.version}</version>
             </dependency>
 
+            <!-- ── Hutool（国产 Java 工具库） ── -->
             <dependency>
                 <groupId>cn.hutool</groupId>
                 <artifactId>hutool-all</artifactId>
                 <version>${hutool.version}</version>
             </dependency>
 
+            <!-- ── MapStruct（编译期对象映射） ── -->
             <dependency>
                 <groupId>org.mapstruct</groupId>
                 <artifactId>mapstruct</artifactId>
@@ -140,23 +208,27 @@
                 <version>${mapstruct.version}</version>
             </dependency>
 
+            <!-- ── Guava（Google 工具库） ── -->
             <dependency>
                 <groupId>com.google.guava</groupId>
                 <artifactId>guava</artifactId>
                 <version>${guava.version}</version>
             </dependency>
 
+            <!-- ── SpringDoc OpenAPI（Swagger UI 自动生成） ── -->
             <dependency>
                 <groupId>org.springdoc</groupId>
                 <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
                 <version>${springdoc.version}</version>
             </dependency>
+            <!-- Swagger 注解库（@Schema、@Operation 等） -->
             <dependency>
                 <groupId>io.swagger.core.v3</groupId>
                 <artifactId>swagger-annotations</artifactId>
                 <version>${swagger.core.version}</version>
             </dependency>
 
+            <!-- ── JJWT（JWT 创建与解析） ── -->
             <dependency>
                 <groupId>io.jsonwebtoken</groupId>
                 <artifactId>jjwt-api</artifactId>
@@ -175,24 +247,28 @@
                 <scope>runtime</scope>
             </dependency>
 
+            <!-- ── BouncyCastle（高强度加密算法） ── -->
             <dependency>
                 <groupId>org.bouncycastle</groupId>
                 <artifactId>bcprov-jdk18on</artifactId>
                 <version>${bouncycastle.version}</version>
             </dependency>
 
+            <!-- ── OSHI（系统资源监控） ── -->
             <dependency>
                 <groupId>com.github.oshi</groupId>
                 <artifactId>oshi-core</artifactId>
                 <version>${oshi.version}</version>
             </dependency>
 
+            <!-- ── Lombok（编译期代码生成） ── -->
             <dependency>
                 <groupId>org.projectlombok</groupId>
                 <artifactId>lombok</artifactId>
                 <version>${lombok.version}</version>
             </dependency>
 
+            <!-- ── 内部模块依赖（版本统一继承 ${project.version}） ── -->
             <dependency>
                 <groupId>com.bml</groupId>
                 <artifactId>bml-core-common</artifactId>
@@ -218,18 +294,17 @@
                 <artifactId>bml-module-api</artifactId>
                 <version>${project.version}</version>
             </dependency>
-            <dependency>
-                <groupId>com.bml</groupId>
-                <artifactId>bml-module-enterprise</artifactId>
-                <version>${project.version}</version>
-            </dependency>
+
         </dependencies>
     </dependencyManagement>
 
+    <!-- =====================================================================
+         构建配置
+         ===================================================================== -->
     <build>
         <!--
-            pluginManagement 只负责统一版本与默认配置；
-            真正需要执行的插件，在下方 build/plugins 中集中声明一次即可被子模块继承。
+            pluginManagement：统一版本与默认配置，不触发实际执行；
+            build/plugins：声明需要在所有子模块中执行的公共插件。
         -->
         <pluginManagement>
             <plugins>
@@ -282,7 +357,7 @@
         </pluginManagement>
 
         <plugins>
-            <!-- 统一资源编码，避免 SQL、YAML、Markdown 等文件出现乱码。 -->
+            <!-- 统一资源编码，避免 SQL、YAML 等文件出现乱码 -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-resources-plugin</artifactId>
@@ -291,15 +366,20 @@
                 </configuration>
             </plugin>
 
-            <!-- 统一 Java 编译参数与注解处理器，子模块不再单独配置。 -->
+            <!--
+                统一 Java 编译参数与注解处理器。
+                注意：Lombok 必须在 MapStruct 之前声明，否则 MapStruct 无法识别 Lombok 生成的方法。
+            -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <configuration>
                     <release>${maven.compiler.release}</release>
                     <encoding>${project.build.sourceEncoding}</encoding>
+                    <!-- 保留方法参数名，Spring MVC 参数绑定依赖此配置 -->
                     <parameters>true</parameters>
                     <annotationProcessorPaths>
+                        <!-- Lombok 必须在 MapStruct 之前，否则 MapStruct 无法识别 @Builder 等注解 -->
                         <path>
                             <groupId>org.projectlombok</groupId>
                             <artifactId>lombok</artifactId>
@@ -314,7 +394,7 @@
                 </configuration>
             </plugin>
 
-            <!-- 统一测试执行参数，减少 JDK 动态 Agent 警告噪声。 -->
+            <!-- 统一测试执行参数，减少 JDK 21 动态 Agent 警告噪声 -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
@@ -324,7 +404,12 @@
                 </configuration>
             </plugin>
 
-            <!-- 基线校验放在父层统一执行，保证团队开发环境一致。 -->
+            <!--
+                构建基线校验（在 validate 阶段执行）：
+                  - 要求 JDK >= 21；
+                  - 要求 Maven >= 3.8.9；
+                  - 禁止同一 POM 中重复声明相同依赖版本。
+            -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-enforcer-plugin</artifactId>
@@ -352,4 +437,5 @@
             </plugin>
         </plugins>
     </build>
+
 </project>

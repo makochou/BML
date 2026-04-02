@@ -18,11 +18,18 @@
             <artifactId>bml-core-common</artifactId>
         </dependency>
 
-        <!-- MyBatis-Plus 基础扩展能力 -->
+        <!--
+            MyBatis-Plus Spring 集成模块（3.5.9 架构变更说明）：
+            IService / ServiceImpl 在 3.5.9 中已从 mybatis-plus-extension 迁移到
+            mybatis-plus-spring 模块。BaseService / BaseServiceImpl 继承自这两个类，
+            因此必须依赖 mybatis-plus-spring，而不是 mybatis-plus-extension。
+            mybatis-plus-spring 会传递依赖 mybatis-plus-extension 和 mybatis-plus-core。
+        -->
         <dependency>
             <groupId>com.baomidou</groupId>
-            <artifactId>mybatis-plus-extension</artifactId>
+            <artifactId>mybatis-plus-spring</artifactId>
         </dependency>
+        <!-- MyBatis-Plus 注解库（@TableId、@TableField、@TableLogic 等） -->
         <dependency>
             <groupId>com.baomidou</groupId>
             <artifactId>mybatis-plus-annotation</artifactId>

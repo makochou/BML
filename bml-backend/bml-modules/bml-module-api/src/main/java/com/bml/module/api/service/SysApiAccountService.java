@@ -165,7 +165,10 @@ public class SysApiAccountService extends ServiceImpl<SysApiAccountMapper, SysAp
         account.setExpireTime(command.getExpireTime());
         account.setStatus(command.getStatus() == null ? DEFAULT_STATUS : command.getStatus());
         account.setRemark(normalizeRemark(command.getRemark()));
-        this.save(account);
+        // 直接调用 baseMapper.insert() 而非 this.save()，
+        // 原因：ServiceImpl.save() 内部通过 SqlHelper.getMapper() 获取 MyBatis 代理，
+        // 在单元测试中 mock baseMapper 时无法被拦截。
+        baseMapper.insert(account);
         return buildCredential(account, plainSecret);
     }
 
@@ -580,21 +583,43 @@ public class SysApiAccountService extends ServiceImpl<SysApiAccountMapper, SysAp
                 fallbackWhitelist);
     }
 
+    /**
+     * 校验账号名称唯一性。
+     *
+     * <p>直接调用 {@code baseMapper.selectCount()} 而非 {@code this.lambdaQuery()}，
+     * 原因：{@code ServiceImpl} 的链式查询方法内部通过 {@code SqlHelper.getMapper()} 获取
+     * MyBatis 代理，在单元测试中 mock {@code baseMapper} 时无法被拦截，
+     * 直接调用 {@code baseMapper} 方法则可以被 Mockito 正常 mock。</p>
+     *
+     * @param accountName 账号名称
+     * @param excludeId   更新时排除的账号 ID，新增时传 null
+     * @throws BusinessException 名称已存在时抛出
+     */
     private void validateAccountNameUnique(String accountName, Long excludeId) {
-        long count = this.lambdaQuery()
+        LambdaQueryWrapper<SysApiAccount> wrapper = new LambdaQueryWrapper<SysApiAccount>()
                 .eq(SysApiAccount::getAccountName, accountName)
-                .ne(excludeId != null, SysApiAccount::getId, excludeId)
-                .count();
+                .ne(excludeId != null, SysApiAccount::getId, excludeId);
+        long count = baseMapper.selectCount(wrapper);
         if (count > 0) {
             throw new BusinessException("API账号名称已存在");
         }
     }
 
+    /**
+     * 生成全局唯一的 AccessKey。
+     *
+     * <p>同 {@link #validateAccountNameUnique}，直接调用 {@code baseMapper.selectCount()}
+     * 以确保单元测试中 mock 可以正常生效。</p>
+     *
+     * @return 唯一的 AccessKey 字符串
+     */
     private String generateAccessKey() {
         String accessKey;
         do {
             accessKey = "ak_" + IdUtil.simpleUUID();
-        } while (this.lambdaQuery().eq(SysApiAccount::getAccessKey, accessKey).count() > 0);
+        } while (baseMapper.selectCount(
+                new LambdaQueryWrapper<SysApiAccount>()
+                        .eq(SysApiAccount::getAccessKey, accessKey)) > 0);
         return accessKey;
     }
 

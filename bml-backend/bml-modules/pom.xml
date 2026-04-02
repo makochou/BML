@@ -16,7 +16,6 @@
     <modules>
         <module>bml-module-system</module>
         <module>bml-module-api</module>
-        <module>bml-module-enterprise</module>
     </modules>
 
 </project>

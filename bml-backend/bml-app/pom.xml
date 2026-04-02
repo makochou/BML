@@ -22,11 +22,6 @@
             <artifactId>bml-module-api</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.bml</groupId>
-            <artifactId>bml-module-enterprise</artifactId>
-        </dependency>
-
-        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
