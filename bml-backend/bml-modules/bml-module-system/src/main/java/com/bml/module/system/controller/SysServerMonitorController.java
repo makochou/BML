@@ -1,6 +1,8 @@
 package com.bml.module.system.controller;
 
 import com.bml.core.common.result.Result;
+import com.bml.core.framework.license.LicenseFeatureConstants;
+import com.bml.core.framework.license.RequireFeature;
 import com.bml.module.system.service.ServerMonitorService;
 import com.bml.module.system.vo.ServerInfoVO;
 import io.swagger.v3.oas.annotations.Operation;
@@ -22,6 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
  * @author BML Team
  */
 @Tag(name = "服务器监控", description = "提供硬件、环境监控及 JVM 治理功能")
+@RequireFeature(LicenseFeatureConstants.MONITOR)
 @RestController
 @RequestMapping("/system/monitor")
 public class SysServerMonitorController {

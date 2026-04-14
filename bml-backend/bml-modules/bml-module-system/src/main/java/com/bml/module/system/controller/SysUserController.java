@@ -2,6 +2,8 @@ package com.bml.module.system.controller;
 
 import com.bml.core.base.controller.BaseController;
 import com.bml.core.common.result.Result;
+import com.bml.core.framework.license.LicenseFeatureConstants;
+import com.bml.core.framework.license.RequireFeature;
 import com.bml.module.system.converter.UserConverter;
 import com.bml.module.system.dto.SysUserDTO;
 import com.bml.module.system.entity.SysUser;
@@ -53,6 +55,7 @@ import java.util.List;
  * @author BML Team
  */
 @Tag(name = "用户管理")
+@RequireFeature(LicenseFeatureConstants.SYSTEM)
 @RestController
 @RequestMapping("/system/user")
 public class SysUserController extends BaseController {

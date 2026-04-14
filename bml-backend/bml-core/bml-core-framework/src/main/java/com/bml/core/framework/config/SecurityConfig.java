@@ -90,7 +90,11 @@ public class SecurityConfig {
                                     "/auth/login",
                                     "/auth/refresh",
                                     "/auth/register",
-                                    "/actuator/health")
+                                    "/actuator/health",
+                                    "/system/license/status",
+                                    "/system/license/preview",
+                                    "/system/license/upload",
+                                    "/system/license/reset")
                             .permitAll();
 
                     if (Boolean.TRUE.equals(swaggerEnabled)) {

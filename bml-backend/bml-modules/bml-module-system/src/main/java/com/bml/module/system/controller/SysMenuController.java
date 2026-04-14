@@ -2,6 +2,8 @@ package com.bml.module.system.controller;
 
 import com.bml.core.base.controller.BaseController;
 import com.bml.core.common.result.Result;
+import com.bml.core.framework.license.LicenseFeatureConstants;
+import com.bml.core.framework.license.RequireFeature;
 import com.bml.module.system.dto.SysMenuDTO;
 import com.bml.module.system.entity.SysMenu;
 import com.bml.module.system.service.SysMenuService;
@@ -62,6 +64,7 @@ import java.util.List;
  * @author BML Team
  */
 @Tag(name = "菜单管理")
+@RequireFeature(LicenseFeatureConstants.SYSTEM)
 @RestController
 @RequestMapping("/system/menu")
 public class SysMenuController extends BaseController {

@@ -2,6 +2,8 @@ package com.bml.module.system.controller;
 
 import com.bml.core.base.controller.BaseController;
 import com.bml.core.common.result.Result;
+import com.bml.core.framework.license.LicenseFeatureConstants;
+import com.bml.core.framework.license.RequireFeature;
 import com.bml.module.system.converter.RoleConverter;
 import com.bml.module.system.dto.SysRoleDTO;
 import com.bml.module.system.entity.SysRole;
@@ -54,6 +56,7 @@ import java.util.List;
  * @author BML Team
  */
 @Tag(name = "角色管理")
+@RequireFeature(LicenseFeatureConstants.SYSTEM)
 @RestController
 @RequestMapping("/system/role")
 public class SysRoleController extends BaseController {

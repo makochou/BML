@@ -2,6 +2,8 @@ package com.bml.module.api.controller;
 
 import com.bml.core.base.controller.BaseController;
 import com.bml.core.common.result.Result;
+import com.bml.core.framework.license.LicenseFeatureConstants;
+import com.bml.core.framework.license.RequireFeature;
 import com.bml.module.api.dto.OpenApiRegistryTreeQuery;
 import com.bml.module.api.service.SysOpenApiRegistryService;
 import com.bml.module.api.vo.OpenApiGroupVO;
@@ -20,6 +22,7 @@ import java.util.List;
  * 开放接口目录控制器。
  */
 @Tag(name = "开放接口目录管理")
+@RequireFeature(LicenseFeatureConstants.API_GATEWAY)
 @RestController
 @RequestMapping("/openapi/registry")
 public class SysOpenApiRegistryController extends BaseController {

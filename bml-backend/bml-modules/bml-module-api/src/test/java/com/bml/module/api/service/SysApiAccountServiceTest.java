@@ -1,6 +1,7 @@
 package com.bml.module.api.service;
 
 import com.bml.core.common.exception.BusinessException;
+import com.bml.core.framework.license.LicenseQuotaChecker;
 import com.bml.module.api.dto.CreateSysApiAccountCommand;
 import com.bml.module.api.dto.UpdateSysApiAccountCommand;
 import com.bml.module.api.entity.SysApiAccount;
@@ -31,12 +32,13 @@ class SysApiAccountServiceTest {
     private final SysApiAccountMapper accountMapper = mock(SysApiAccountMapper.class);
     private final SysApiPermissionMapper permissionMapper = mock(SysApiPermissionMapper.class);
     private final ApiSecretCryptoService cryptoService = mock(ApiSecretCryptoService.class);
+    private final LicenseQuotaChecker licenseQuotaChecker = mock(LicenseQuotaChecker.class);
 
     private SysApiAccountService service;
 
     @BeforeEach
     void setUp() {
-        service = new SysApiAccountService(cryptoService, permissionMapper);
+        service = new SysApiAccountService(cryptoService, permissionMapper, licenseQuotaChecker);
         ReflectionTestUtils.setField(service, "baseMapper", accountMapper);
     }
 

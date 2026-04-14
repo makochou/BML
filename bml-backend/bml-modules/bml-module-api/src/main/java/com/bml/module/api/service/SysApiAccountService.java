@@ -8,6 +8,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.bml.core.common.exception.BusinessException;
 import com.bml.core.common.result.PageResult;
 import com.bml.core.common.support.ApiIpWhitelistSupport;
+import com.bml.core.framework.license.LicenseQuotaChecker;
 import com.bml.core.common.support.ApiSignatureVersionSupport;
 import com.bml.module.api.dto.CreateSysApiAccountCommand;
 import com.bml.module.api.dto.SysApiAccountDTO;
@@ -61,11 +62,14 @@ public class SysApiAccountService extends ServiceImpl<SysApiAccountMapper, SysAp
 
     private final ApiSecretCryptoService secretCryptoService;
     private final SysApiPermissionMapper apiPermissionMapper;
+    private final LicenseQuotaChecker licenseQuotaChecker;
 
     public SysApiAccountService(ApiSecretCryptoService secretCryptoService,
-            SysApiPermissionMapper apiPermissionMapper) {
+            SysApiPermissionMapper apiPermissionMapper,
+            LicenseQuotaChecker licenseQuotaChecker) {
         this.secretCryptoService = secretCryptoService;
         this.apiPermissionMapper = apiPermissionMapper;
+        this.licenseQuotaChecker = licenseQuotaChecker;
     }
 
     public PageResult<SysApiAccountVO> pageAccounts(SysApiAccountPageQuery query) {
@@ -140,6 +144,10 @@ public class SysApiAccountService extends ServiceImpl<SysApiAccountMapper, SysAp
 
     @Transactional(rollbackFor = Exception.class)
     public ApiCredentialVO createAccount(CreateSysApiAccountCommand command) {
+        // 许可证配额校验：检查当前 API 账号数量是否已达上限
+        long currentAccountCount = this.count();
+        licenseQuotaChecker.checkApiAccountQuota(currentAccountCount);
+
         String accountName = normalizeAccountName(command.getAccountName());
         validateAccountNameUnique(accountName, null);
         String accessEnvironment = normalizeAccessEnvironment(command.getAccessEnvironment());

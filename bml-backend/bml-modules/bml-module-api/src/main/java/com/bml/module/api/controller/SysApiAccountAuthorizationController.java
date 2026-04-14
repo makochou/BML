@@ -2,6 +2,8 @@ package com.bml.module.api.controller;
 
 import com.bml.core.base.controller.BaseController;
 import com.bml.core.common.result.Result;
+import com.bml.core.framework.license.LicenseFeatureConstants;
+import com.bml.core.framework.license.RequireFeature;
 import com.bml.module.api.dto.SaveApiAccountAuthorizationCommand;
 import com.bml.module.api.service.SysApiAccountAuthorizationService;
 import com.bml.module.api.vo.ApiAccountAuthorizationVO;
@@ -20,6 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
  * API账号授权控制器。
  */
 @Tag(name = "API账号授权管理")
+@RequireFeature(LicenseFeatureConstants.API_GATEWAY)
 @RestController
 @RequestMapping("/account")
 public class SysApiAccountAuthorizationController extends BaseController {

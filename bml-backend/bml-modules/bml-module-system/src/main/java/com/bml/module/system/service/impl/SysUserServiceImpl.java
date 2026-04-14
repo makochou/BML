@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.bml.core.base.service.impl.BaseServiceImpl;
 import com.bml.core.common.constant.GlobalConstants;
 import com.bml.core.common.exception.BusinessException;
+import com.bml.core.framework.license.LicenseQuotaChecker;
 import com.bml.core.framework.security.utils.SecurityUtils;
 import com.bml.module.system.converter.UserConverter;
 import com.bml.module.system.dto.SysUserDTO;
@@ -27,6 +28,9 @@ public class SysUserServiceImpl extends BaseServiceImpl<SysUserMapper, SysUser> 
 
     @Resource
     private SysUserRoleMapper userRoleMapper;
+
+    @Resource
+    private LicenseQuotaChecker licenseQuotaChecker;
 
     @Override
     @DataScope(deptColumn = "dept_id", orgColumn = "org_id", userColumn = "id", creatorColumn = "create_by")
@@ -70,6 +74,10 @@ public class SysUserServiceImpl extends BaseServiceImpl<SysUserMapper, SysUser> 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean insertUser(SysUserDTO userDto) {
+        // 许可证配额校验：检查当前用户数量是否已达上限
+        long currentUserCount = this.count();
+        licenseQuotaChecker.checkUserQuota(currentUserCount);
+
         SysUser user = UserConverter.INSTANCE.toEntity(userDto);
         if (StringUtils.hasText(user.getPassword())) {
             user.setPassword(SecurityUtils.encryptPassword(user.getPassword()));

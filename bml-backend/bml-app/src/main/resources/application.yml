@@ -158,6 +158,21 @@ bml:
       # 是否在应用启动时自动同步接口目录（推荐开启，确保目录与代码一致）
       auto-sync-on-startup: ${BML_OPENAPI_REGISTRY_AUTO_SYNC_ON_STARTUP:true}
 
+  # ── 许可证配置 ──
+  license:
+    # 是否启用许可证校验（开发环境可关闭，生产环境必须开启）
+    enabled: ${BML_LICENSE_ENABLED:true}
+    # 许可证文件存储目录
+    storage-dir: ${BML_LICENSE_STORAGE_DIR:License}
+    # 许可证文件名
+    file-name: bml-license.lic
+    # RSA 公钥（Base64 编码），由离线签发工具生成
+    # 生产环境必须通过 BML_LICENSE_PUBLIC_KEY 注入
+    # 以下默认值为开发环境公钥，生产环境务必替换
+    public-key: ${BML_LICENSE_PUBLIC_KEY:MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtNIbEb6fivst1hqWjPnPBfb38SnxjHCPok27qT2zsgh+qbBTFfAzHa4LlvR6KUU3SYVkf3ncn3eulveEmFNhCS4djwjZN8QLTqJNKTl7F8aRKe5vbN4leyAXbz7bx2GRMOOB++3+4gWlYzfd3uihULyy/fuE/R7KZrgpFY/dKegiGGvqsjDsJDAUe38rdJbAdHeHVNH5FmE0ctiOsHc7LLf98hccerLhkiX6r30ewGD79Q8JOelItA+L99MzDQLtG5G0eHXGHO4Ap+qwaAXttUvG3Ae3js3oAgEpXJlIp6DUptnOaVj8XostQkK5IvwC8NZleIqhui7Kky333W3hbQIDAQAB}
+    # 许可证文件自动刷新间隔（毫秒），默认 5 分钟
+    refresh-interval-ms: ${BML_LICENSE_REFRESH_INTERVAL_MS:300000}
+
   # ── 服务器监控配置 ──
   monitor:
     # 监控数据刷新间隔（毫秒），默认 3 秒

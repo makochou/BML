@@ -1,6 +1,8 @@
 package com.bml.module.api.controller;
 
 import com.bml.core.common.result.Result;
+import com.bml.core.framework.license.LicenseFeatureConstants;
+import com.bml.core.framework.license.RequireFeature;
 import com.bml.module.api.dto.OpenApiRegistryTreeQuery;
 import com.bml.module.api.service.SysOpenApiRegistryService;
 import com.bml.module.api.vo.ApiCatalogTreeNodeVO;
@@ -30,6 +32,7 @@ import java.util.List;
  * @author BML Team
  */
 @Tag(name = "API 接口列表", description = "全量纳管 API 的树形展示，用于 API 接口列表页")
+@RequireFeature(LicenseFeatureConstants.API_GATEWAY)
 @RestController
 @RequestMapping("/api-list")
 public class SysApiListController {

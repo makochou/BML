@@ -76,7 +76,25 @@ public enum GlobalErrorCode implements ErrorCode {
     /** 请求头中的签名版本与账号配置的签名版本不匹配 */
     OPEN_API_SIGN_VERSION_INVALID(2108, "签名算法版本不匹配"),
     /** 请求来源 IP 不在账号配置的白名单范围内 */
-    OPEN_API_IP_FORBIDDEN(2109, "当前来源 IP 不在白名单内");
+    OPEN_API_IP_FORBIDDEN(2109, "当前来源 IP 不在白名单内"),
+
+    // ── 许可证错误（2200-2299） ──
+    /** 系统尚未上传有效许可证，需要管理员先激活 */
+    LICENSE_NOT_FOUND(2200, "系统未激活，请上传有效许可证"),
+    /** 许可证文件签名校验失败（可能被篡改） */
+    LICENSE_INVALID(2201, "许可证无效或已被篡改"),
+    /** 许可证已过有效期 */
+    LICENSE_EXPIRED(2202, "许可证已过期，请联系供应商续期"),
+    /** 许可证文件解析失败 */
+    LICENSE_PARSE_ERROR(2203, "许可证文件格式错误"),
+
+    // ── 许可证配额限制（2210-2219） ──
+    /** API 账号数量已达许可证上限 */
+    LICENSE_QUOTA_API_ACCOUNT_EXCEEDED(2210, "API 账号数量已达许可证授权上限"),
+    /** 系统用户数量已达许可证上限 */
+    LICENSE_QUOTA_USER_EXCEEDED(2211, "用户数量已达许可证授权上限"),
+    /** 许可证未授权该功能模块 */
+    LICENSE_FEATURE_NOT_AUTHORIZED(2212, "许可证未授权该功能模块");
 
     /** 业务状态码 */
     private final int code;

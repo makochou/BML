@@ -1,6 +1,8 @@
 package com.bml.module.system.controller;
 
 import com.bml.core.common.result.Result;
+import com.bml.core.framework.license.LicenseFeatureConstants;
+import com.bml.core.framework.license.RequireFeature;
 import com.bml.module.system.converter.AlertConverter;
 import com.bml.module.system.service.ISysAlertService;
 import com.bml.module.system.vo.SysAlertVO;
@@ -31,6 +33,7 @@ import java.util.List;
  * @author BML Team
  */
 @Tag(name = "系统告警通知接口")
+@RequireFeature(LicenseFeatureConstants.ALERT)
 @RestController
 @RequestMapping("/system/alert")
 @RequiredArgsConstructor

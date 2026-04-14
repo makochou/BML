@@ -1,6 +1,8 @@
 package com.bml.module.api.controller;
 
 import com.bml.core.common.result.Result;
+import com.bml.core.framework.license.LicenseFeatureConstants;
+import com.bml.core.framework.license.RequireFeature;
 import com.bml.module.api.dto.ApiCallbackLogPageQuery;
 import com.bml.module.api.service.SysApiCallbackLogService;
 import com.bml.module.api.vo.ApiCallbackLogPageVO;
@@ -18,6 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
  * API 账号回调日志与重试控制器。
  */
 @Tag(name = "API账号回调日志管理")
+@RequireFeature(LicenseFeatureConstants.API_GATEWAY)
 @RestController
 @RequestMapping("/account")
 public class SysApiAccountCallbackController {

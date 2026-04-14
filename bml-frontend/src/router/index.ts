@@ -3,6 +3,7 @@ import { createRouter, createWebHistory, RouterView, type RouteRecordRaw } from 
 import request from '../utils/request';
 import { clearAuthTokens, getAccessToken } from '../utils/auth';
 import { usePermissionStore, type BackendRouteItem } from '../store/permission';
+import { fetchLicenseStatus } from '../api/license';
 
 const viewModules = import.meta.glob('../views/**/*.vue');
 const FeatureDisabledView = () => import('../views/common/FeatureDisabled.vue');
@@ -19,6 +20,12 @@ const staticRoutes: RouteRecordRaw[] = [
         name: 'Home',
         component: () => import('../views/home/Home.vue'),
         meta: { title: '业务前台' }
+    },
+    {
+        path: '/admin/license',
+        name: 'LicenseActivation',
+        component: () => import('../views/system/license/index.vue'),
+        meta: { title: '许可证激活' }
     },
     {
         path: '/admin/login',
@@ -198,16 +205,63 @@ const resetPermissionState = () => {
     resetDynamicRoutes();
 };
 
+/** 许可证状态缓存，避免每次路由切换都请求后端 */
+let licenseChecked = false;
+let licenseValid = false;
+
+/** 检查许可证状态（仅首次或手动重置时请求后端） */
+const ensureLicenseValid = async (): Promise<boolean> => {
+    if (licenseChecked) {
+        return licenseValid;
+    }
+    try {
+        const res = await fetchLicenseStatus() as any;
+        const status = res.data;
+        // 未启用许可证校验时视为有效
+        if (!status.enabled) {
+            licenseValid = true;
+        } else {
+            licenseValid = status.activated && !status.expired;
+        }
+    } catch {
+        licenseValid = false;
+    }
+    licenseChecked = true;
+    return licenseValid;
+};
+
+/** 重置许可证缓存（上传新许可证后调用） */
+export const resetLicenseCache = () => {
+    licenseChecked = false;
+    licenseValid = false;
+};
+
 router.beforeEach(async (to, _from, next) => {
     const token = getAccessToken();
     const rawTitle = typeof to.meta?.title === 'string' ? to.meta.title : 'BML中台管理';
     document.title = `${rawTitle} - BML中台管理`;
 
+    // 许可证激活页面始终放行
+    if (to.path === '/admin/license') {
+        next();
+        return;
+    }
+
+    // 所有页面（包括前台业务 / 和中台管理 /admin）都需要许可证校验
+    // 未激活时统一跳转到许可证激活页面
+    const hasLicense = await ensureLicenseValid();
+    if (!hasLicense) {
+        next('/admin/license');
+        return;
+    }
+
+    // 非 /admin 路径（前台业务页面）：许可证有效即放行
     if (!to.path.startsWith('/admin')) {
         next();
         return;
     }
 
+    // 以下为 /admin 中台管理路径的认证逻辑
     if (to.path === '/admin/login') {
         if (token) {
             next('/admin');
