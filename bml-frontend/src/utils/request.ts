@@ -122,13 +122,19 @@ service.interceptors.request.use(
             return replayWithFreshToken(config);
         }
 
-        // 许可证相关错误码（2200-2203）→ 跳转许可证激活页面
+        // 许可证核心错误码（2200-2203：未激活/无效/过期/解析失败）→ 跳转许可证激活页面
         if (payload.code >= 2200 && payload.code <= 2203) {
             const currentPath = window.location.pathname;
             if (currentPath !== '/admin/license') {
                 window.location.href = '/admin/license';
             }
             return Promise.reject(new Error(payload.message || '许可证无效'));
+        }
+
+        // 许可证功能模块未授权（2212）→ 静默处理，不弹出错误提示
+        // 未购买的模块本身就不在授权范围内，无需反复提醒用户
+        if (payload.code === 2212) {
+            return Promise.reject(new Error(payload.message || '许可证未授权该功能模块'));
         }
 
         logTraceId(payload);

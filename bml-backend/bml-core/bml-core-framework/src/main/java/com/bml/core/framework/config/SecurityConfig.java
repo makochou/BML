@@ -94,6 +94,7 @@ public class SecurityConfig {
                                     "/system/license/status",
                                     "/system/license/preview",
                                     "/system/license/upload",
+                                    "/system/license/update",
                                     "/system/license/reset")
                             .permitAll();
 

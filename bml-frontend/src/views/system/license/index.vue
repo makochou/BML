@@ -319,7 +319,7 @@
 import { ref, computed, onMounted } from 'vue';
 import { Message } from '@arco-design/web-vue';
 import type { FileItem } from '@arco-design/web-vue';
-import { fetchLicenseStatus, previewLicense, uploadLicense, resetLicense, type LicenseStatus } from '../../../api/license';
+import { fetchLicenseStatus, previewLicense, uploadLicense, updateLicense, resetLicense, type LicenseStatus } from '../../../api/license';
 import { resetLicenseCache } from '../../../router';
 
 const licenseData = ref<LicenseStatus | null>(null);
@@ -433,19 +433,19 @@ const handleReplaceFile = async (files: FileItem[]) => {
     }
 };
 
-/** 确认更新许可证 */
+/** 确认更新许可证（使用专用的 update 接口，后端自动备份旧许可证） */
 const confirmUpdate = async () => {
     if (!pendingFile.value) return;
     uploading.value = true;
 
     try {
-        const res = await uploadLicense(pendingFile.value) as any;
+        const res = await updateLicense(pendingFile.value) as any;
         licenseData.value = res.data;
         resetLicenseCache();
         compareVisible.value = false;
         pendingFile.value = null;
         previewData.value = null;
-        Message.success('许可证更新成功');
+        Message.success('许可证更新成功，旧许可证已自动备份');
     } catch (err: any) {
         Message.error(err?.message || '许可证更新失败');
     } finally {

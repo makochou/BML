@@ -119,6 +119,9 @@
                      <template #content>
                         <a-doption><template #icon><icon-user /></template>个人中心</a-doption>
                         <a-doption><template #icon><icon-settings /></template>系统设置</a-doption>
+                        <a-doption @click="router.push('/admin/license')">
+                            <template #icon><icon-safe /></template>授权管理
+                        </a-doption>
                         <a-divider style="margin: 4px 0;" />
                         <a-doption @click="handleLogout" style="color: #f53f3f;">
                             <template #icon><icon-export /></template>退出登录

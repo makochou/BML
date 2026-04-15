@@ -13,6 +13,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 /**
  * BML 许可证持有者（全局单例）。
@@ -243,6 +245,34 @@ public class BmlLicenseHolder {
      */
     public Path resolveLicensePath() {
         return Path.of(licenseProperties.getStorageDir(), licenseProperties.getFileName());
+    }
+
+    /** 备份文件时间戳格式 */
+    private static final DateTimeFormatter BACKUP_TS_FMT = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
+
+    /**
+     * 备份当前许可证文件。
+     * <p>
+     * 将当前许可证文件复制为 {@code bml-license_20260415213000.lic.bak} 格式的备份文件。
+     * 如果当前许可证文件不存在则跳过。
+     * </p>
+     *
+     * @return 备份文件路径，许可证文件不存在时返回 {@code null}
+     * @throws IOException 文件操作失败时抛出
+     */
+    public Path backupCurrentLicense() throws IOException {
+        Path licensePath = resolveLicensePath();
+        if (!Files.exists(licensePath)) {
+            log.info("[License] 许可证文件不存在，无需备份");
+            return null;
+        }
+        String baseName = licenseProperties.getFileName().replace(".lic", "");
+        String timestamp = LocalDateTime.now().format(BACKUP_TS_FMT);
+        String backupName = baseName + "_" + timestamp + ".lic.bak";
+        Path backupPath = licensePath.getParent().resolve(backupName);
+        Files.copy(licensePath, backupPath, StandardCopyOption.REPLACE_EXISTING);
+        log.info("[License] 许可证文件已备份: {}", backupPath.toAbsolutePath());
+        return backupPath;
     }
 
     /**

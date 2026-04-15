@@ -33,7 +33,9 @@ import java.nio.file.StandardCopyOption;
  * 接口说明：
  * <ul>
  *     <li>{@code GET /system/license/status} — 查询许可证状态（无需登录）</li>
- *     <li>{@code POST /system/license/upload} — 上传许可证文件（无需登录）</li>
+ *     <li>{@code POST /system/license/preview} — 预览许可证文件（无需登录，仅验证不保存）</li>
+ *     <li>{@code POST /system/license/upload} — 上传许可证文件（无需登录，首次激活）</li>
+ *     <li>{@code POST /system/license/update} — 更新许可证文件（无需登录，自动备份旧许可证）</li>
  *     <li>{@code DELETE /system/license/reset} — 删除许可证文件并重置（无需登录，仅用于开发测试）</li>
  * </ul>
  * </p>
@@ -152,6 +154,84 @@ public class SysLicenseController {
         }
 
         // 重新加载
+        licenseHolder.reload();
+
+        LicenseStatusVO vo = LicenseStatusVO.from(
+                licenseHolder.getCurrentLicense(),
+                licenseHolder.isEnabled(),
+                licenseHolder.getLastError());
+        vo.setFilePath(licenseHolder.resolveLicensePath().toAbsolutePath().toString());
+        return Result.ok(vo);
+    }
+
+    /**
+     * 更新许可证文件（升级授权）。
+     * <p>
+     * 适用于客户购买更多用户数、更多功能模块后，使用新许可证替换旧许可证的场景。
+     * 与 {@code upload} 接口不同，此接口会：
+     * <ol>
+     *     <li>先验证新许可证文件的签名和内容合法性；</li>
+     *     <li>自动备份当前旧许可证文件（文件名带时间戳后缀）；</li>
+     *     <li>保存新许可证文件到磁盘并触发重新加载。</li>
+     * </ol>
+     * 客户端可先调用 {@code /preview} 接口获取新许可证详情做对比，确认后调用此接口完成更新。
+     * </p>
+     *
+     * @param file 新许可证文件（.lic）
+     * @return 更新结果（包含新许可证详情）
+     */
+    @Operation(summary = "更新许可证文件", description = "备份旧许可证后替换为新许可证，用于授权升级")
+    @PostMapping("/update")
+    public Result<LicenseStatusVO> update(@RequestParam("file") MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            return Result.fail(GlobalErrorCode.BAD_REQUEST.getCode(), "请选择许可证文件");
+        }
+
+        // 1. 读取文件内容
+        String fileContent;
+        try {
+            fileContent = new String(file.getBytes(), StandardCharsets.UTF_8);
+        } catch (IOException ex) {
+            log.error("[License] 读取上传文件失败", ex);
+            return Result.fail(GlobalErrorCode.LICENSE_PARSE_ERROR);
+        }
+
+        // 2. 预验证新许可证（仅校验签名和格式，不替换当前内存中的许可证）
+        try {
+            licenseHolder.previewLicense(fileContent);
+        } catch (Exception ex) {
+            return Result.fail(GlobalErrorCode.LICENSE_INVALID.getCode(),
+                    ex.getMessage() != null ? ex.getMessage() : GlobalErrorCode.LICENSE_INVALID.getMessage());
+        }
+
+        // 3. 备份旧许可证文件
+        try {
+            Path backupPath = licenseHolder.backupCurrentLicense();
+            if (backupPath != null) {
+                log.info("[License] 更新前旧许可证已备份: {}", backupPath.toAbsolutePath());
+            }
+        } catch (IOException ex) {
+            log.error("[License] 备份旧许可证文件失败", ex);
+            return Result.fail(GlobalErrorCode.INTERNAL_SERVER_ERROR.getCode(),
+                    "备份旧许可证失败: " + ex.getMessage());
+        }
+
+        // 4. 保存新许可证到磁盘
+        try {
+            Path licensePath = licenseHolder.resolveLicensePath();
+            Files.createDirectories(licensePath.getParent());
+            Path tempFile = Files.createTempFile(licensePath.getParent(), "bml-lic-", ".tmp");
+            Files.writeString(tempFile, fileContent, StandardCharsets.UTF_8);
+            Files.move(tempFile, licensePath, StandardCopyOption.REPLACE_EXISTING,
+                    StandardCopyOption.ATOMIC_MOVE);
+            log.info("[License] 新许可证文件已保存: {}", licensePath);
+        } catch (IOException ex) {
+            log.error("[License] 保存新许可证文件失败", ex);
+            return Result.fail(GlobalErrorCode.INTERNAL_SERVER_ERROR.getCode(),
+                    "许可证保存失败: " + ex.getMessage());
+        }
+
+        // 5. 重新加载
         licenseHolder.reload();
 
         LicenseStatusVO vo = LicenseStatusVO.from(

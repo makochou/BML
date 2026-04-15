@@ -80,6 +80,22 @@ export function uploadLicense(file: File) {
 }
 
 /**
+ * 更新许可证文件（授权升级）。
+ * 适用于客户购买更多用户数、更多功能模块后替换旧许可证的场景。
+ * 后端会自动备份旧许可证文件，无需担心数据丢失。
+ *
+ * @param file 新许可证 .lic 文件
+ */
+export function updateLicense(file: File) {
+    const formData = new FormData();
+    formData.append('file', file);
+    return request.post<LicenseStatus>('/system/license/update', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        _skipAuthRefresh: true
+    } as any);
+}
+
+/**
  * 删除许可证文件并重置状态。
  * 仅用于开发测试环境。
  */
