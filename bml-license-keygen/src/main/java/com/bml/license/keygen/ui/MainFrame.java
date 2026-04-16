@@ -48,8 +48,8 @@ public class MainFrame extends JFrame {
         tabs.setFont(new Font("\u5fae\u8f6f\u96c5\u9ed1", Font.BOLD, 14));
         tabs.setBorder(BorderFactory.createEmptyBorder(4, 8, 0, 8));
 
-        tabs.addTab("  \u2709  \u7b7e\u53d1\u8bb8\u53ef\u8bc1  ", new IssueLicensePanel(keyManager, generator, excelManager));
-        tabs.addTab("  \u26bf  \u5bc6\u94a5\u7ba1\u7406  ", new KeyManagePanel(keyManager, this));
+        tabs.addTab("  \u7b7e\u53d1\u8bb8\u53ef\u8bc1  ", new IssueLicensePanel(keyManager, generator, excelManager));
+        tabs.addTab("  \u5bc6\u94a5\u7ba1\u7406  ", new KeyManagePanel(keyManager, this));
 
         root.add(tabs, "grow, wrap");
 
@@ -116,8 +116,8 @@ public class MainFrame extends JFrame {
         bar.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(230, 232, 240)));
 
         JLabel keyStatus = new JLabel(keyManager.isReady()
-                ? "\u2705 RSA \u5bc6\u94a5\u5bf9\u5df2\u5c31\u7eea"
-                : "\u274c RSA \u5bc6\u94a5\u5bf9\u672a\u521d\u59cb\u5316");
+                ? "RSA \u5bc6\u94a5\u5bf9\u5df2\u5c31\u7eea"
+                : "RSA \u5bc6\u94a5\u5bf9\u672a\u521d\u59cb\u5316");
         keyStatus.setFont(new Font("\u5fae\u8f6f\u96c5\u9ed1", Font.PLAIN, 11));
         keyStatus.setForeground(keyManager.isReady()
                 ? BmlLicenseKeygenApp.COLOR_SUCCESS

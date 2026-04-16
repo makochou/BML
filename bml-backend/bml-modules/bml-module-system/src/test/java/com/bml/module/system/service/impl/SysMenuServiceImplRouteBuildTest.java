@@ -1,32 +1,17 @@
 package com.bml.module.system.service.impl;
 
-import com.bml.core.framework.license.BmlLicenseHolder;
 import com.bml.module.system.entity.SysMenu;
 import com.bml.module.system.vo.RouterVO;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.lang.reflect.Field;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 class SysMenuServiceImplRouteBuildTest {
 
     private final SysMenuServiceImpl menuService = new SysMenuServiceImpl();
-
-    @BeforeEach
-    void setUp() throws Exception {
-        // 注入 mock 的 licenseHolder（字段注入，需反射设置）
-        BmlLicenseHolder mockHolder = mock(BmlLicenseHolder.class);
-        when(mockHolder.isEnabled()).thenReturn(false);
-        Field field = SysMenuServiceImpl.class.getDeclaredField("licenseHolder");
-        field.setAccessible(true);
-        field.set(menuService, mockHolder);
-    }
 
     @Test
     void shouldBuildDirectoryAndChildRoute() {

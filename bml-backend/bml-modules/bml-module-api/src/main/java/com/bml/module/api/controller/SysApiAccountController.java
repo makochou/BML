@@ -1,8 +1,6 @@
 package com.bml.module.api.controller;
 
 import com.bml.core.base.controller.BaseController;
-import com.bml.core.framework.license.LicenseFeatureConstants;
-import com.bml.core.framework.license.RequireFeature;
 import com.bml.core.common.result.PageResult;
 import com.bml.core.common.result.Result;
 import com.bml.module.api.dto.CreateSysApiAccountCommand;
@@ -40,7 +38,6 @@ import java.util.List;
  * @author BML Team
  */
 @Tag(name = "API账号管理")
-@RequireFeature(LicenseFeatureConstants.API_GATEWAY)
 @RestController
 @RequestMapping("/account")
 public class SysApiAccountController extends BaseController {

@@ -15,23 +15,63 @@ const ParentView = {
 };
 
 const staticRoutes: RouteRecordRaw[] = [
+    /* ═══════════════════════════════════════════════════════
+       前台业务系统路由（ip:port/）
+       直接访问 ip:port 即进入业务系统，未登录自动跳转 /login
+       ═══════════════════════════════════════════════════════ */
+    {
+        path: '/login',
+        name: 'BusinessLogin',
+        component: () => import('../views/business/login/BusinessLogin.vue'),
+        meta: { title: '业务系统登录' }
+    },
     {
         path: '/',
-        name: 'Home',
-        component: () => import('../views/home/Home.vue'),
-        meta: { title: '业务前台' }
+        name: 'BusinessRoot',
+        component: () => import('../layout/BusinessLayout.vue'),
+        redirect: '/dashboard',
+        children: [
+            {
+                path: 'dashboard',
+                name: 'BusinessDashboard',
+                component: () => import('../views/business/dashboard/index.vue'),
+                meta: { title: '工作台' }
+            },
+            {
+                path: 'system/user',
+                name: 'SystemUser',
+                component: () => import('../views/business/system/user/index.vue'),
+                meta: { title: '用户管理' }
+            },
+            {
+                path: 'system/role',
+                name: 'SystemRole',
+                component: () => import('../views/business/system/role/index.vue'),
+                meta: { title: '角色管理' }
+            },
+            {
+                path: 'system/menu',
+                name: 'SystemMenu',
+                component: () => import('../views/business/system/menu/index.vue'),
+                meta: { title: '菜单管理' }
+            },
+            {
+                path: 'system/dept',
+                name: 'SystemDept',
+                component: () => import('../views/business/system/dept/index.vue'),
+                meta: { title: '部门管理' }
+            }
+        ]
     },
-    {
-        path: '/admin/license',
-        name: 'LicenseActivation',
-        component: () => import('../views/system/license/index.vue'),
-        meta: { title: '许可证激活' }
-    },
+
+    /* ═══════════════════════════════════════════════════════
+       中台管理平台路由（ip:port/admin）
+       ═══════════════════════════════════════════════════════ */
     {
         path: '/admin/login',
         name: 'Login',
         component: () => import('../views/login/Login.vue'),
-        meta: { title: '后台登录' }
+        meta: { title: '中台登录' }
     },
     {
         path: '/admin',
@@ -68,6 +108,12 @@ const staticRoutes: RouteRecordRaw[] = [
                 name: 'LegacyAppListRedirect',
                 redirect: API_ACCOUNT_MANAGE_FULL_PATH,
                 meta: { title: '授权治理中心', hidden: true }
+            },
+            {
+                path: 'license',
+                name: 'LicenseManagement',
+                component: () => import('../views/system/license/index.vue'),
+                meta: { title: '授权管理', icon: 'safe' }
             }
         ]
     }
@@ -236,32 +282,64 @@ export const resetLicenseCache = () => {
     licenseValid = false;
 };
 
+/** 前台业务系统需要认证的路径前缀 */
+const BUSINESS_AUTH_PREFIXES = ['/dashboard', '/system'];
+
+/** 判断路径是否属于前台业务系统需要认证的区域 */
+const isBusinessAuthRequired = (path: string): boolean =>
+    BUSINESS_AUTH_PREFIXES.some(prefix => path === prefix || path.startsWith(prefix + '/'));
+
 router.beforeEach(async (to, _from, next) => {
     const token = getAccessToken();
-    const rawTitle = typeof to.meta?.title === 'string' ? to.meta.title : 'BML中台管理';
-    document.title = `${rawTitle} - BML中台管理`;
 
-    // 许可证激活页面始终放行
+    // ── 页面标题 ──
+    const rawTitle = typeof to.meta?.title === 'string' ? to.meta.title : 'BML';
+    const suffix = to.path.startsWith('/admin') ? 'BML中台管理' : 'BML业务系统';
+    document.title = `${rawTitle} - ${suffix}`;
+
+    // ── 许可证管理页面始终放行 ──
     if (to.path === '/admin/license') {
+        if (token) {
+            try { await ensureDynamicRoutesLoaded(); } catch { /* 忽略 */ }
+        }
         next();
         return;
     }
 
-    // 所有页面（包括前台业务 / 和中台管理 /admin）都需要许可证校验
-    // 未激活时统一跳转到许可证激活页面
+    // ── 许可证校验（所有页面均需） ──
     const hasLicense = await ensureLicenseValid();
     if (!hasLicense) {
         next('/admin/license');
         return;
     }
 
-    // 非 /admin 路径（前台业务页面）：许可证有效即放行
+    // ── 前台业务系统登录页 ──
+    if (to.path === '/login') {
+        if (token) {
+            next('/dashboard');
+            return;
+        }
+        next();
+        return;
+    }
+
+    // ── 前台业务系统认证区域（/dashboard, /system/*） ──
+    if (isBusinessAuthRequired(to.path)) {
+        if (!token) {
+            next('/login');
+            return;
+        }
+        next();
+        return;
+    }
+
+    // ── 其他非 /admin 路径：直接放行 ──
     if (!to.path.startsWith('/admin')) {
         next();
         return;
     }
 
-    // 以下为 /admin 中台管理路径的认证逻辑
+    // ── 中台管理平台登录页 ──
     if (to.path === '/admin/login') {
         if (token) {
             next('/admin');
@@ -272,6 +350,7 @@ router.beforeEach(async (to, _from, next) => {
         return;
     }
 
+    // ── 中台管理平台认证区域 ──
     if (!token) {
         resetPermissionState();
         next('/admin/login');

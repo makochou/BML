@@ -40,7 +40,7 @@ public class KeyManagePanel extends JPanel {
         setBackground(new Color(250, 251, 254));
 
         // ── 公钥展示卡片 ──
-        JPanel keyCard = createCard("\u2709  RSA \u516c\u94a5\uff08Base64 \u7f16\u7801\uff09");
+        JPanel keyCard = createCard("RSA \u516c\u94a5\uff08Base64 \u7f16\u7801\uff09");
         keyCard.setLayout(new MigLayout("fill, insets 16", "[grow]", "[]8[]8[]"));
 
         JLabel hint = new JLabel("\u8bf7\u5c06\u4ee5\u4e0b\u516c\u94a5\u914d\u7f6e\u5230\u540e\u7aef application.yml \u6216\u73af\u5883\u53d8\u91cf BML_LICENSE_PUBLIC_KEY");
@@ -74,7 +74,7 @@ public class KeyManagePanel extends JPanel {
         add(keyCard, "growx, wrap");
 
         // ── 密钥状态卡片 ──
-        JPanel statusCard = createCard("\u26bf  \u5bc6\u94a5\u72b6\u6001");
+        JPanel statusCard = createCard("\u5bc6\u94a5\u72b6\u6001");
         statusCard.setLayout(new MigLayout("insets 16, gap 8", "[][grow]", "[][][]"));
 
         statusCard.add(createLabel("\u5bc6\u94a5\u72b6\u6001:"), "right");
@@ -98,11 +98,11 @@ public class KeyManagePanel extends JPanel {
         add(statusCard, "growx, wrap");
 
         // ── 危险操作卡片 ──
-        JPanel dangerCard = createCard("\u26a0  \u5371\u9669\u64cd\u4f5c");
+        JPanel dangerCard = createCard("\u5371\u9669\u64cd\u4f5c");
         dangerCard.setLayout(new MigLayout("insets 16", "[grow][]", "[]"));
         dangerCard.setBorder(BorderFactory.createTitledBorder(
                 BorderFactory.createLineBorder(new Color(255, 200, 200), 1, true),
-                "  \u26a0  \u5371\u9669\u64cd\u4f5c  "));
+                "  \u5371\u9669\u64cd\u4f5c  "));
         ((javax.swing.border.TitledBorder) dangerCard.getBorder())
                 .setTitleFont(new Font("\u5fae\u8f6f\u96c5\u9ed1", Font.BOLD, 13));
         ((javax.swing.border.TitledBorder) dangerCard.getBorder())
@@ -126,11 +126,11 @@ public class KeyManagePanel extends JPanel {
     private void refreshKeyDisplay() {
         if (keyManager.isReady()) {
             publicKeyArea.setText(keyManager.getPublicKeyBase64());
-            statusLabel.setText("\u2705 \u5df2\u5c31\u7eea");
+            statusLabel.setText("\u5df2\u5c31\u7eea");
             statusLabel.setForeground(BmlLicenseKeygenApp.COLOR_SUCCESS);
         } else {
             publicKeyArea.setText("\u5bc6\u94a5\u5bf9\u672a\u521d\u59cb\u5316");
-            statusLabel.setText("\u274c \u672a\u521d\u59cb\u5316");
+            statusLabel.setText("\u672a\u521d\u59cb\u5316");
             statusLabel.setForeground(BmlLicenseKeygenApp.COLOR_DANGER);
         }
     }
@@ -189,7 +189,7 @@ public class KeyManagePanel extends JPanel {
             refreshKeyDisplay();
 
             JOptionPane.showMessageDialog(this,
-                    "\u2705 \u65b0\u7684 RSA-2048 \u5bc6\u94a5\u5bf9\u5df2\u751f\u6210\uff01\n\u8bf7\u590d\u5236\u65b0\u516c\u94a5\u914d\u7f6e\u5230\u540e\u7aef\u3002",
+                    "\u65b0\u7684 RSA-2048 \u5bc6\u94a5\u5bf9\u5df2\u751f\u6210\uff01\n\u8bf7\u590d\u5236\u65b0\u516c\u94a5\u914d\u7f6e\u5230\u540e\u7aef\u3002",
                     "\u751f\u6210\u6210\u529f", JOptionPane.INFORMATION_MESSAGE);
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this,

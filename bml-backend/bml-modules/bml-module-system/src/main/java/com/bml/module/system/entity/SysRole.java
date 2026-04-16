@@ -24,6 +24,7 @@ public class SysRole extends BaseEntity {
     private String roleName;
 
     @Schema(description = "角色编码")
+    @TableField("role_key")
     private String roleCode;
 
     @Schema(description = "显示顺序")

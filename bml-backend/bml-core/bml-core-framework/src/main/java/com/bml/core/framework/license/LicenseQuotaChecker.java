@@ -59,13 +59,18 @@ public class LicenseQuotaChecker {
     }
 
     /**
-     * 校验系统用户数量是否超出许可证配额。
+     * 校验前端业务系统用户数量是否超出许可证配额。
      * <p>
-     * 在创建新用户之前调用，传入当前已有的用户数量。
+     * 在创建新的前端业务用户之前调用，传入当前已有的业务用户数量。
      * 如果许可证的 {@code maxTotalUsers} 大于 0 且当前数量已达上限，则抛出异常。
      * </p>
+     * <p>
+     * 注意：此配额仅针对前台业务系统（{@code /}）的使用用户，
+     * 不含中台管理平台（{@code /admin}）的管理员账号。
+     * 中台管理平台永远只有一个配置管理员，不受许可证配额限制。
+     * </p>
      *
-     * @param currentCount 当前已存在的用户数量
+     * @param currentCount 当前已存在的前端业务用户数量
      * @throws BusinessException 配额超限时抛出
      */
     public void checkUserQuota(long currentCount) {

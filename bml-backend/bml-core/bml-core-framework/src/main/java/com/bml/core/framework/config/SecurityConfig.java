@@ -88,6 +88,7 @@ public class SecurityConfig {
 
                     auth.requestMatchers(
                                     "/auth/login",
+                                    "/auth/admin/login",
                                     "/auth/refresh",
                                     "/auth/register",
                                     "/actuator/health",

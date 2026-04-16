@@ -1,8 +1,10 @@
 com\bml\license\keygen\BmlLicenseKeygenApp.class
+com\bml\license\keygen\service\LicenseFileParser.class
 com\bml\license\keygen\model\LicensePayload.class
 com\bml\license\keygen\service\LicenseFileGenerator.class
 com\bml\license\keygen\ui\MainFrame$1.class
 com\bml\license\keygen\ui\IssueLicensePanel.class
+com\bml\license\keygen\service\LicenseFileParser$LicenseParseException.class
 com\bml\license\keygen\service\ExcelRecordManager.class
 com\bml\license\keygen\service\RsaKeyPairManager.class
 com\bml\license\keygen\ui\MainFrame.class

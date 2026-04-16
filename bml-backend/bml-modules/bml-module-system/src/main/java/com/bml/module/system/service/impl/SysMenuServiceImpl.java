@@ -4,9 +4,6 @@ import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
 import com.bml.core.base.service.impl.BaseServiceImpl;
 import com.bml.core.common.constant.GlobalConstants;
-import com.bml.core.framework.license.BmlLicense;
-import com.bml.core.framework.license.BmlLicenseHolder;
-import com.bml.core.framework.license.LicenseFeatureConstants;
 import com.bml.module.system.converter.MenuConverter;
 import com.bml.module.system.dto.SysMenuDTO;
 import com.bml.module.system.entity.SysMenu;
@@ -14,7 +11,6 @@ import com.bml.module.system.mapper.SysMenuMapper;
 import com.bml.module.system.service.SysMenuService;
 import com.bml.module.system.vo.RouterMetaVO;
 import com.bml.module.system.vo.RouterVO;
-import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -32,9 +28,6 @@ import java.util.stream.Collectors;
  */
 @Service
 public class SysMenuServiceImpl extends BaseServiceImpl<SysMenuMapper, SysMenu> implements SysMenuService {
-
-    @Resource
-    private BmlLicenseHolder licenseHolder;
 
     /**
      * 根据条件查询菜单列表（管理端使用）
@@ -142,8 +135,7 @@ public class SysMenuServiceImpl extends BaseServiceImpl<SysMenuMapper, SysMenu> 
                 routers.add(router);
             }
         }
-        // 根据许可证授权的功能模块过滤菜单
-        return filterByLicenseFeatures(routers);
+        return routers;
     }
 
     /**
@@ -331,63 +323,4 @@ public class SysMenuServiceImpl extends BaseServiceImpl<SysMenuMapper, SysMenu> 
         return meta;
     }
 
-    // ======================== 许可证功能模块过滤 ========================
-
-    /**
-     * 根据许可证授权的功能模块过滤路由菜单。
-     * <p>
-     * 遍历路由树，移除许可证未授权模块对应的菜单项。
-     * 对于目录节点（component = Layout），如果过滤后没有可见子菜单则一并移除。
-     * 许可证未启用或未加载时不过滤（由拦截器负责整体拦截）。
-     * </p>
-     *
-     * @param routers 原始路由列表
-     * @return 过滤后的路由列表
-     */
-    private List<RouterVO> filterByLicenseFeatures(List<RouterVO> routers) {
-        if (!licenseHolder.isEnabled()) {
-            return routers;
-        }
-        BmlLicense license = licenseHolder.getCurrentLicense();
-        if (license == null) {
-            return routers;
-        }
-        List<String> features = license.getFeatures();
-        if (features == null) {
-            features = Collections.emptyList();
-        }
-        return doFilterRouters(routers, features);
-    }
-
-    /**
-     * 递归过滤路由树。
-     *
-     * @param routers  路由列表
-     * @param features 许可证已授权的功能模块列表
-     * @return 过滤后的路由列表
-     */
-    private List<RouterVO> doFilterRouters(List<RouterVO> routers, List<String> features) {
-        List<RouterVO> result = new ArrayList<>();
-        for (RouterVO router : routers) {
-            // 递归过滤子路由
-            if (router.getChildren() != null && !router.getChildren().isEmpty()) {
-                router.setChildren(doFilterRouters(router.getChildren(), features));
-            }
-
-            String component = router.getComponent();
-            if ("Layout".equals(component)) {
-                // 目录节点：至少保留一个可见子菜单才显示
-                if (router.getChildren() != null && !router.getChildren().isEmpty()) {
-                    result.add(router);
-                }
-            } else {
-                // 叶子菜单：检查功能模块授权
-                String requiredFeature = LicenseFeatureConstants.getRequiredFeature(component);
-                if (requiredFeature == null || features.contains(requiredFeature)) {
-                    result.add(router);
-                }
-            }
-        }
-        return result;
-    }
 }

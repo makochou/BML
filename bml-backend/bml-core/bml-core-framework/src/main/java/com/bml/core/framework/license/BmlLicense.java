@@ -23,7 +23,7 @@ import java.util.List;
  *     <li>{@code features}：授权的功能模块列表</li>
  *     <li>{@code maxApiAccounts}：最大 API 账号数量</li>
  *     <li>{@code maxUsersPerAccount}：单个 API 账号最大用户数</li>
- *     <li>{@code maxTotalUsers}：全局最大用户数</li>
+ *     <li>{@code maxTotalUsers}：前端业务系统最大用户数（不含中台管理员）</li>
  *     <li>{@code issueDate}：签发日期</li>
  *     <li>{@code expireDate}：到期日期</li>
  * </ul>
@@ -58,7 +58,14 @@ public class BmlLicense implements Serializable {
     /** 单个 API 账号最大用户配额（0 表示不限） */
     private int maxUsersPerAccount;
 
-    /** 全局最大用户总数（0 表示不限） */
+    /**
+     * 前端业务系统最大用户总数（0 表示不限）。
+     * <p>
+     * 该配额控制的是前台业务系统（{@code /} 路径）的使用用户数量，
+     * 不含中台管理平台（{@code /admin}）的管理员账号。
+     * 中台管理平台永远只有一个配置管理员，不受此配额限制。
+     * </p>
+     */
     private int maxTotalUsers;
 
     /** 许可证签发日期 */

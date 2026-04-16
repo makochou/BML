@@ -49,7 +49,7 @@ public class LicenseStatusVO {
     /** 单账号最大用户数 */
     private Integer maxUsersPerAccount;
 
-    /** 全局最大用户数 */
+    /** 前端业务系统用户数 */
     private Integer maxTotalUsers;
 
     /** 签发日期 */

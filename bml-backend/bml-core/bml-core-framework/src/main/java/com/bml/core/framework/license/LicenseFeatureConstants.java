@@ -11,8 +11,8 @@ import java.util.Map;
  * {@code IssueLicensePanel.FEATURE_DEFS} 保持一致。
  * </p>
  * <p>
- * 同时维护「前端菜单组件路径 → 功能模块」映射关系，
- * 供 {@link com.bml.module.system.service.impl.SysMenuServiceImpl} 在构建路由时过滤未授权菜单。
+ * 许可证授权控制的是前台业务端模块（非中台管理），中台管理始终包含全部功能。
+ * 前台业务模块尚未开发，待开发后在此补充模块定义。
  * </p>
  *
  * @author BML Team
@@ -22,35 +22,18 @@ public final class LicenseFeatureConstants {
     private LicenseFeatureConstants() {
     }
 
-    // ── 功能模块标识码（与 keygen 一致） ──
-
-    /** API 网关 / 授权治理 */
-    public static final String API_GATEWAY = "api_gateway";
-
-    /** 企业管理 */
-    public static final String ENTERPRISE = "enterprise";
-
-    /** 系统管理（用户 / 角色 / 菜单 / 部门） */
-    public static final String SYSTEM = "system";
-
-    /** 系统监控（服务器监控） */
-    public static final String MONITOR = "monitor";
-
-    /** 告警通知 */
-    public static final String ALERT = "alert";
+    // ── 功能模块标识码 ──
+    // 许可证授权控制的是前台业务端模块（非中台管理），
+    // 前台业务模块尚未开发，待开发后在此补充常量定义。
 
     // ── 功能模块中文标签 ──
 
-    /** 功能模块标识 → 中文名称，有序 */
+    /** 功能模块标识 → 中文名称，有序。前台业务模块开发后在此注册。 */
     private static final Map<String, String> FEATURE_LABELS;
 
     static {
         Map<String, String> map = new LinkedHashMap<>();
-        map.put(API_GATEWAY, "API 网关");
-        map.put(ENTERPRISE, "企业管理");
-        map.put(SYSTEM, "系统管理");
-        map.put(MONITOR, "系统监控");
-        map.put(ALERT, "告警通知");
+        // 前台业务模块尚未开发，待补充
         FEATURE_LABELS = Collections.unmodifiableMap(map);
     }
 
@@ -59,28 +42,15 @@ public final class LicenseFeatureConstants {
     /**
      * 菜单 Vue 组件路径 → 功能模块标识码。
      * <p>
-     * 未在此映射中的组件视为无特性要求（如 Dashboard），始终可见。
+     * 中台管理端不做许可证功能过滤，此映射仅保留结构供未来前台业务使用。
+     * 未在此映射中的组件视为无特性要求，始终可见。
      * </p>
      */
     private static final Map<String, String> COMPONENT_FEATURE_MAP;
 
     static {
         Map<String, String> map = new LinkedHashMap<>();
-        // API 网关相关页面
-        map.put("api/ApiList", API_GATEWAY);
-        map.put("api/ApiAccountManage", API_GATEWAY);
-        map.put("api/ApiAccountDetail", API_GATEWAY);
-        // 系统管理相关页面
-        map.put("system/user/index", SYSTEM);
-        map.put("system/role/index", SYSTEM);
-        map.put("system/menu/index", SYSTEM);
-        map.put("system/dept/index", SYSTEM);
-        // 系统监控相关页面
-        map.put("monitor/server/index", MONITOR);
-        // 告警通知相关页面
-        map.put("monitor/alert/index", ALERT);
-        // 企业管理相关页面
-        map.put("enterprise/index", ENTERPRISE);
+        // 前台业务模块尚未开发，待补充
         COMPONENT_FEATURE_MAP = Collections.unmodifiableMap(map);
     }
 

@@ -72,7 +72,7 @@ const handleSubmit = async ({ errors }: { errors?: unknown }) => {
 
   loading.value = true;
   try {
-    const { data } = await request.post('/auth/login', {
+    const { data } = await request.post('/auth/admin/login', {
         username: form.username,
         password: form.password
     });

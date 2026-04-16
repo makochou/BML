@@ -3,8 +3,6 @@ package com.bml.module.system.service.impl;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.bml.core.base.service.impl.BaseServiceImpl;
-import com.bml.core.common.constant.GlobalConstants;
-import com.bml.core.common.exception.BusinessException;
 import com.bml.core.framework.license.LicenseQuotaChecker;
 import com.bml.core.framework.security.utils.SecurityUtils;
 import com.bml.module.system.converter.UserConverter;
@@ -66,15 +64,13 @@ public class SysUserServiceImpl extends BaseServiceImpl<SysUserMapper, SysUser> 
 
     @Override
     public void checkUserAllowed(SysUser user) {
-        if (user.getId() != null && GlobalConstants.SYSTEM_USER_ID.equals(user.getId())) {
-            throw new BusinessException("不允许操作超级管理员用户");
-        }
+        // 预留：可根据业务需求添加用户操作限制（如禁止删除初始管理员等）
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean insertUser(SysUserDTO userDto) {
-        // 许可证配额校验：检查当前用户数量是否已达上限
+        // 许可证配额校验：前台业务用户数量不得超过许可证 maxTotalUsers 上限
         long currentUserCount = this.count();
         licenseQuotaChecker.checkUserQuota(currentUserCount);
 

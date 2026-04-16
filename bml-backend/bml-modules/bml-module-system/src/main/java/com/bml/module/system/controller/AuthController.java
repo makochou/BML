@@ -1,6 +1,9 @@
 package com.bml.module.system.controller;
 
+import com.bml.core.common.constant.GlobalConstants;
 import com.bml.core.common.result.Result;
+import com.bml.core.framework.config.AdminProperties;
+import com.bml.core.framework.security.context.LoginModeHolder;
 import com.bml.core.framework.security.model.LoginUser;
 import com.bml.core.framework.security.model.TokenVO;
 import com.bml.core.framework.security.service.TokenService;
@@ -15,6 +18,7 @@ import com.bml.module.system.service.SysMenuService;
 import com.bml.module.system.service.SysRoleService;
 import com.bml.module.system.service.SysUserService;
 import com.bml.module.system.vo.RouterVO;
+import com.bml.module.system.vo.SysUserVO;
 import com.bml.module.system.vo.UserInfoVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -24,6 +28,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
@@ -88,13 +93,16 @@ public class AuthController {
     private SysMenuService menuService;
 
     @Resource
-    private SysRoleService roleService;
+    private TokenService tokenService;
+
+    @Resource
+    private AdminProperties adminProperties;
 
     @Resource
     private SysUserService userService;
 
     @Resource
-    private TokenService tokenService;
+    private SysRoleService roleService;
 
     /**
      * 用户登录
@@ -131,12 +139,40 @@ public class AuthController {
      * @param loginBody 登录参数（用户名、密码）
      * @return 包含双令牌的统一响应
      */
-    @Operation(summary = "用户登录", description = "账号密码登录，返回AccessToken和RefreshToken")
+    @Operation(summary = "前台业务系统登录", description = "使用数据库用户（sys_user 表）进行认证，返回 AccessToken 和 RefreshToken")
     @PostMapping("/login")
     public Result<TokenVO> login(@RequestBody LoginBody loginBody) {
-        // 直接返回 TokenVO（由 SysLoginService → TokenService 构建）
-        TokenVO tokenVO = loginService.login(loginBody.getUsername(), loginBody.getPassword());
-        return Result.ok(tokenVO);
+        // 设置为业务系统登录模式 → UserDetailsServiceImpl 仅查询 sys_user 表
+        LoginModeHolder.setBusinessMode();
+        try {
+            TokenVO tokenVO = loginService.login(loginBody.getUsername(), loginBody.getPassword());
+            return Result.ok(tokenVO);
+        } finally {
+            LoginModeHolder.clear();
+        }
+    }
+
+    /**
+     * 中台管理平台登录
+     * <p>
+     * 仅匹配 application.yml 中配置的管理员账号，不查询数据库。
+     * 中台管理平台有且仅有一个管理员用户。
+     * </p>
+     *
+     * @param loginBody 登录参数（用户名、密码）
+     * @return 包含双令牌的统一响应
+     */
+    @Operation(summary = "中台管理平台登录", description = "使用配置管理员（application.yml）进行认证，返回 AccessToken 和 RefreshToken")
+    @PostMapping("/admin/login")
+    public Result<TokenVO> adminLogin(@RequestBody LoginBody loginBody) {
+        // 设置为中台管理平台登录模式 → UserDetailsServiceImpl 仅匹配配置管理员
+        LoginModeHolder.setAdminMode();
+        try {
+            TokenVO tokenVO = loginService.login(loginBody.getUsername(), loginBody.getPassword());
+            return Result.ok(tokenVO);
+        } finally {
+            LoginModeHolder.clear();
+        }
     }
 
     /**
@@ -223,22 +259,34 @@ public class AuthController {
     @Operation(summary = "获取当前用户信息", description = "返回用户信息、角色列表和权限标识列表")
     @GetMapping("/info")
     public Result<UserInfoVO> getInfo() {
-        // 1. 获取当前用户ID
-        Long userId = SecurityUtils.getUserId();
-
-        // 2. 查询用户基本信息
-        SysUser user = userService.getById(userId);
-
-        // 3. 从 SecurityContext 中获取权限列表（已在登录时缓存到 LoginUser 中）
+        // 1. 从 SecurityContext 中获取当前登录用户（已在登录时缓存到 Redis）
         LoginUser loginUser = SecurityUtils.getLoginUser();
         Set<String> permissions = loginUser.getPermissions();
 
-        // 4. 查询角色标识列表
-        Set<String> roles = roleService.selectRolePermissionByUserId(userId);
+        SysUserVO userVO;
+        Set<String> roles;
 
-        // 5. 组装返回数据
+        // 2. 判断是否为配置管理员（中台管理平台使用）
+        if (GlobalConstants.SYSTEM_USER_ID.equals(loginUser.getUserId())
+                && adminProperties.getUsername() != null
+                && adminProperties.getUsername().equals(loginUser.getUsername())) {
+            // 配置管理员：从 AdminProperties 构建用户信息
+            userVO = new SysUserVO();
+            userVO.setId(loginUser.getUserId());
+            userVO.setUsername(loginUser.getUsername());
+            userVO.setNickname(adminProperties.getNickname());
+            userVO.setStatus(1);
+            roles = Collections.singleton("admin");
+        } else {
+            // 数据库用户：查询完整信息（前台业务系统使用）
+            SysUser user = userService.getById(loginUser.getUserId());
+            userVO = UserConverter.INSTANCE.toVO(user);
+            roles = roleService.selectRolePermissionByUserId(loginUser.getUserId());
+        }
+
+        // 3. 组装返回数据
         UserInfoVO userInfoVO = UserInfoVO.builder()
-                .user(UserConverter.INSTANCE.toVO(user))
+                .user(userVO)
                 .roles(roles)
                 .permissions(permissions)
                 .build();

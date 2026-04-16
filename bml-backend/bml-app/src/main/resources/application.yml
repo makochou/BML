@@ -115,6 +115,14 @@ mybatis-plus:
 
 # ── BML 自定义配置 ──
 bml:
+  # ── 中台管理员账号配置 ──
+  # 中台管理平台不使用数据库用户表，永远只有一个管理员账号
+  # 生产环境必须通过环境变量覆盖默认密码
+  admin:
+    username: ${BML_ADMIN_USERNAME:admin}
+    password: ${BML_ADMIN_PASSWORD:manager}
+    nickname: ${BML_ADMIN_NICKNAME:无敌炫酷吊炸天}
+
   # ── Swagger/OpenAPI 文档 ──
   swagger:
     # 生产环境建议关闭，通过 BML_SWAGGER_ENABLED=true 在开发/测试环境开启

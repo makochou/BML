@@ -46,6 +46,17 @@ const buildSidebarMenus = (routes: BackendRouteItem[]): SidebarMenuItem[] => {
         });
 };
 
+/** 前端静态菜单项（不依赖后端动态路由） */
+const STATIC_SIDEBAR_ITEMS: SidebarMenuItem[] = [
+    {
+        name: 'LicenseManagement',
+        title: '授权管理',
+        icon: 'safe',
+        hidden: false,
+        children: []
+    }
+];
+
 export const usePermissionStore = defineStore('permission', {
     state: (): PermissionState => ({
         dynamicRoutesLoaded: false,
@@ -55,7 +66,11 @@ export const usePermissionStore = defineStore('permission', {
     actions: {
         setBackendRoutes(routes: BackendRouteItem[]) {
             this.backendRoutes = routes;
-            this.sidebarMenus = buildSidebarMenus(routes);
+            const dynamicMenus = buildSidebarMenus(routes);
+            // 将静态菜单项「授权管理」插入到「工作台」之后、「全源资产目录」之前（索引 1）
+            const insertIdx = Math.min(1, dynamicMenus.length);
+            dynamicMenus.splice(insertIdx, 0, ...STATIC_SIDEBAR_ITEMS);
+            this.sidebarMenus = dynamicMenus;
             this.dynamicRoutesLoaded = true;
         },
         resetRoutes() {

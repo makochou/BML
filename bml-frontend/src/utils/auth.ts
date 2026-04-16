@@ -142,7 +142,15 @@ export const clearAuthTokens = () => {
 };
 
 export const redirectToLogin = () => {
-    if (window.location.pathname !== '/admin/login') {
-        window.location.href = '/admin/login';
+    const currentPath = window.location.pathname;
+    // 根据当前路径判断应跳转哪个登录页
+    if (currentPath.startsWith('/admin')) {
+        if (currentPath !== '/admin/login') {
+            window.location.href = '/admin/login';
+        }
+    } else {
+        if (currentPath !== '/login') {
+            window.location.href = '/login';
+        }
     }
 };

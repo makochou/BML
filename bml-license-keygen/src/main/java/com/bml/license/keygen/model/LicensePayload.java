@@ -38,7 +38,7 @@ public class LicensePayload {
     /** 单个 API 账号最大用户配额（0=不限） */
     private int maxUsersPerAccount;
 
-    /** 全局最大用户总数（0=不限） */
+    /** 前端应用系统最大用户总数（0=不限，不含中心管理人员） */
     private int maxTotalUsers;
 
     /** 许可证签发日期 */
