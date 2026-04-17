@@ -3,6 +3,21 @@ import vue from '@vitejs/plugin-vue';
 import { resolve } from 'path';
 
 /**
+ * 将 Arco Design 图标独立拆包。
+ * 说明：
+ * 1. 当前构建体积超预算的主要来源是图标资源；
+ * 2. 将图标单独抽离后，主 UI 运行时代码仍保持单块缓存，
+ *    既能通过 bundle budget，又能减少复杂拆包带来的循环依赖噪音；
+ * 3. 其余 Arco 组件统一落到 vendor-arco-core，策略简单且稳定。
+ */
+function resolveArcoChunkName(id: string): string {
+  if (id.includes('/es/icon/') || id.includes('/es/icon/index')) {
+    return 'vendor-arco-icon';
+  }
+  return 'vendor-arco-core';
+}
+
+/**
  * Vite 构建配置
  *
  * 主要配置项：
@@ -51,7 +66,7 @@ export default defineConfig({
           }
           // Arco Design UI 组件库
           if (id.includes('@arco-design/web-vue')) {
-            return 'vendor-arco';
+            return resolveArcoChunkName(id);
           }
           // Vue 核心 + 路由 + 状态管理（频繁访问，合并减少请求数）
           if (id.includes('vue-router') || id.includes('pinia') || id.includes('node_modules/vue/')) {
