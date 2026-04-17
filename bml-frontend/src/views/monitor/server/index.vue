@@ -173,7 +173,7 @@ import { Message } from '@arco-design/web-vue';
 import { IconDesktop, IconComputer, IconLayers, IconStorage, IconLoading, IconSwap, IconDelete, IconThunderbolt, IconFullscreen, IconFullscreenExit } from '@arco-design/web-vue/es/icon';
 import { useFullscreen } from '../../../composables/useFullscreen';
 import request from '../../../utils/request';
-import { use } from 'echarts/core';
+import { use, type ComposeOption } from 'echarts/core';
 import { GaugeChart } from 'echarts/charts';
 import type { GaugeSeriesOption } from 'echarts/charts';
 import { ToolboxComponent, TooltipComponent } from 'echarts/components';
@@ -183,7 +183,12 @@ import VChart from 'vue-echarts';
 
 use([GaugeChart, ToolboxComponent, TooltipComponent, CanvasRenderer]);
 
-type ECOption = echarts.ComposeOption<GaugeSeriesOption | TooltipComponentOption>;
+/**
+ * ECharts 组合配置类型。
+ * 这里直接使用 echarts/core 导出的 ComposeOption，避免依赖全局 echarts namespace，
+ * 从而消除 vue-tsc 下“Cannot find namespace 'echarts'”的问题。
+ */
+type ECOption = ComposeOption<GaugeSeriesOption | TooltipComponentOption>;
 
 defineOptions({ name: 'ServerMonitoring' });
 
