@@ -46,11 +46,51 @@ public class LicenseStatusVO {
     /** 最大 API 账号数量 */
     private Integer maxApiAccounts;
 
-    /** 单账号最大用户数 */
+    /** 允许 API 账号调用新增的用户数 */
     private Integer maxUsersPerAccount;
 
     /** 前端业务系统用户数 */
     private Integer maxTotalUsers;
+
+    /** 当前已创建的 API 账号数量（含所有状态，用于前端配额进度展示） */
+    private Long currentApiAccounts;
+
+    /** 当前处于启用状态（status=1）的 API 账号数量 */
+    private Long activeApiAccounts;
+
+    /** 当前已创建的前台业务用户数量（含所有状态，用于前端配额进度展示） */
+    private Long currentTotalUsers;
+
+    /** 当前处于启用状态（status=1）的前台业务用户数量 */
+    private Long activeTotalUsers;
+
+    /** 所有 API 账号累计创建的用户总数（含所有状态） */
+    private Long currentApiUsers;
+
+    /** 所有 API 账号累计创建的、且处于启用状态（status=1）的用户数 */
+    private Long activeApiUsers;
+
+    /**
+     * 本次许可证更新后被自动冻结（停用）的超额用户数量。
+     * <p>
+     * 仅在许可证配额降级时有值，前端据此展示警告提示。
+     * 正常升级或未超额时为 null 或 0。
+     * </p>
+     */
+    private Integer frozenUserCount;
+
+    /**
+     * 本次许可证更新后被自动冻结（停用）的超额 API 账号数量。
+     * <p>
+     * 仅在许可证 maxApiAccounts 降级时有值。
+     * </p>
+     */
+    private Integer frozenApiAccountCount;
+
+    /**
+     * 本次许可证更新后被自动冻结的超额 API 创建的用户数量。
+     */
+    private Integer frozenApiUserCount;
 
     /** 签发日期 */
     private LocalDate issueDate;

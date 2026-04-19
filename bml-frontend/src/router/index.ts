@@ -89,13 +89,13 @@ const staticRoutes: RouteRecordRaw[] = [
                 path: 'api/list',
                 name: 'ApiList',
                 component: () => import('../views/api/ApiList.vue'),
-                meta: { title: '全源资产目录' }
+                meta: { title: '资产目录' }
             },
             {
                 path: 'api/debug',
                 name: 'LegacyApiDebugRedirect',
                 redirect: API_ACCOUNT_MANAGE_FULL_PATH,
-                meta: { title: '授权治理中心', hidden: true }
+                meta: { title: '授权治理', hidden: true }
             },
             {
                 path: 'api/account/:id',
@@ -107,7 +107,7 @@ const staticRoutes: RouteRecordRaw[] = [
                 path: 'app',
                 name: 'LegacyAppListRedirect',
                 redirect: API_ACCOUNT_MANAGE_FULL_PATH,
-                meta: { title: '授权治理中心', hidden: true }
+                meta: { title: '授权治理', hidden: true }
             },
             {
                 path: 'license',

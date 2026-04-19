@@ -26,6 +26,10 @@ export interface LicenseStatus {
     maxUsersPerAccount?: number;
     /** 全局最大用户数 */
     maxTotalUsers?: number;
+    /** 当前已创建的 API 账号数量 */
+    currentApiAccounts?: number;
+    /** 当前已创建的前台业务用户数量 */
+    currentTotalUsers?: number;
     /** 签发日期 */
     issueDate?: string;
     /** 到期日期 */

@@ -35,6 +35,12 @@
             <artifactId>mybatis-plus-annotation</artifactId>
         </dependency>
 
+        <!-- Spring JDBC 基础包，提供 JdbcTemplate 等标准数据操作模板 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-jdbc</artifactId>
+        </dependency>
+
         <!-- Bean 参数校验 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

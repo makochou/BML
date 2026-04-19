@@ -10,21 +10,24 @@ import org.slf4j.MDC;
 import java.io.Serializable;
 
 /**
- * 统一接口响应模型。
+ * 🏷️ 统一接口响应协议 (Unified Response Protocol)
  * <p>
- * 该模型是后端所有 HTTP 接口、异常处理器、安全处理器以及拦截器的唯一响应协议。
- * 字段约定如下：
+ * 该模型是 BML 企业中台所有 HTTP 接口、全局异常处理器、安全处理器以及拦截器的唯一响应标准。
+ * 通过统一的结构化数据，确保前端及第三方调用者能够高效、一致地处理业务结果。
  * </p>
+ *
+ * <h3>规范说明：</h3>
  * <ul>
- *     <li>{@code code}：业务状态码，而非 HTTP 状态码</li>
- *     <li>{@code message}：给调用方展示或记录的可读消息</li>
- *     <li>{@code data}：成功响应的数据载荷，失败时通常为空</li>
- *     <li>{@code timestamp}：响应构造时间戳</li>
- *     <li>{@code traceId}：链路追踪标识，便于定位日志</li>
+ *   <li><b>code:</b> 业务逻辑状态码（非 HTTP 状态码），成功通常为 200。</li>
+ *   <li><b>message:</b> 对业务结果的可读性描述，可用于前端友好提示。</li>
+ *   <li><b>data:</b> 业务载荷数据，采用泛型封装，失败时该字段通常为 null。</li>
+ *   <li><b>timestamp:</b> 响应生成的毫秒时间戳，用于性能分析。</li>
+ *   <li><b>traceId:</b> 链路追踪标识，关联后端分布式日志，便于快速排查问题。</li>
  * </ul>
  *
- * @param <T> 数据载荷类型
- * @author BML Team
+ * @param <T> 数据载荷的具体类型
+ * @author BML Advanced Coding Team
+ * @since 1.0.0
  */
 @Data
 @NoArgsConstructor
@@ -39,91 +42,99 @@ public class Result<T> implements Serializable {
     private int code;
 
     /**
-     * 响应消息。
+     * 响应消息描述。
      */
     private String message;
 
     /**
-     * 响应数据。
+     * 响应核心数据载荷。
      */
     private T data;
 
     /**
-     * 响应生成时间戳。
+     * 响应生成的时间戳（毫秒）。
      */
     private long timestamp = System.currentTimeMillis();
 
     /**
-     * 当前请求链路追踪 ID。
+     * 全局链路追踪 ID，从日志上下文 MDC 中获取。
      */
     private String traceId = MDC.get(GlobalConstants.TRACE_ID);
 
     /**
-     * 构造不带数据的成功响应。
+     * 快捷构造：构造一个不带数据载荷的成功响应。
      *
      * @param <T> 数据类型
-     * @return 成功响应
+     * @return 状态码为 SUCCESS 的 Result 实例
      */
     public static <T> Result<T> ok() {
         return ok(null);
     }
 
     /**
-     * 构造成功响应。
+     * 快捷构造：构造一个包含具体数据的成功响应。
      *
-     * @param data 响应数据
-     * @param <T> 数据类型
-     * @return 成功响应
+     * @param data 业务数据
+     * @param <T>  数据类型
+     * @return 状态码为 SUCCESS 且包含数据的 Result 实例
      */
     public static <T> Result<T> ok(T data) {
         return build(GlobalErrorCode.SUCCESS.getCode(), GlobalErrorCode.SUCCESS.getMessage(), data);
     }
 
     /**
-     * 使用错误码对象构造失败响应。
+     * 快捷构造：根据预定义的错误码枚举构造失败响应。
      *
-     * @param errorCode 错误码定义
-     * @param <T> 数据类型
-     * @return 失败响应
+     * @param errorCode 错误码常量定义
+     * @param <T>       数据类型
+     * @return 包含错误信息的 Result 实例
      */
     public static <T> Result<T> fail(ErrorCode errorCode) {
         return build(errorCode.getCode(), errorCode.getMessage(), null);
     }
 
     /**
-     * 使用指定业务码与消息构造失败响应。
+     * 快捷构造：使用自定义状态码与消息构造失败响应。
      *
-     * @param code    业务状态码
-     * @param message 业务消息
+     * @param code    自定义业务状态码
+     * @param message 错误提示消息
      * @param <T>     数据类型
-     * @return 失败响应
+     * @return 包含自定义错误信息的 Result 实例
      */
     public static <T> Result<T> fail(int code, String message) {
         return build(code, message, null);
     }
 
     /**
-     * 构造请求参数或业务规则不满足的失败响应。
+     * 快捷构造：构造一个参数校验失败或请求不合法的响应 (400)。
      *
-     * @param message 失败消息
+     * @param message 失败细节描述
      * @param <T>     数据类型
-     * @return 失败响应
+     * @return 状态码为 BAD_REQUEST 的 Result 实例
      */
     public static <T> Result<T> badRequest(String message) {
         return fail(GlobalErrorCode.BAD_REQUEST.getCode(), message);
     }
 
     /**
-     * 构造系统内部错误响应。
+     * 快捷构造：构造一个服务器内部运行异常的响应 (500)。
      *
-     * @param message 失败消息
+     * @param message 异常描述或友好提示
      * @param <T>     数据类型
-     * @return 失败响应
+     * @return 状态码为 INTERNAL_SERVER_ERROR 的 Result 实例
      */
     public static <T> Result<T> error(String message) {
         return fail(GlobalErrorCode.INTERNAL_SERVER_ERROR.getCode(), message);
     }
 
+    /**
+     * 内部通用构造方法。
+     *
+     * @param code    状态码
+     * @param message 消息
+     * @param data    数据
+     * @return 填充后的 Result 实例
+     */
     private static <T> Result<T> build(int code, String message, T data) {
         Result<T> result = new Result<>();
         result.setCode(code);
@@ -132,3 +143,4 @@ public class Result<T> implements Serializable {
         return result;
     }
 }
+

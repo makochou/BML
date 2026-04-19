@@ -424,20 +424,30 @@ ON DUPLICATE KEY UPDATE user_id = VALUES(user_id);
 
 -- ── 菜单结构初始化 ──
 -- 顶级菜单（parent_id = 0）
--- 1. 工作台
+-- 1. 仪表看板
 INSERT INTO sys_menu (id, menu_name, parent_id, menu_type, path, component, perms, icon, sort, visible, status)
-VALUES (1, '工作台', 0, 'C', 'dashboard', 'dashboard/Workplace', 'monitor:server:list', 'dashboard', 1, 1, 1)
-ON DUPLICATE KEY UPDATE menu_name = VALUES(menu_name);
+VALUES (1, '仪表看板', 0, 'C', 'dashboard', 'dashboard/Workplace', 'monitor:server:list', 'dashboard', 1, 1, 1)
+ON DUPLICATE KEY UPDATE menu_name = VALUES(menu_name), sort = VALUES(sort);
 
--- 2. 全源资产目录（API 接口列表）
+-- 2. 硬件监测（由子级提拔至顶级，排在授权管理之后、资产目录之前）
 INSERT INTO sys_menu (id, menu_name, parent_id, menu_type, path, component, perms, icon, sort, visible, status)
-VALUES (2, '全源资产目录', 0, 'C', 'api/list', 'api/ApiList', 'system:apiList:list', 'layers', 2, 1, 1)
-ON DUPLICATE KEY UPDATE menu_name = VALUES(menu_name);
+VALUES (51, '硬件监测', 0, 'C', 'server', 'monitor/server/index', 'monitor:server:list', 'desktop', 3, 1, 1)
+ON DUPLICATE KEY UPDATE menu_name = VALUES(menu_name), sort = VALUES(sort);
 
--- 3. 授权治理中心（API 账号管理）
+-- 5. 资源目录（API 接口列表）
 INSERT INTO sys_menu (id, menu_name, parent_id, menu_type, path, component, perms, icon, sort, visible, status)
-VALUES (3, '授权治理中心', 0, 'C', 'api/account', 'api/ApiAccountManage', 'api:account:list', 'safe', 3, 1, 1)
-ON DUPLICATE KEY UPDATE menu_name = VALUES(menu_name);
+VALUES (2, '资源目录', 0, 'C', 'api/list', 'api/ApiList', 'system:apiList:list', 'layers', 5, 1, 1)
+ON DUPLICATE KEY UPDATE menu_name = VALUES(menu_name), sort = VALUES(sort);
+
+-- 4. 告警中心（由子级提拔至顶级，排在硬件监测之后）
+INSERT INTO sys_menu (id, menu_name, parent_id, menu_type, path, component, perms, icon, sort, visible, status)
+VALUES (52, '告警中心', 0, 'C', 'alert', 'monitor/alert/index',  'monitor:alert:list',  'notification', 4, 1, 1)
+ON DUPLICATE KEY UPDATE menu_name = VALUES(menu_name), sort = VALUES(sort);
+
+-- 6. 治理中心（API 账号管理）
+INSERT INTO sys_menu (id, menu_name, parent_id, menu_type, path, component, perms, icon, sort, visible, status)
+VALUES (3, '治理中心', 0, 'C', 'api/account', 'api/ApiAccountManage', 'api:account:list', 'safe', 6, 1, 1)
+ON DUPLICATE KEY UPDATE menu_name = VALUES(menu_name), sort = VALUES(sort);
 
 -- 授权治理中心 — 按钮权限
 INSERT INTO sys_menu (id, menu_name, parent_id, menu_type, perms, sort, visible, status)
@@ -451,9 +461,9 @@ VALUES
     (37, '资产全量发现', 3, 'B', 'api:account:sync',      7, 1, 1)
 ON DUPLICATE KEY UPDATE menu_name = VALUES(menu_name);
 
--- 4. 系统管理（目录）
+-- 6. 系统管理（目录）
 INSERT INTO sys_menu (id, menu_name, parent_id, menu_type, path, icon, sort, visible, status)
-VALUES (4, '系统管理', 0, 'M', 'system', 'settings', 4, 1, 1)
+VALUES (4, '系统管理', 0, 'M', 'system', 'settings', 6, 1, 1)
 ON DUPLICATE KEY UPDATE menu_name = VALUES(menu_name);
 
 -- 系统管理 — 子菜单
@@ -493,16 +503,9 @@ VALUES
     (434, '菜单删除', 43, 'B', 'system:menu:remove', 4, 1, 1)
 ON DUPLICATE KEY UPDATE menu_name = VALUES(menu_name);
 
--- 5. 系统监控（目录）
+-- 7. 系统监控（目录，已提拔子级故隐藏此目录）
 INSERT INTO sys_menu (id, menu_name, parent_id, menu_type, path, icon, sort, visible, status)
-VALUES (5, '系统监控', 0, 'M', 'monitor', 'dashboard', 5, 1, 1)
-ON DUPLICATE KEY UPDATE menu_name = VALUES(menu_name);
-
--- 系统监控 — 子菜单
-INSERT INTO sys_menu (id, menu_name, parent_id, menu_type, path, component, perms, icon, sort, visible, status)
-VALUES
-    (51, '服务器监控', 5, 'C', 'server', 'monitor/server/index', 'monitor:server:list', 'desktop', 1, 1, 1),
-    (52, '告警中心',   5, 'C', 'alert',  'monitor/alert/index',  'monitor:alert:list',  'notification', 2, 1, 1)
+VALUES (5, '系统监控', 0, 'M', 'monitor', 'dashboard', 7, 0, 1)
 ON DUPLICATE KEY UPDATE menu_name = VALUES(menu_name);
 
 -- 服务器监控 — 按钮权限

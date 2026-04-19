@@ -118,230 +118,209 @@
       </article>
     </section>
 
-    <section v-else class="license-dashboard">
-      <header class="dashboard-hero panel-surface" :class="{ 'is-expired': isExpired }">
-        <div class="dashboard-hero__bar">
-          <div class="hero-status-group">
-            <span class="hero-status-pill" :class="`tone-${healthTone}`">
-              <icon-check-circle v-if="!isExpired" />
-              <icon-exclamation-circle v-else />
+    <!-- ==================== 已激活：单屏授权仪表盘（无需滚动） ==================== -->
+    <section v-else class="lv-dashboard">
+
+      <!-- ── 顶部英雄条：左侧主信息区 + 右侧通栏倒计时卡（撑满整个 hero 高度） ── -->
+      <div class="lv-hero" :class="{ 'lv-hero--expired': isExpired }">
+        <!-- 左：主信息区（客户信息撑顶 + 状态胶囊置底） -->
+        <div class="lv-hero__main">
+          <!-- 顶部：客户信息（左）+ 操作按钮（右），横向两端对齐 -->
+          <div class="lv-hero__bar">
+            <div class="lv-customer">
+              <div class="lv-avatar">{{ customerMonogram }}</div>
+              <div class="lv-customer__info">
+                <h1>{{ licenseData?.customerName || '未命名客户' }}</h1>
+                <p>{{ heroStatusDescription }}</p>
+                <div class="lv-tags">
+                  <span v-for="t in heroMetaTags" :key="t" class="lv-tag">{{ t }}</span>
+                </div>
+              </div>
+            </div>
+            <div class="lv-actions">
+              <a-upload :auto-upload="false" :limit="1" :show-file-list="false" :file-list="replaceFileList" accept=".lic" @change="handleReplaceFile">
+                <template #upload-button>
+                  <a-button type="primary" size="small" :loading="previewing" class="lv-act lv-act--primary">
+                    <template #icon><icon-upload /></template>更新许可证
+                  </a-button>
+                </template>
+              </a-upload>
+              <a-button size="small" class="lv-act" @click="loadLicenseStatus">
+                <template #icon><icon-refresh /></template>刷新状态
+              </a-button>
+              <a-button size="small" status="danger" class="lv-act lv-act--danger" @click="resetModalVisible = true">
+                <template #icon><icon-delete /></template>重置
+              </a-button>
+            </div>
+          </div>
+          <!-- 底部：状态胶囊（挪到客户信息下方） -->
+          <div class="lv-pills">
+            <span class="lv-pill" :class="`lv-pill--${healthTone}`">
+              <icon-check-circle v-if="!isExpired" /><icon-exclamation-circle v-else />
               {{ heroStatusLabel }}
             </span>
-            <span class="hero-mode-pill">{{ heroModeLabel }}</span>
-          </div>
-
-          <div class="hero-actions">
-            <a-upload
-              :auto-upload="false"
-              :limit="1"
-              :show-file-list="false"
-              :file-list="replaceFileList"
-              accept=".lic"
-              @change="handleReplaceFile"
-            >
-              <template #upload-button>
-                <a-button type="primary" :loading="previewing" class="hero-action-btn hero-action-btn--primary">
-                  <template #icon><icon-upload /></template>
-                  更新许可证
-                </a-button>
-              </template>
-            </a-upload>
-            <a-button class="hero-action-btn" @click="loadLicenseStatus">
-              <template #icon><icon-refresh /></template>
-              刷新状态
-            </a-button>
-            <a-popconfirm
-              content="确定要删除许可证并重置系统吗？系统将回到未激活状态。"
-              type="warning"
-              @ok="handleReset"
-            >
-              <a-button status="danger" :loading="resetting" class="hero-action-btn hero-action-btn--danger">
-                <template #icon><icon-delete /></template>
-                重置许可证
-              </a-button>
-            </a-popconfirm>
+            <span class="lv-pill lv-pill--muted">{{ heroModeLabel }}</span>
           </div>
         </div>
 
-        <div class="dashboard-hero__main">
-          <div class="hero-customer">
-            <div class="hero-customer__avatar">{{ customerMonogram }}</div>
-            <div class="hero-customer__content">
-              <span class="panel-eyebrow">Enterprise License Profile</span>
-              <h1>{{ licenseData?.customerName || '未命名客户' }}</h1>
-              <p>{{ heroStatusDescription }}</p>
-              <div class="hero-meta-tags">
-                <span v-for="item in heroMetaTags" :key="item" class="hero-meta-tag">{{ item }}</span>
-              </div>
-            </div>
-          </div>
-
-          <div class="hero-countdown-card">
-            <div class="hero-countdown-card__ring" :style="daysRingStyle">
-              <div class="hero-countdown-card__ring-core">
-                <strong>{{ daysDisplayValue }}</strong>
-                <span>天</span>
-              </div>
-            </div>
-            <div class="hero-countdown-card__meta">
-              <span class="hero-countdown-card__label">剩余有效期</span>
-              <strong :class="`tone-${healthTone}`">{{ daysLeftText }}</strong>
+        <!-- 右：倒计时卡片（通栏，高度撑满整个 hero，环内已含天数无需副标题） -->
+        <div class="lv-ring-card">
+          <span class="lv-ring-card__title">剩余有效期</span>
+          <div class="lv-ring" :style="daysRingStyle">
+            <div class="lv-ring__core">
+              <strong>{{ daysDisplayValue }}</strong>
+              <span>天</span>
             </div>
           </div>
         </div>
-
-        <div class="dashboard-hero__timeline">
-          <div v-for="item in lifecycleCards" :key="item.label" class="hero-timeline-card">
-            <span>{{ item.label }}</span>
-            <strong>{{ item.value }}</strong>
-            <p>{{ item.hint }}</p>
-          </div>
-        </div>
-      </header>
-
-      <div v-if="licenseData?.errorMessage" class="dashboard-warning panel-surface" :class="`tone-${healthTone}`">
-        <icon-exclamation-circle-fill />
-        <span>{{ licenseData.errorMessage }}</span>
       </div>
 
-      <div class="dashboard-grid">
-        <section class="dashboard-panel panel-surface dashboard-panel--identity">
-          <div class="panel-header">
-            <div>
-              <span class="panel-eyebrow">Identity Blueprint</span>
-              <h2>授权档案</h2>
-            </div>
-            <div class="panel-header__icon tone-blue">
-              <icon-safe />
-            </div>
+      <!-- 警告横幅 -->
+      <div v-if="licenseData?.errorMessage" class="lv-alert" :class="`lv-alert--${healthTone}`">
+        <icon-exclamation-circle-fill /><span>{{ licenseData.errorMessage }}</span>
+      </div>
+
+      <!-- ── 三列信息面板（flex: 1 撑满剩余空间） ── -->
+      <div class="lv-grid">
+
+        <!-- ── 左列：授权档案 + 生命周期 ── -->
+        <div class="lv-card">
+          <div class="lv-card__accent lv-card__accent--blue"></div>
+          <div class="lv-card__head">
+            <div><span class="lv-eyebrow">Identity</span><h2>授权档案</h2></div>
+            <div class="lv-card__ico lv-ico--blue"><icon-safe /></div>
           </div>
-          <div class="fact-list">
-            <div v-for="item in overviewFacts" :key="item.label" class="fact-row">
-              <span class="fact-row__label">{{ item.label }}</span>
-              <div class="fact-row__value">
-                <strong :class="{ mono: item.mono }">{{ item.value }}</strong>
-                <small>{{ item.hint }}</small>
+          <div class="lv-card__scroll">
+            <div class="lv-facts">
+              <div v-for="f in overviewFacts" :key="f.label" class="lv-fact">
+                <span>{{ f.label }}</span>
+                <strong :class="{ mono: f.mono }">{{ f.value }}</strong>
+              </div>
+            </div>
+            <!-- 生命周期（从 hero strip 移入） -->
+            <div class="lv-sep"></div>
+            <span class="lv-eyebrow">Lifecycle</span>
+            <div class="lv-lc-list">
+              <div v-for="c in lifecycleCards" :key="c.label" class="lv-lc-row">
+                <span>{{ c.label }}</span>
+                <strong>{{ c.value }}</strong>
               </div>
             </div>
           </div>
-        </section>
+        </div>
 
-        <section class="dashboard-panel panel-surface dashboard-panel--quota">
-          <div class="panel-header">
-            <div>
-              <span class="panel-eyebrow">Quota Envelope</span>
-              <h2>配额上限</h2>
-            </div>
-            <div class="panel-header__icon tone-teal">
-              <icon-thunderbolt />
-            </div>
+        <!-- ── 中列：配额上限（进度条 + 已使用/授权/剩余三维数据） ── -->
+        <div class="lv-card">
+          <div class="lv-card__accent lv-card__accent--teal"></div>
+          <div class="lv-card__head">
+            <div><span class="lv-eyebrow">Quota</span><h2>配额上限</h2></div>
+            <div class="lv-card__ico lv-ico--teal"><icon-thunderbolt /></div>
           </div>
-          <div class="quota-list">
-            <article v-for="metric in quotaMetrics" :key="metric.label" class="quota-card">
-              <div class="quota-card__head">
-                <div>
-                  <strong>{{ metric.label }}</strong>
-                  <span>{{ metric.hint }}</span>
+          <div class="lv-card__scroll">
+            <div class="lv-quota-list">
+              <div v-for="m in quotaMetrics" :key="m.label" class="lv-quota-card">
+                <!-- 标题行：配额名称 + 百分比 -->
+                <div class="lv-quota-card__title">
+                  <span>{{ m.label }}</span>
+                  <strong :class="`lv-quota-card__pct--${m.tone}`">{{ m.max === 0 ? '不限' : `${m.percent}%` }}</strong>
                 </div>
-                <b>{{ metric.display }}</b>
-              </div>
-              <div class="quota-card__track">
-                <div class="quota-card__fill" :style="{ width: `${metric.percent}%` }"></div>
-              </div>
-            </article>
-          </div>
-        </section>
-
-        <section class="dashboard-panel panel-surface dashboard-panel--features">
-          <div class="panel-header">
-            <div>
-              <span class="panel-eyebrow">Feature Ledger</span>
-              <h2>授权模块</h2>
-            </div>
-            <div class="panel-header__icon tone-gold">
-              <icon-apps />
-            </div>
-          </div>
-
-          <div v-if="featureTags.length" class="feature-cloud">
-            <article v-for="item in featureTags" :key="item.key" class="feature-chip" :class="`tone-${item.tone}`">
-              <icon-check-circle-fill />
-              <div>
-                <strong>{{ item.label }}</strong>
-                <span>功能许可项</span>
-              </div>
-            </article>
-          </div>
-          <a-empty v-else description="当前许可证尚未绑定具体模块功能" class="feature-empty">
-            <template #image>
-              <div class="feature-empty__symbol">
-                <icon-bulb />
-              </div>
-            </template>
-          </a-empty>
-
-          <div class="feature-empty__helper">
-            <strong>后续扩展建议</strong>
-            <p>当前系统已支持许可证总激活与配额上限控制。待业务模块接入后，可直接在许可证中登记模块标签并映射到前台业务入口。</p>
-          </div>
-        </section>
-
-        <section class="dashboard-panel panel-surface dashboard-panel--operations">
-          <div class="panel-header">
-            <div>
-              <span class="panel-eyebrow">Delivery Checklist</span>
-              <h2>运行诊断与交付提示</h2>
-            </div>
-            <div class="panel-header__icon tone-slate">
-              <icon-lock />
-            </div>
-          </div>
-
-          <div class="diagnostic-grid">
-            <article v-for="item in diagnosticItems" :key="item.label" class="diagnostic-card" :class="`tone-${item.tone}`">
-              <span>{{ item.label }}</span>
-              <strong>{{ item.value }}</strong>
-              <p>{{ item.hint }}</p>
-            </article>
-          </div>
-
-          <div class="tips-board">
-            <div v-for="item in supportTips" :key="item.title" class="tips-board__item">
-              <icon-info-circle />
-              <div>
-                <strong>{{ item.title }}</strong>
-                <p>{{ item.description }}</p>
+                <!-- 进度条 -->
+                <div class="lv-quota-card__track">
+                  <div
+                    class="lv-quota-card__fill"
+                    :class="`lv-quota-card__fill--${m.tone}`"
+                    :style="{ width: `${m.max === 0 ? 100 : m.percent}%` }"
+                  ></div>
+                </div>
+                <!-- 带启用/停用明细的统计区域 -->
+                <div v-if="m.hasBreakdown" class="lv-quota-card__stats lv-quota-card__stats--4col">
+                  <div class="lv-quota-stat">
+                    <strong>{{ m.currentDisplay }}</strong>
+                    <span>总数</span>
+                  </div>
+                  <div class="lv-quota-stat lv-quota-stat--primary">
+                    <strong>{{ m.activeDisplay }}</strong>
+                    <span>启用</span>
+                  </div>
+                  <div class="lv-quota-stat lv-quota-stat--warning">
+                    <strong>{{ m.disabledDisplay }}</strong>
+                    <span>停用</span>
+                  </div>
+                  <div class="lv-quota-stat lv-quota-stat--success">
+                    <strong>{{ m.remainingDisplay }}</strong>
+                    <span>剩余</span>
+                  </div>
+                </div>
+                <!-- 无明细的简约统计 -->
+                <div v-else class="lv-quota-card__stats">
+                  <div class="lv-quota-stat">
+                    <strong>{{ m.currentDisplay }}</strong>
+                    <span>已使用</span>
+                  </div>
+                  <div class="lv-quota-stat lv-quota-stat--primary">
+                    <strong>{{ m.maxDisplay }}</strong>
+                    <span>授权上限</span>
+                  </div>
+                  <div class="lv-quota-stat lv-quota-stat--success">
+                    <strong>{{ m.remainingDisplay }}</strong>
+                    <span>剩余</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-        </section>
+        </div>
+
+        <!-- ── 右列：授权模块（列表式展示） ── -->
+        <div class="lv-card">
+          <div class="lv-card__accent lv-card__accent--gold"></div>
+          <div class="lv-card__head">
+            <div><span class="lv-eyebrow">Features</span><h2>授权模块</h2></div>
+            <div class="lv-card__ico lv-ico--gold"><icon-apps /></div>
+          </div>
+          <div class="lv-card__scroll">
+            <div v-if="featureTags.length" class="lv-feature-list">
+              <div v-for="ft in featureTags" :key="ft.key" class="lv-feature-item" :class="`lv-feature-item--${ft.tone}`">
+                <icon-check-circle-fill class="lv-feature-item__ico" />
+                <span>{{ ft.label }}</span>
+              </div>
+            </div>
+            <div v-else class="lv-empty-state">
+              <div class="lv-empty-state__icon"><icon-info-circle /></div>
+              <span>暂无授权模块</span>
+              <p>当前许可证未配置功能模块授权</p>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <footer class="dashboard-footer">
-        <div v-for="item in footerBadges" :key="item.value" class="footer-badge" :class="`tone-${item.tone}`">
-          <component :is="item.icon" />
-          <span>{{ item.value }}</span>
-        </div>
-      </footer>
+      <!-- 底部信息条 -->
+      <div class="lv-footer">
+        <span v-for="b in footerBadges" :key="b.value" class="lv-badge" :class="`lv-badge--${b.tone}`">
+          <component :is="b.icon" />{{ b.value }}
+        </span>
+      </div>
     </section>
 
+    <!-- ── 许可证更新对比弹窗（全屏可视，无需滚动） ── -->
     <a-modal
       v-model:visible="compareVisible"
-      :width="1100"
+      :width="1080"
       :mask-closable="false"
+      :closable="false"
       :footer="false"
       :header="false"
       class="license-compare-modal"
       modal-class="license-compare-modal__wrap"
     >
       <section class="compare-shell">
+        <!-- 顶部：标题行 + 关闭按钮（紧凑设计，减少纵向占用） -->
         <header class="compare-shell__header">
           <div class="compare-shell__title">
             <div class="compare-shell__icon">
               <icon-swap />
             </div>
             <div>
-              <span class="panel-eyebrow">License Compare Center</span>
               <h3>授权更新确认</h3>
               <p>{{ compareSummary }}</p>
             </div>
@@ -351,12 +330,15 @@
           </button>
         </header>
 
+        <!-- 降级警告提示横幅 -->
         <div v-if="downgradeWarnings.length" class="compare-shell__warning">
           <icon-exclamation-circle-fill />
           <span>{{ downgradeWarnings.join('；') }}</span>
         </div>
 
+        <!-- 对比表格：左右并排，紧凑行距避免溢出 -->
         <div class="compare-grid">
+          <!-- 左栏：当前许可证 -->
           <section class="compare-card compare-card--current">
             <div class="compare-card__head">
               <span>当前许可证</span>
@@ -389,6 +371,7 @@
             </div>
           </section>
 
+          <!-- 右栏：新许可证 -->
           <section class="compare-card compare-card--next">
             <div class="compare-card__head">
               <span>新许可证</span>
@@ -430,33 +413,83 @@
           </section>
         </div>
 
+        <!-- 底部操作栏：醒目的确认按钮 + 安全提示 -->
         <footer class="compare-shell__footer">
           <div class="compare-shell__footer-tip">
             <icon-lock />
             <span>系统将先备份旧许可证，再覆盖为新许可证并即时刷新内存状态。</span>
           </div>
           <div class="compare-shell__actions">
-            <a-button @click="closeCompare">取消</a-button>
-            <a-button type="primary" :loading="uploading" @click="confirmUpdate">
+            <a-button size="large" @click="closeCompare">取消</a-button>
+            <a-button
+              type="primary"
+              size="large"
+              :loading="uploading"
+              class="compare-confirm-btn"
+              @click="confirmUpdate"
+            >
               <template #icon><icon-check-circle /></template>
-              确认更新
+              确认更新许可证
             </a-button>
           </div>
         </footer>
       </section>
+    </a-modal>
+
+    <!-- ==================== 危险操作：重置许可证确认弹窗 ==================== -->
+    <a-modal
+      v-model:visible="resetModalVisible"
+      :closable="false"
+      :footer="false"
+      :mask-closable="false"
+      modal-class="lv-danger-modal"
+    >
+      <div class="lv-danger-modal__content">
+        <div class="lv-danger-modal__icon">
+          <icon-exclamation-circle-fill />
+        </div>
+        <h3 class="lv-danger-modal__title">系统高危操作确认</h3>
+        <div class="lv-danger-modal__desc">
+          <p>您即将<strong>彻底删除</strong>当前系统中的授权许可证，并将整个 BML 系统重置为未激活的阻断状态。</p>
+          <p>执行此操作后，所有前台业务系统将立即停止服务，直到您上传新的有效许可证为止。</p>
+        </div>
+        
+        <div class="lv-danger-modal__actions">
+          <a-button
+            class="lv-danger-btn lv-danger-btn--cancel"
+            size="large"
+            shape="round"
+            @click="resetModalVisible = false"
+            :disabled="resetting"
+          >
+            我再想想
+          </a-button>
+          <a-button
+            class="lv-danger-btn lv-danger-btn--confirm"
+            status="danger"
+            type="primary"
+            size="large"
+            shape="round"
+            :loading="resetting"
+            @click="handleReset"
+          >
+            <template #icon><icon-delete /></template>
+            确认强制重置
+          </a-button>
+        </div>
+      </div>
     </a-modal>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import { Message } from '@arco-design/web-vue';
+import { Message, Notification } from '@arco-design/web-vue';
 import type { FileItem } from '@arco-design/web-vue';
 import {
   IconApps,
   IconArrowDown,
   IconArrowUp,
-  IconBulb,
   IconCheckCircle,
   IconCheckCircleFill,
   IconClose,
@@ -516,20 +549,45 @@ interface FactRow {
   mono?: boolean;
 }
 
+/**
+ * 配额指标数据模型。
+ * 包含授权上限、当前使用量、剩余可新增量、进度百分比，
+ * 供前端配额面板展示进度条和统计数字。
+ */
 interface LicenseQuotaMetric {
+  /** 配额名称 */
   label: string;
-  value?: number;
-  display: string;
+  /** 授权上限原始值（0 = 不限） */
+  max: number;
+  /** 当前已创建总数（含所有状态） */
+  current: number;
+  /** 当前启用（活跃）数量 */
+  active: number;
+  /** 当前停用数量 */
+  disabled: number;
+  /** 剩余可新增数量（-1 = 不限） */
+  remaining: number;
+  /** 使用百分比（0-100，基于启用数 vs 授权上限） */
   percent: number;
+  /** 授权上限显示文本 */
+  maxDisplay: string;
+  /** 当前总数显示文本 */
+  currentDisplay: string;
+  /** 启用数量显示文本 */
+  activeDisplay: string;
+  /** 停用数量显示文本 */
+  disabledDisplay: string;
+  /** 剩余量显示文本 */
+  remainingDisplay: string;
+  /** 进度色调 */
+  tone: 'healthy' | 'warning' | 'danger';
+  /** 提示信息 */
   hint: string;
+  /** 是否有启用/停用明细（maxUsersPerAccount 无明细） */
+  hasBreakdown: boolean;
 }
 
-interface DiagnosticCard {
-  label: string;
-  value: string;
-  hint: string;
-  tone: 'healthy' | 'warning' | 'expired' | 'slate';
-}
+/* DiagnosticCard 接口已移除 —— 系统诊断面板已删除 */
 
 interface FooterBadge {
   value: string;
@@ -564,7 +622,7 @@ interface SelectedFileSummary {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const LICENSE_FULL_LIFECYCLE_DAYS = 365;
-const QUOTA_VISUAL_MIN_PERCENT = 14;
+/* QUOTA_VISUAL_MIN_PERCENT 已移除 —— 配额面板改用真实使用百分比 */
 
 /**
  * 功能模块中文标签映射。
@@ -773,21 +831,7 @@ const daysDisplayValue = computed(() => {
   return String(Math.max(daysLeft.value, 0));
 });
 
-const daysLeftText = computed(() => {
-  if (daysLeft.value === null) {
-    return '未登记到期时间';
-  }
-  if (daysLeft.value < 0) {
-    return `已过期 ${Math.abs(daysLeft.value)} 天`;
-  }
-  if (daysLeft.value === 0) {
-    return '今天到期';
-  }
-  if (daysLeft.value <= 30) {
-    return `${daysLeft.value} 天内需更新`;
-  }
-  return `${daysLeft.value} 天`;
-});
+/* daysLeftText 已移除 —— 倒计时环内已直接显示天数，无需额外副标题 */
 
 const ringColor = computed(() => {
   if (healthTone.value === 'expired') {
@@ -894,46 +938,77 @@ const overviewFacts = computed<FactRow[]>(() => [
   }
 ]);
 
+/**
+ * 配额指标计算属性。
+ * 根据后端返回的授权上限与当前使用量，计算剩余量、使用百分比和进度色调，
+ * 供配额面板渲染进度条和统计数字。
+ */
 const quotaMetrics = computed<LicenseQuotaMetric[]>(() => {
-  const rawItems = [
-    {
-      label: '最大 API 账号数',
-      value: licenseData.value?.maxApiAccounts,
-      display: formatQuota(licenseData.value?.maxApiAccounts),
-      hint: '控制可创建并启用的 API 账号总量'
-    },
-    {
-      label: '单账号用户数',
-      value: licenseData.value?.maxUsersPerAccount,
-      display: formatQuota(licenseData.value?.maxUsersPerAccount),
-      hint: '预留给未来按账号绑定业务用户的扩展字段'
-    },
+  const items: Array<{
+    label: string;
+    max: number;
+    current: number;
+    active: number;
+    hint: string;
+    hasBreakdown: boolean;
+  }> = [
     {
       label: '业务用户上限',
-      value: licenseData.value?.maxTotalUsers,
-      display: formatQuota(licenseData.value?.maxTotalUsers),
-      hint: '当前前台业务系统使用用户总量上限'
+      max: licenseData.value?.maxTotalUsers ?? 0,
+      current: licenseData.value?.currentTotalUsers ?? 0,
+      active: licenseData.value?.activeTotalUsers ?? 0,
+      hint: '当前前台业务系统使用用户总量上限',
+      hasBreakdown: true
+    },
+    {
+      label: '最大 API 账号数',
+      max: licenseData.value?.maxApiAccounts ?? 0,
+      current: licenseData.value?.currentApiAccounts ?? 0,
+      active: licenseData.value?.activeApiAccounts ?? 0,
+      hint: '控制可创建并启用的 API 账号总量',
+      hasBreakdown: true
+    },
+    {
+      label: '允许 API 账号调用新增的用户数',
+      max: licenseData.value?.maxUsersPerAccount ?? 0,
+      current: licenseData.value?.currentApiUsers ?? 0,
+      active: licenseData.value?.activeApiUsers ?? 0,
+      hint: '所有 API 账号通过接口可创建的累积活跃用户总额度',
+      hasBreakdown: true
     }
   ];
 
-  const finiteValues = rawItems
-    .map(item => item.value)
-    .filter((value): value is number => typeof value === 'number' && value > 0);
-  const maxFiniteValue = finiteValues.length ? Math.max(...finiteValues) : 1;
+  return items.map(item => {
+    const isUnlimited = item.max === 0;
+    const disabled = item.current - item.active;
+    // 剩余量基于「启用数」计算：还能再启用/新增多少
+    const remaining = isUnlimited ? -1 : Math.max(0, item.max - item.active);
+    // 百分比也基于「启用数」，因为配额控制的是活跃资源
+    const percent = isUnlimited ? 0 : (item.max > 0 ? Math.min(100, Math.round((item.active / item.max) * 100)) : 0);
 
-  return rawItems.map(item => {
-    if (item.value === undefined || item.value === null) {
-      return { ...item, percent: 0 };
+    let tone: LicenseQuotaMetric['tone'] = 'healthy';
+    if (!isUnlimited && percent >= 90) {
+      tone = 'danger';
+    } else if (!isUnlimited && percent >= 70) {
+      tone = 'warning';
     }
-    if (item.value === 0) {
-      return { ...item, percent: 100 };
-    }
+
     return {
-      ...item,
-      percent: Math.max(
-        QUOTA_VISUAL_MIN_PERCENT,
-        Math.min(100, Math.round((item.value / maxFiniteValue) * 100))
-      )
+      label: item.label,
+      max: item.max,
+      current: item.current,
+      active: item.active,
+      disabled,
+      remaining,
+      percent,
+      maxDisplay: formatQuota(item.max),
+      currentDisplay: String(item.current),
+      activeDisplay: String(item.active),
+      disabledDisplay: String(disabled),
+      remainingDisplay: isUnlimited ? '不限' : String(remaining),
+      tone,
+      hint: item.hint,
+      hasBreakdown: item.hasBreakdown
     };
   });
 });
@@ -958,43 +1033,9 @@ const featureTags = computed<FeatureTag[]>(() => {
   });
 });
 
-const diagnosticItems = computed<DiagnosticCard[]>(() => [
-  {
-    label: '许可证校验',
-    value: isLicenseCheckDisabled.value ? '已关闭' : '已开启',
-    hint: isLicenseCheckDisabled.value ? '当前环境不会因许可证失效阻断访问' : '所有受控页面都会先检查许可证状态',
-    tone: isLicenseCheckDisabled.value ? 'warning' : 'healthy'
-  },
-  {
-    label: '当前状态',
-    value: isExpired.value ? '已过期' : '运行中',
-    hint: isExpired.value ? '建议尽快上传新许可证' : '授权内容已同步到运行时内存',
-    tone: isExpired.value ? 'expired' : 'healthy'
-  },
-  {
-    label: '模块数量',
-    value: `${licenseData.value?.features?.length || 0} 项`,
-    hint: '当前许可证内登记的业务模块标签数量',
-    tone: licenseData.value?.features?.length ? 'healthy' : 'slate'
-  },
-  {
-    label: '更新方式',
-    value: '先预览后覆盖',
-    hint: '更新时会先展示新旧差异，并由后端自动备份旧文件',
-    tone: 'slate'
-  }
-]);
+/* diagnosticItems 已移除 —— 系统诊断面板已从 UI 中删除 */
 
-const supportTips: NarrativeTip[] = [
-  {
-    title: '建议更新前先核对降级风险',
-    description: '如果新许可证减少了模块或配额，页面会在对比弹窗中明确提示，避免误覆盖。'
-  },
-  {
-    title: '许可证文件路径建议纳入交付文档',
-    description: '运维同事可依据路径快速确认当前实例所加载的授权文件来源。'
-  }
-];
+/* supportTips 已移除 —— 交付提示区域已合并至诊断面板 */
 
 const footerBadges = computed<FooterBadge[]>(() => {
   const items: FooterBadge[] = [];
@@ -1061,7 +1102,14 @@ const compareBasicRows = computed<CompareRow[]>(() => [
 ]);
 
 const compareQuotaRows = computed<CompareQuotaRow[]>(() => {
+  /* 排列顺序与配额面板（quotaMetrics）保持一致：业务用户上限 → 最大 API 账号数 → 允许 API 账号调用新增的用户数 */
   const items = [
+    {
+      key: 'maxTotalUsers',
+      label: '业务用户上限',
+      currentRaw: licenseData.value?.maxTotalUsers,
+      nextRaw: previewData.value?.maxTotalUsers
+    },
     {
       key: 'maxApiAccounts',
       label: '最大 API 账号数',
@@ -1070,15 +1118,9 @@ const compareQuotaRows = computed<CompareQuotaRow[]>(() => {
     },
     {
       key: 'maxUsersPerAccount',
-      label: '单账号用户数',
+      label: '允许 API 账号调用新增的用户数',
       currentRaw: licenseData.value?.maxUsersPerAccount,
       nextRaw: previewData.value?.maxUsersPerAccount
-    },
-    {
-      key: 'maxTotalUsers',
-      label: '业务用户上限',
-      currentRaw: licenseData.value?.maxTotalUsers,
-      nextRaw: previewData.value?.maxTotalUsers
     }
   ];
 
@@ -1270,6 +1312,41 @@ const confirmUpdate = async () => {
     licenseData.value = response.data;
     resetLicenseCache();
     resetCompareSelection();
+
+    /**
+     * 许可证降级时后端会自动冻结超额资源，
+     * 检查所有配额维度的降级执行结果，统一展示警告。
+     */
+    const data = response.data;
+    const warnings: string[] = [];
+
+    // 1. 业务用户被冻结
+    if (data?.frozenUserCount && data.frozenUserCount > 0) {
+      warnings.push(`• 业务用户上限降级：已自动停用 ${data.frozenUserCount} 个最近创建的用户`);
+    }
+    // 2. API 账号被冻结
+    if (data?.frozenApiAccountCount && data.frozenApiAccountCount > 0) {
+      warnings.push(`• API 账号上限降级：已自动停用 ${data.frozenApiAccountCount} 个最近创建的 API 账号`);
+    }
+    // 3. API 来源用户被冻结
+    if (data?.frozenApiUserCount && data.frozenApiUserCount > 0) {
+      warnings.push(`• API来源新增用户上限降级：已自动停用 ${data.frozenApiUserCount} 个最近由 API 创建的业务用户`);
+    }
+    // 4. 许可证已过期
+    if (data?.expired) {
+      warnings.push('• 注意：新许可证已过期，系统功能将受限');
+    }
+
+    if (warnings.length > 0) {
+      Notification.warning({
+        id: 'license-quota-downgrade',
+        title: '配额降级：资源已被自动调整',
+        content: warnings.join('\n') + '\n\n请前往对应管理页面确认被停用的资源。',
+        duration: 0,
+        closable: true,
+      });
+    }
+
     Message.success('许可证更新成功，旧许可证已自动备份');
   } catch (error) {
     const message = error instanceof Error ? error.message : '许可证更新失败';
@@ -1283,6 +1360,8 @@ const closeCompare = () => {
   resetCompareSelection();
 };
 
+const resetModalVisible = ref(false);
+
 /**
  * 删除许可证并重置为未激活状态。
  */
@@ -1294,6 +1373,7 @@ const handleReset = async () => {
     resetLicenseCache();
     resetActivationSelection();
     resetCompareSelection();
+    resetModalVisible.value = false;
     Message.success('许可证已删除，系统已重置为未激活状态');
   } catch (error) {
     const message = error instanceof Error ? error.message : '重置失败';
@@ -1311,9 +1391,11 @@ onMounted(() => {
 <style scoped lang="less">
 .license-page-shell {
   position: relative;
-  min-height: 100%;
-  padding: 24px;
-  overflow: auto;
+  height: 100%;
+  padding: 14px;
+  overflow: hidden; /* 页面外壳不出滚动条，内部 dashboard/activation 自行处理 */
+  display: flex;
+  flex-direction: column;
   background:
     linear-gradient(180deg, #f4f8ff 0%, #f7fafc 46%, #f9fbff 100%),
     radial-gradient(circle at top left, rgba(20, 201, 201, 0.12), transparent 34%),
@@ -1373,6 +1455,12 @@ onMounted(() => {
   display: grid;
   grid-template-columns: minmax(0, 1.12fr) minmax(400px, 0.88fr);
   gap: 24px;
+  /* 激活场景允许自身滚动（当内容超过视口时），保持页面外壳无横条 */
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
 }
 
 .activation-story,
@@ -1525,9 +1613,7 @@ onMounted(() => {
 }
 
 .console-badge,
-.console-mode-tag,
-.hero-status-pill,
-.hero-mode-pill {
+.console-mode-tag {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -1682,86 +1768,109 @@ onMounted(() => {
   box-shadow: 0 16px 28px rgba(22, 93, 255, 0.22) !important;
 }
 
-.license-dashboard {
+/* 旧仪表盘样式已被 lv-* 样式取代 — 以下为清理后保留的占位注释 */
+/* [已清理] .license-dashboard → .lv-dashboard */
+/* [已清理] .dashboard-hero → .lv-hero */
+/* [已清理] .hero-* → .lv-pill, .lv-act, .lv-customer, .lv-ring-card */
+/* [已清理] .hero-timeline-card → .lv-strip-cell */
+
+/* [已清理] .hero-timeline-card, .dashboard-warning, .dashboard-grid, .dashboard-panel */
+/* [已清理] .panel-header, .fact-list, .quota-list, .fact-row */
+
+/* [已清理] .quota-card, .feature-cloud, .feature-chip, .feature-empty */
+/* [已清理] .diagnostic-grid, .diagnostic-card, .tips-board */
+/* [已清理] .dashboard-footer, .footer-badge */
+
+/* ==================== 单屏仪表盘样式 ==================== */
+.lv-dashboard {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 10px;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
-.dashboard-hero {
-  padding: 26px 28px 28px;
+.lv-hero {
+  position: relative;
+  /* 横向布局：左主信息区 + 右倒计时卡 */
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+  padding: 8px 10px;
+  border-radius: 20px;
+  border: 1px solid rgba(226, 232, 240, 0.92);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.97), rgba(248, 251, 255, 0.95)),
+    radial-gradient(circle at top right, rgba(22, 93, 255, 0.08), transparent 30%);
+  box-shadow: 0 8px 32px rgba(15, 23, 42, 0.06), 0 2px 8px rgba(15, 23, 42, 0.03);
+  backdrop-filter: blur(12px);
   overflow: hidden;
 
-  &.is-expired {
+  &--expired {
     background:
-      linear-gradient(180deg, rgba(255, 247, 247, 0.98), rgba(255, 241, 241, 0.94)),
-      radial-gradient(circle at top right, rgba(245, 63, 63, 0.12), transparent 32%);
+      linear-gradient(180deg, rgba(255, 248, 248, 0.98), rgba(255, 243, 243, 0.95)),
+      radial-gradient(circle at top right, rgba(245, 63, 63, 0.1), transparent 30%);
   }
 
-  &__bar,
+  /* 左侧主信息区：客户信息靠左、上下居中 */
   &__main {
+    flex: 1;
+    min-width: 0;
     display: flex;
-    align-items: center;
+    flex-direction: column;
+    justify-content: center;
+    gap: 6px;
+    padding: 0 4px 0 6px;
+  }
+
+  /* 顶部行：客户信息（左）+ 操作按钮（右顶部对齐） */
+  &__bar {
+    display: flex;
+    align-items: flex-start;
     justify-content: space-between;
-    gap: 20px;
-  }
-
-  &__main {
-    margin-top: 22px;
-    align-items: stretch;
-  }
-
-  &__timeline {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 14px;
-    margin-top: 22px;
+    gap: 12px;
   }
 }
 
-.hero-status-group,
-.hero-actions,
-.hero-meta-tags {
+.lv-pills {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
-.hero-status-pill {
-  &.tone-healthy {
-    background: rgba(0, 180, 42, 0.12);
-    color: #00b42a;
-  }
+.lv-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
 
-  &.tone-warning {
-    background: rgba(255, 125, 0, 0.12);
-    color: #ff7d00;
-  }
-
-  &.tone-expired {
-    background: rgba(245, 63, 63, 0.12);
-    color: #f53f3f;
-  }
+  &--healthy { background: rgba(0, 180, 42, 0.1); color: #00b42a; }
+  &--warning { background: rgba(255, 125, 0, 0.1); color: #ff7d00; }
+  &--expired { background: rgba(245, 63, 63, 0.1); color: #f53f3f; }
+  &--muted { background: rgba(15, 23, 42, 0.04); color: #475569; }
 }
 
-.hero-mode-pill {
-  background: rgba(15, 23, 42, 0.04);
-  color: #334155;
+.lv-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
-.hero-action-btn {
-  min-width: 116px;
-  height: 40px !important;
+.lv-act {
   border-radius: 999px !important;
-  font-weight: 700 !important;
-  border-color: rgba(203, 213, 225, 0.96) !important;
-  background: rgba(255, 255, 255, 0.88) !important;
+  font-weight: 600 !important;
 
   &--primary {
     border: none !important;
     background: linear-gradient(135deg, #165dff 0%, #14c9c9 100%) !important;
-    box-shadow: 0 12px 28px rgba(22, 93, 255, 0.2) !important;
+    box-shadow: 0 6px 16px rgba(22, 93, 255, 0.18) !important;
   }
 
   &--danger {
@@ -1769,88 +1878,126 @@ onMounted(() => {
   }
 }
 
-.hero-customer {
+.lv-customer {
   display: flex;
-  align-items: flex-start;
-  gap: 18px;
+  align-items: center;
+  gap: 14px;
   min-width: 0;
   flex: 1;
 
-  &__avatar {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 84px;
-    height: 84px;
-    border-radius: 28px;
-    background:
-      linear-gradient(135deg, rgba(22, 93, 255, 0.16), rgba(20, 201, 201, 0.18)),
-      #fff;
-    color: #165dff;
-    font-size: 34px;
-    font-weight: 900;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
-    flex-shrink: 0;
-  }
-
-  &__content {
+  &__info {
     min-width: 0;
 
     h1 {
-      margin: 10px 0 8px;
-      font-size: 34px;
-      line-height: 1.04;
+      margin: 0 0 2px;
+      font-size: 20px;
       font-weight: 900;
       color: #0f172a;
-      letter-spacing: -0.05em;
+      letter-spacing: -0.03em;
+      line-height: 1.2;
     }
 
     p {
       margin: 0;
-      max-width: 720px;
-      font-size: 14px;
-      line-height: 1.85;
+      font-size: 12px;
+      line-height: 1.5;
       color: #64748b;
+      max-width: 480px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
   }
 }
 
-.hero-meta-tag {
+.lv-avatar {
   display: inline-flex;
   align-items: center;
-  min-height: 32px;
-  padding: 0 12px;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background:
+    linear-gradient(135deg, rgba(22, 93, 255, 0.14), rgba(20, 201, 201, 0.16)),
+    #fff;
+  color: #165dff;
+  font-size: 20px;
+  font-weight: 900;
+  flex-shrink: 0;
+}
+
+.lv-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #0f766e;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.lv-tags {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.lv-tag {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.88);
-  border: 1px solid rgba(203, 213, 225, 0.92);
-  font-size: 12px;
+  border: 1px solid rgba(203, 213, 225, 0.8);
+  font-size: 11px;
   color: #334155;
 }
 
-.hero-countdown-card {
+/* 倒计时卡：纵向通栏，高度撑满 hero，紧凑尺寸 */
+.lv-ring-card {
   display: flex;
   flex-direction: column;
+  align-items: center;
   justify-content: center;
-  width: 246px;
-  padding: 18px;
-  border-radius: 28px;
-  background: linear-gradient(160deg, #0f172a 0%, #162033 100%);
-  box-shadow: 0 24px 48px rgba(15, 23, 42, 0.2);
+  gap: 4px;
+  align-self: stretch;
+  min-width: 130px;
+  padding: 8px 14px;
+  border-radius: 14px;
+  background:
+    linear-gradient(160deg, #0f172a 0%, #1a2438 100%),
+    radial-gradient(circle at top, rgba(20, 201, 201, 0.2), transparent 55%);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.22);
   flex-shrink: 0;
 
-  &__ring {
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 138px;
-    height: 138px;
-    margin: 0 auto;
-    border-radius: 50%;
-    padding: 12px;
+  /* 标题：剩余有效期 */
+  &__title {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.5);
   }
 
-  &__ring-core {
+}
+
+/* 倒计时环：72px 直径，紧凑精致 */
+.lv-ring {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  padding: 7px;
+  flex-shrink: 0;
+
+  &__core {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -1862,491 +2009,474 @@ onMounted(() => {
     color: #fff;
 
     strong {
-      font-size: 34px;
-      line-height: 1;
+      font-size: 22px;
       font-weight: 900;
+      line-height: 1;
       letter-spacing: -0.04em;
     }
 
     span {
-      margin-top: 6px;
-      font-size: 12px;
-      color: rgba(255, 255, 255, 0.56);
+      margin-top: 2px;
+      font-size: 9px;
+      letter-spacing: 0.08em;
+      color: rgba(255, 255, 255, 0.5);
     }
-  }
-
-  &__meta {
-    display: grid;
-    gap: 6px;
-    margin-top: 18px;
-    text-align: center;
-
-    strong {
-      font-size: 20px;
-      font-weight: 800;
-    }
-
-    .tone-healthy {
-      color: #14c9c9;
-    }
-
-    .tone-warning {
-      color: #ffb454;
-    }
-
-    .tone-expired {
-      color: #ff7875;
-    }
-  }
-
-  &__label {
-    font-size: 12px;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-    color: rgba(255, 255, 255, 0.46);
   }
 }
 
-.hero-timeline-card {
-  padding: 16px 18px;
-  border-radius: 24px;
-  background: rgba(255, 255, 255, 0.8);
-  border: 1px solid rgba(226, 232, 240, 0.92);
+.lv-t--healthy { color: #14c9c9; }
+.lv-t--warning { color: #ffb454; }
+.lv-t--expired { color: #ff7875; }
 
-  span {
-    font-size: 11px;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: #94a3b8;
-  }
+/* .lv-strip-cell 已移除 — 生命周期信息已合并到左面板 */
 
-  strong {
-    display: block;
-    margin-top: 10px;
-    font-size: 18px;
-    font-weight: 800;
-    color: #0f172a;
-  }
-
-  p {
-    margin: 8px 0 0;
-    font-size: 12px;
-    line-height: 1.8;
-    color: #64748b;
-  }
-}
-
-.dashboard-warning {
+.lv-alert {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 16px 18px;
-  font-size: 13px;
-  font-weight: 700;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
 
-  &.tone-healthy {
-    color: #00b42a;
-    background: rgba(0, 180, 42, 0.08);
-  }
-
-  &.tone-warning {
-    color: #ff7d00;
-    background: rgba(255, 125, 0, 0.08);
-  }
-
-  &.tone-expired {
-    color: #f53f3f;
-    background: rgba(245, 63, 63, 0.08);
-  }
+  &--healthy { background: rgba(0, 180, 42, 0.08); color: #00b42a; }
+  &--warning { background: rgba(255, 125, 0, 0.08); color: #ff7d00; }
+  &--expired { background: rgba(245, 63, 63, 0.08); color: #f53f3f; }
 }
 
-.dashboard-grid {
+.lv-grid {
   display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  gap: 18px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  flex: 1;
+  min-height: 0;
 }
 
-.dashboard-panel {
-  padding: 24px;
-
-  &--identity,
-  &--quota {
-    grid-column: span 4;
-  }
-
-  &--features,
-  &--operations {
-    grid-column: span 6;
-  }
-}
-
-.panel-header {
+.lv-card {
+  position: relative;
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 20px;
+  flex-direction: column;
+  border-radius: 20px;
+  border: 1px solid rgba(226, 232, 240, 0.85);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow:
+    0 4px 20px rgba(15, 23, 42, 0.05),
+    0 1px 3px rgba(15, 23, 42, 0.03);
+  overflow: hidden;
+  transition: box-shadow 0.25s ease;
 
-  h2 {
-    margin: 8px 0 0;
-    font-size: 24px;
-    font-weight: 900;
-    color: #0f172a;
-    letter-spacing: -0.04em;
+  &:hover {
+    box-shadow:
+      0 8px 28px rgba(15, 23, 42, 0.08),
+      0 2px 6px rgba(15, 23, 42, 0.04);
   }
 
-  &__icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 56px;
-    height: 56px;
-    border-radius: 20px;
-    font-size: 24px;
+  /* 顶部彩色渐变条：区分不同面板的视觉标识 */
+  &__accent {
+    height: 3px;
     flex-shrink: 0;
 
-    &.tone-blue {
-      background: rgba(22, 93, 255, 0.1);
-      color: #165dff;
-    }
-
-    &.tone-teal {
-      background: rgba(20, 201, 201, 0.12);
-      color: #14c9c9;
-    }
-
-    &.tone-gold {
-      background: rgba(255, 125, 0, 0.12);
-      color: #ff7d00;
-    }
-
-    &.tone-slate {
-      background: rgba(15, 23, 42, 0.06);
-      color: #334155;
-    }
+    &--blue  { background: linear-gradient(90deg, #165dff, #6aa1ff); }
+    &--teal  { background: linear-gradient(90deg, #14c9c9, #6ee7b7); }
+    &--gold  { background: linear-gradient(90deg, #ff7d00, #fbbf24); }
   }
-}
-
-.fact-list,
-.quota-list {
-  display: grid;
-  gap: 12px;
-}
-
-.fact-row,
-.quota-card,
-.diagnostic-card,
-.feature-empty__helper {
-  border-radius: 24px;
-  border: 1px solid rgba(226, 232, 240, 0.9);
-  background: rgba(255, 255, 255, 0.82);
-}
-
-.fact-row {
-  display: grid;
-  grid-template-columns: 128px minmax(0, 1fr);
-  gap: 14px;
-  padding: 18px;
-
-  &__label {
-    font-size: 12px;
-    color: #64748b;
-    line-height: 1.8;
-  }
-
-  &__value {
-    display: grid;
-    gap: 4px;
-
-    strong {
-      font-size: 16px;
-      line-height: 1.6;
-      color: #0f172a;
-      word-break: break-all;
-
-      &.mono {
-        font-family: 'JetBrains Mono', 'Consolas', monospace;
-        font-size: 14px;
-      }
-    }
-
-    small {
-      font-size: 12px;
-      line-height: 1.8;
-      color: #94a3b8;
-    }
-  }
-}
-
-.quota-card {
-  padding: 18px;
 
   &__head {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 14px;
+    gap: 10px;
+    padding: 14px 16px 8px;
 
-    strong {
-      display: block;
+    h2 {
+      margin: 2px 0 0;
       font-size: 16px;
+      font-weight: 800;
       color: #0f172a;
-    }
-
-    span {
-      display: block;
-      margin-top: 6px;
-      font-size: 12px;
-      line-height: 1.8;
-      color: #64748b;
-    }
-
-    b {
-      font-size: 22px;
-      color: #165dff;
-      line-height: 1;
+      letter-spacing: -0.02em;
     }
   }
 
-  &__track {
-    position: relative;
-    height: 8px;
-    overflow: hidden;
-    border-radius: 999px;
-    background: rgba(226, 232, 240, 0.9);
+  &__ico {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 12px;
+    font-size: 16px;
+    flex-shrink: 0;
   }
 
-  &__fill {
-    height: 100%;
-    border-radius: inherit;
-    background: linear-gradient(90deg, #165dff 0%, #14c9c9 100%);
-    box-shadow: 0 4px 12px rgba(22, 93, 255, 0.24);
-    transition: width 0.6s ease;
+  /* 内容滚动区：卡片内容超出时可滚动，隐藏滚动条 */
+  &__scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 0 16px 14px;
+    scrollbar-width: none;
+    &::-webkit-scrollbar { display: none; }
   }
 }
 
-.feature-cloud {
+.lv-ico {
+  &--blue { background: rgba(22, 93, 255, 0.1); color: #165dff; }
+  &--teal { background: rgba(20, 201, 201, 0.12); color: #14c9c9; }
+  &--gold { background: rgba(255, 125, 0, 0.1); color: #ff7d00; }
+}
+
+.lv-facts {
+  display: grid;
+  gap: 5px;
+}
+
+.lv-fact {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: rgba(248, 251, 255, 0.8);
+  border: 1px solid rgba(226, 232, 240, 0.6);
+  transition: background 0.15s ease;
+
+  &:hover {
+    background: rgba(241, 245, 249, 0.95);
+  }
+
+  span {
+    font-size: 12px;
+    color: #64748b;
+    white-space: nowrap;
+  }
+
+  strong {
+    font-size: 12px;
+    font-weight: 700;
+    color: #0f172a;
+    text-align: right;
+    word-break: break-all;
+
+    &.mono {
+      font-family: 'JetBrains Mono', 'Consolas', monospace;
+      font-size: 11px;
+    }
+  }
+}
+
+/* 配额卡片列表 */
+.lv-quota-list {
   display: grid;
   gap: 12px;
 }
 
-.feature-chip {
+/* 单个配额卡片：标题行 + 进度条 + 三列统计 */
+.lv-quota-card {
   display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 18px;
-  border-radius: 24px;
-  background: rgba(255, 255, 255, 0.82);
-  border: 1px solid rgba(226, 232, 240, 0.92);
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background:
+    linear-gradient(135deg, rgba(20, 201, 201, 0.03), rgba(22, 93, 255, 0.03)),
+    rgba(248, 251, 255, 0.85);
+  border: 1px solid rgba(226, 232, 240, 0.65);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 
-  .arco-icon {
-    font-size: 18px;
-    flex-shrink: 0;
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(15, 23, 42, 0.06);
   }
 
+  /* 标题行：名称（左）+ 百分比（右） */
+  &__title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+
+    span {
+      font-size: 13px;
+      font-weight: 700;
+      color: #334155;
+    }
+
+    strong {
+      font-size: 13px;
+      font-weight: 800;
+    }
+  }
+
+  /* 百分比色调 */
+  &__pct--healthy { color: #14c9c9; }
+  &__pct--warning { color: #ff7d00; }
+  &__pct--danger  { color: #f53f3f; }
+
+  /* 进度条轨道 */
+  &__track {
+    height: 8px;
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.06);
+    overflow: hidden;
+  }
+
+  /* 进度条填充 */
+  &__fill {
+    height: 100%;
+    border-radius: 999px;
+    transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+
+    &--healthy {
+      background: linear-gradient(90deg, #14c9c9, #6ee7b7);
+      box-shadow: 0 0 8px rgba(20, 201, 201, 0.3);
+    }
+    &--warning {
+      background: linear-gradient(90deg, #ff7d00, #fbbf24);
+      box-shadow: 0 0 8px rgba(255, 125, 0, 0.3);
+    }
+    &--danger {
+      background: linear-gradient(90deg, #f53f3f, #ff7875);
+      box-shadow: 0 0 8px rgba(245, 63, 63, 0.3);
+    }
+  }
+
+  /* 三列统计行 */
+  &__stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+
+    /* 四列明细布局 */
+    &--4col {
+      grid-template-columns: repeat(4, 1fr);
+      gap: 4px;
+
+      .lv-quota-stat {
+        padding: 6px 0;
+        strong {
+          font-size: 15px;
+        }
+        span {
+          transform: scale(0.9);
+          white-space: nowrap;
+        }
+      }
+    }
+  }
+}
+
+/* 单个统计项：居中数字 + 下方标签 */
+.lv-quota-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 0;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(226, 232, 240, 0.5);
+
   strong {
-    display: block;
-    font-size: 15px;
+    font-size: 18px;
+    font-weight: 900;
+    line-height: 1;
+    letter-spacing: -0.03em;
     color: #0f172a;
   }
 
   span {
-    display: block;
-    margin-top: 4px;
-    font-size: 12px;
-    color: #64748b;
-  }
-
-  &.tone-blue {
-    .arco-icon {
-      color: #165dff;
-    }
-  }
-
-  &.tone-teal {
-    .arco-icon {
-      color: #14c9c9;
-    }
-  }
-
-  &.tone-gold {
-    .arco-icon {
-      color: #ff7d00;
-    }
-  }
-
-  &.tone-cyan {
-    .arco-icon {
-      color: #0ea5e9;
-    }
-  }
-}
-
-.feature-empty {
-  padding: 8px 0 0;
-
-  &__symbol {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 78px;
-    height: 78px;
-    border-radius: 28px;
-    background: linear-gradient(135deg, rgba(22, 93, 255, 0.12), rgba(20, 201, 201, 0.18));
-    color: #165dff;
-    font-size: 30px;
-  }
-
-  &__helper {
-    margin-top: 16px;
-    padding: 18px;
-
-    strong {
-      display: block;
-      font-size: 15px;
-      color: #0f172a;
-    }
-
-    p {
-      margin: 8px 0 0;
-      font-size: 12px;
-      line-height: 1.9;
-      color: #64748b;
-    }
-  }
-}
-
-.diagnostic-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.diagnostic-card {
-  padding: 18px;
-
-  span {
-    font-size: 11px;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
+    font-size: 10px;
+    font-weight: 600;
     color: #94a3b8;
+    letter-spacing: 0.02em;
   }
 
-  strong {
-    display: block;
-    margin-top: 10px;
-    font-size: 22px;
-    line-height: 1.15;
-    font-weight: 900;
-    letter-spacing: -0.04em;
+  /* 授权上限：渐变蓝文字 */
+  &--primary strong {
+    background: linear-gradient(135deg, #165dff 0%, #14c9c9 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
   }
 
-  p {
-    margin: 8px 0 0;
-    font-size: 12px;
-    line-height: 1.8;
-    color: #64748b;
+  /* 剩余量：绿色文字 */
+  &--success strong {
+    color: #00b42a;
   }
 
-  &.tone-healthy strong {
-    color: #14c9c9;
-  }
-
-  &.tone-warning strong {
+  /* 停用/异常量：橙色文字 */
+  &--warning strong {
     color: #ff7d00;
   }
-
-  &.tone-expired strong {
-    color: #f53f3f;
-  }
-
-  &.tone-slate strong {
-    color: #334155;
-  }
 }
 
-.tips-board {
+/* 授权模块列表：卡片式布局，每项带状态图标 */
+.lv-feature-list {
   display: grid;
-  gap: 12px;
-  margin-top: 18px;
-
-  &__item {
-    display: flex;
-    align-items: flex-start;
-    gap: 12px;
-    padding: 16px 18px;
-    border-radius: 20px;
-    background: rgba(244, 251, 255, 0.84);
-    border: 1px solid rgba(226, 232, 240, 0.92);
-
-    .arco-icon {
-      margin-top: 2px;
-      color: #14c9c9;
-      font-size: 18px;
-      flex-shrink: 0;
-    }
-
-    strong {
-      display: block;
-      font-size: 14px;
-      color: #0f172a;
-    }
-
-    p {
-      margin: 4px 0 0;
-      font-size: 12px;
-      line-height: 1.8;
-      color: #64748b;
-    }
-  }
-}
-
-.dashboard-footer {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.footer-badge {
-  display: inline-flex;
-  align-items: center;
   gap: 8px;
-  min-height: 36px;
-  padding: 0 14px;
-  border-radius: 999px;
-  font-size: 12px;
-  line-height: 1.6;
-  word-break: break-all;
+}
 
-  .arco-icon {
+.lv-feature-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  font-size: 13px;
+  font-weight: 600;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+  }
+
+  &__ico {
+    font-size: 16px;
     flex-shrink: 0;
   }
 
-  &.tone-blue {
-    background: rgba(22, 93, 255, 0.08);
+  &--blue {
+    background: rgba(22, 93, 255, 0.06);
+    border-color: rgba(22, 93, 255, 0.12);
     color: #165dff;
   }
-
-  &.tone-teal {
-    background: rgba(20, 201, 201, 0.12);
+  &--teal {
+    background: rgba(20, 201, 201, 0.08);
+    border-color: rgba(20, 201, 201, 0.15);
     color: #0f766e;
   }
-
-  &.tone-gold {
-    background: rgba(255, 125, 0, 0.08);
+  &--gold {
+    background: rgba(255, 125, 0, 0.06);
+    border-color: rgba(255, 125, 0, 0.12);
     color: #ff7d00;
   }
+  &--cyan {
+    background: rgba(14, 165, 233, 0.06);
+    border-color: rgba(14, 165, 233, 0.12);
+    color: #0ea5e9;
+  }
+}
 
-  &.tone-slate {
-    background: rgba(15, 23, 42, 0.05);
+/* 空状态：图标 + 主文本 + 副描述居中 */
+.lv-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex: 1;
+  min-height: 140px;
+  text-align: center;
+
+  &__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    border-radius: 16px;
+    background: rgba(15, 23, 42, 0.04);
+    color: #94a3b8;
+    font-size: 22px;
+    margin-bottom: 4px;
+  }
+
+  span {
+    font-size: 13px;
+    font-weight: 600;
+    color: #64748b;
+  }
+
+  p {
+    margin: 0;
+    font-size: 12px;
+    color: #94a3b8;
+  }
+}
+
+.lv-sep {
+  height: 1px;
+  margin: 10px 0 6px;
+  background: rgba(226, 232, 240, 0.8);
+}
+
+/* .lv-diag / .lv-diag-cell / .lv-dc 已移除 —— 系统诊断面板已删除 */
+
+/* 生命周期列表（左面板下部） */
+.lv-lc-list {
+  display: grid;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.lv-lc-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(226, 232, 240, 0.6);
+  background: rgba(248, 251, 255, 0.8);
+  transition: background 0.15s ease;
+
+  &:hover {
+    background: rgba(241, 245, 249, 0.95);
+  }
+
+  span {
+    font-size: 12px;
+    color: #64748b;
+    white-space: nowrap;
+  }
+
+  strong {
+    font-size: 12px;
+    font-weight: 700;
+    color: #0f172a;
+    text-align: right;
+  }
+}
+
+.lv-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.lv-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  line-height: 1.4;
+  word-break: break-all;
+
+  .arco-icon { flex-shrink: 0; font-size: 12px; }
+
+  &--blue { background: rgba(22, 93, 255, 0.07); color: #165dff; }
+  &--teal { background: rgba(20, 201, 201, 0.1); color: #0f766e; }
+  &--gold { background: rgba(255, 125, 0, 0.07); color: #ff7d00; }
+  &--slate {
+    background: rgba(15, 23, 42, 0.04);
     color: #475569;
     font-family: 'JetBrains Mono', 'Consolas', monospace;
   }
 }
 
+/* ============================================================
+   许可证对比弹窗样式（紧凑布局，单屏全部展示）
+   ============================================================ */
 .compare-shell {
-  padding: 24px;
+  padding: 20px 24px;
 
   &__header,
   &__footer {
@@ -2358,21 +2488,21 @@ onMounted(() => {
 
   &__title {
     display: flex;
-    align-items: flex-start;
-    gap: 14px;
+    align-items: center;
+    gap: 12px;
 
     h3 {
-      margin: 8px 0 6px;
-      font-size: 24px;
+      margin: 0 0 2px;
+      font-size: 20px;
       font-weight: 900;
       color: #0f172a;
-      letter-spacing: -0.04em;
+      letter-spacing: -0.03em;
     }
 
     p {
       margin: 0;
-      font-size: 13px;
-      line-height: 1.8;
+      font-size: 12px;
+      line-height: 1.6;
       color: #64748b;
     }
   }
@@ -2381,12 +2511,12 @@ onMounted(() => {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 56px;
-    height: 56px;
-    border-radius: 20px;
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
     background: linear-gradient(135deg, #165dff 0%, #14c9c9 100%);
     color: #fff;
-    font-size: 22px;
+    font-size: 18px;
     flex-shrink: 0;
   }
 
@@ -2394,14 +2524,15 @@ onMounted(() => {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 40px;
-    height: 40px;
+    width: 36px;
+    height: 36px;
     border: none;
     border-radius: 999px;
     background: rgba(15, 23, 42, 0.05);
     color: #64748b;
     cursor: pointer;
     transition: background 0.2s ease, color 0.2s ease;
+    flex-shrink: 0;
 
     &:hover {
       background: rgba(15, 23, 42, 0.1);
@@ -2412,41 +2543,46 @@ onMounted(() => {
   &__warning {
     display: flex;
     align-items: center;
-    gap: 10px;
-    margin-top: 18px;
-    padding: 14px 16px;
-    border-radius: 18px;
+    gap: 8px;
+    margin-top: 12px;
+    padding: 10px 14px;
+    border-radius: 12px;
     background: rgba(255, 125, 0, 0.08);
     color: #ff7d00;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 700;
   }
 
+  /* 底部操作栏：突出确认按钮，与内容区有明确分隔 */
   &__footer {
-    margin-top: 20px;
-    align-items: flex-end;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(226, 232, 240, 0.8);
+    align-items: center;
   }
 
   &__footer-tip {
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    max-width: 520px;
+    gap: 6px;
+    max-width: 480px;
     font-size: 12px;
-    line-height: 1.8;
-    color: #64748b;
+    line-height: 1.6;
+    color: #94a3b8;
   }
 }
 
+/* 对比网格：两列并排 */
 .compare-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px;
-  margin-top: 18px;
+  gap: 14px;
+  margin-top: 14px;
 }
 
+/* 对比卡片（当前 / 新） */
 .compare-card {
-  border-radius: 28px;
+  border-radius: 16px;
   border: 1px solid rgba(226, 232, 240, 0.92);
   overflow: hidden;
 
@@ -2455,7 +2591,8 @@ onMounted(() => {
   }
 
   &--next {
-    background: linear-gradient(180deg, rgba(240, 255, 250, 0.96), rgba(255, 255, 255, 0.96));
+    background: linear-gradient(180deg, rgba(236, 255, 246, 0.96), rgba(255, 255, 255, 0.96));
+    border-color: rgba(20, 201, 201, 0.22);
   }
 
   &__head {
@@ -2463,71 +2600,80 @@ onMounted(() => {
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    padding: 18px 20px;
+    padding: 12px 16px;
     border-bottom: 1px solid rgba(226, 232, 240, 0.92);
 
     span {
-      font-size: 18px;
+      font-size: 15px;
       font-weight: 800;
       color: #0f172a;
     }
 
     small {
-      font-size: 12px;
-      color: #64748b;
-      letter-spacing: 0.14em;
+      font-size: 11px;
+      color: #94a3b8;
+      letter-spacing: 0.12em;
       text-transform: uppercase;
     }
   }
 
   &__body {
     display: grid;
-    gap: 18px;
-    padding: 20px;
+    gap: 12px;
+    padding: 14px 16px;
   }
 }
 
+/* 对比区块标题 */
 .compare-block {
   display: grid;
-  gap: 8px;
+  gap: 5px;
 
   &__title {
-    font-size: 11px;
-    letter-spacing: 0.14em;
+    font-size: 10px;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
     color: #94a3b8;
     font-weight: 700;
+    margin-bottom: 1px;
   }
 }
 
+/* 对比行：紧凑设计 */
 .compare-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 14px;
-  padding: 12px 14px;
-  border-radius: 18px;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 10px;
   background: rgba(255, 255, 255, 0.78);
-  border: 1px solid rgba(226, 232, 240, 0.9);
+  border: 1px solid rgba(226, 232, 240, 0.85);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 
   &.is-different {
-    border-color: rgba(22, 93, 255, 0.26);
+    border-color: rgba(22, 93, 255, 0.28);
     box-shadow: inset 0 0 0 1px rgba(22, 93, 255, 0.06);
+    background: rgba(245, 249, 255, 0.7);
   }
 
   &__label {
     font-size: 12px;
     color: #64748b;
+    white-space: nowrap;
   }
 
   strong {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    font-size: 14px;
+    gap: 5px;
+    font-size: 13px;
     font-weight: 800;
     color: #0f172a;
     text-align: right;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   &__next {
@@ -2543,17 +2689,18 @@ onMounted(() => {
   }
 }
 
+/* 授权模块标签列表 */
 .compare-feature-list {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
 }
 
 .compare-feature-tag {
   border-radius: 999px !important;
-  padding-inline: 10px !important;
-  min-height: 30px;
-  font-size: 12px !important;
+  padding-inline: 8px !important;
+  min-height: 26px;
+  font-size: 11px !important;
 }
 
 .compare-feature-empty {
@@ -2561,35 +2708,50 @@ onMounted(() => {
   color: #94a3b8;
 }
 
+/* 底部操作按钮区域 */
 .compare-shell__actions {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-shrink: 0;
+}
+
+/* 确认更新按钮：渐变背景 + 发光阴影 + 悬浮放大效果 */
+.compare-confirm-btn {
+  min-width: 180px;
+  height: 40px !important;
+  border-radius: 12px !important;
+  background: linear-gradient(135deg, #165dff 0%, #0fc6c6 100%) !important;
+  border: none !important;
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.02em;
+  box-shadow: 0 4px 18px rgba(22, 93, 255, 0.35),
+              0 1px 4px rgba(22, 93, 255, 0.18) !important;
+  transition: transform 0.2s ease, box-shadow 0.2s ease !important;
+
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 24px rgba(22, 93, 255, 0.45),
+                0 2px 6px rgba(22, 93, 255, 0.22) !important;
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
 }
 
 @media (max-width: 1440px) {
   .license-activation {
     grid-template-columns: 1fr;
   }
-
-  .dashboard-panel--identity,
-  .dashboard-panel--quota,
-  .dashboard-panel--features,
-  .dashboard-panel--operations {
-    grid-column: span 6;
-  }
 }
 
-@media (max-width: 1100px) {
-  .dashboard-hero__main {
-    flex-direction: column;
+@media (max-width: 1200px) {
+  .lv-grid {
+    grid-template-columns: 1fr 1fr;
   }
 
-  .hero-countdown-card {
-    width: 100%;
-  }
-
-  .dashboard-hero__timeline,
   .compare-grid {
     grid-template-columns: 1fr;
   }
@@ -2597,70 +2759,170 @@ onMounted(() => {
 
 @media (max-width: 900px) {
   .license-page-shell {
-    padding: 16px;
+    padding: 10px;
+    overflow: auto;
+    height: auto;
+    min-height: 100%;
   }
 
-  .activation-story,
-  .activation-console,
-  .dashboard-panel,
-  .dashboard-hero,
-  .compare-shell {
-    padding: 20px;
+  .lv-dashboard {
+    overflow: visible;
   }
 
-  .activation-story__metrics,
-  .diagnostic-grid {
+  .lv-grid {
     grid-template-columns: 1fr;
   }
 
-  .dashboard-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .dashboard-panel--identity,
-  .dashboard-panel--quota,
-  .dashboard-panel--features,
-  .dashboard-panel--operations {
-    grid-column: auto;
-  }
-
-  .fact-row {
-    grid-template-columns: 1fr;
-  }
-
-  .compare-shell__header,
-  .compare-shell__footer,
-  .activation-console__head,
-  .activation-console__hero,
-  .activation-console__footer,
-  .dashboard-hero__bar {
+  .lv-hero__bar,
+  .lv-actions {
     flex-direction: column;
     align-items: stretch;
   }
 
-  .compare-shell__footer {
-    align-items: stretch;
+  .lv-customer {
+    flex-direction: column;
   }
 
-  .compare-shell__actions,
-  .hero-actions {
-    flex-wrap: wrap;
+  .activation-story,
+  .activation-console,
+  .compare-shell {
+    padding: 16px;
+  }
+
+  .activation-story__metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .compare-shell__header,
+  .compare-shell__footer {
+    flex-direction: column;
+    align-items: stretch;
   }
 
   .compare-shell__footer-tip {
     max-width: none;
   }
-
-  .hero-customer {
-    flex-direction: column;
-  }
 }
 </style>
 
 <style lang="less">
+/* 全局样式（非 scoped）：控制 Arco Modal 容器的内边距和尺寸 */
 .license-compare-modal__wrap {
+  /* 弹窗圆角样式 */
+  border-radius: 20px;
+  overflow: hidden;
+
   .arco-modal-body {
     padding: 0;
+    /* 限制弹窗最大高度为视口 92%，确保不需要页面级滚动 */
+    max-height: 92vh;
+    overflow-y: auto;
+  }
+}
+
+/* ================== 重置许可证危险弹窗样式 ================== */
+.lv-danger-modal {
+  border-radius: 20px !important;
+  overflow: hidden;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.15) !important;
+  
+  .arco-modal-body {
+    padding: 0 !important;
+  }
+
+  &__content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 32px;
+    background: linear-gradient(180deg, #fff 0%, #fefcfc 100%);
+    text-align: center;
+  }
+
+  &__icon {
+    font-size: 56px;
+    color: #f53f3f;
+    margin-bottom: 20px;
+    filter: drop-shadow(0 8px 16px rgba(245, 63, 63, 0.25));
+    animation: lv-pulse-danger 2s infinite cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  &__title {
+    margin: 0 0 16px;
+    font-size: 22px;
+    font-weight: 900;
+    color: #1d2129;
+    letter-spacing: -0.02em;
+  }
+
+  &__desc {
+    margin: 0 0 32px;
+    font-size: 14px;
+    line-height: 1.6;
+    color: #4e5969;
+    background: #fff1f0;
+    border: 1px solid #ffccc7;
+    border-radius: 12px;
+    padding: 16px 20px;
+    
+    p {
+      margin: 0;
+      & + p {
+        margin-top: 8px;
+        color: #f53f3f;
+        font-weight: 600;
+      }
+    }
+  }
+
+  &__actions {
+    display: flex;
+    gap: 16px;
+    width: 100%;
+    
+    .lv-danger-btn {
+      flex: 1;
+      height: 44px;
+      font-size: 15px;
+      font-weight: 700;
+      transition: all 0.3s ease;
+      
+      &--cancel {
+        background: #f2f3f5;
+        border: none;
+        color: #4e5969;
+        
+        &:hover {
+          background: #e5e6eb;
+          color: #1d2129;
+        }
+      }
+      
+      &--confirm {
+        background: linear-gradient(135deg, #f53f3f 0%, #ff7875 100%);
+        box-shadow: 0 6px 16px rgba(245, 63, 63, 0.25);
+        border: none;
+        color: #fff;
+        
+        &:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 8px 20px rgba(245, 63, 63, 0.35);
+        }
+        
+        &:active {
+          transform: translateY(1px);
+        }
+      }
+    }
+  }
+}
+
+@keyframes lv-pulse-danger {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
   }
 }
 </style>

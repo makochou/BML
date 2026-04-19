@@ -105,6 +105,109 @@ public class LicenseQuotaChecker {
     }
 
     /**
+     * 校验 API 账号累计新增用户数是否超出许可证总配额。
+     * <p>
+     * 这是全局配额：所有 API 账号创建的累计活跃用户数不能超过该上限。
+     * 在新增属于 API 创建的用户（createBy < 0）前调用。
+     * </p>
+     *
+     * @param currentActiveCount 当前由 API 账号创建的活跃用户总数
+     * @throws BusinessException 超出限制时抛出
+     */
+    public void checkApiUserQuota(long currentActiveCount) {
+        BmlLicense license = getEffectiveLicense();
+        if (license == null) {
+            return;
+        }
+        int max = license.getMaxUsersPerAccount();
+        if (max > 0 && currentActiveCount >= max) {
+            log.warn("[License] API 累计新增用户数超限: 当前 {}, 上限 {}", currentActiveCount, max);
+            throw new BusinessException(GlobalErrorCode.LICENSE_QUOTA_USER_EXCEEDED.getCode(),
+                    String.format("操作失败：API 账号累计可创建活跃用户数已达许可证上限（%d 个）", max));
+        }
+    }
+
+    /**
+     * 校验是否允许启用（恢复）由 API 账号创建的用户。
+     *
+     * @param currentActiveCount 当前由 API 账号创建的活跃用户总数
+     * @throws BusinessException 超出限制时抛出
+     */
+    public void checkEnableApiUserQuota(long currentActiveCount) {
+        BmlLicense license = getEffectiveLicense();
+        if (license == null) {
+            return;
+        }
+        int max = license.getMaxUsersPerAccount();
+        if (max > 0 && currentActiveCount >= max) {
+            log.warn("[License] API 创建的用户启用被拒绝: 当前活跃用户 {}, 配额上限 {}", currentActiveCount, max);
+            throw new BusinessException(GlobalErrorCode.LICENSE_QUOTA_USER_EXCEEDED.getCode(),
+                    String.format("启用失败：API 账号累计可创建活跃用户数已达许可证上限（%d 个）", max));
+        }
+    }
+
+    /**
+     * 校验是否允许启用（恢复）用户。
+     * <p>
+     * 当管理员将已停用的用户重新启用时调用。
+     * 如果当前活跃用户数已达配额上限，则拒绝启用操作。
+     * </p>
+     * <p>
+     * 此方法与 {@link #checkUserQuota(long)} 配合，构成完整的用户配额防线：
+     * <ul>
+     *     <li>{@code checkUserQuota} — 阻止「新增」用户超额</li>
+     *     <li>{@code checkEnableUserQuota} — 阻止「启用」用户超额</li>
+     * </ul>
+     * 避免通过手动启用被冻结的用户来绕过配额限制。
+     * </p>
+     *
+     * @param currentActiveCount 当前处于正常状态（status=1）的用户数量（不含待启用的这个）
+     * @throws BusinessException 启用后将超额时抛出
+     */
+    public void checkEnableUserQuota(long currentActiveCount) {
+        BmlLicense license = getEffectiveLicense();
+        if (license == null) {
+            return;
+        }
+        int max = license.getMaxTotalUsers();
+        if (max > 0 && currentActiveCount >= max) {
+            log.warn("[License] 用户启用被拒绝: 当前活跃用户 {}, 配额上限 {}", currentActiveCount, max);
+            throw new BusinessException(GlobalErrorCode.LICENSE_QUOTA_USER_EXCEEDED.getCode(),
+                    String.format("启用失败：当前活跃用户数已达许可证上限（%d 个），请先停用其他用户或联系供应商升级许可证", max));
+        }
+    }
+
+    /**
+     * 校验是否允许启用（恢复）API 账号。
+     * <p>
+     * 当管理员将已停用的 API 账号重新启用时调用。
+     * 如果当前活跃 API 账号数已达配额上限，则拒绝启用操作。
+     * </p>
+     * <p>
+     * 此方法与 {@link #checkApiAccountQuota(long)} 配合，构成完整的 API 账号配额防线：
+     * <ul>
+     *     <li>{@code checkApiAccountQuota} — 阻止「新增」API 账号超额</li>
+     *     <li>{@code checkEnableApiAccountQuota} — 阻止「启用」API 账号超额</li>
+     * </ul>
+     * </p>
+     *
+     * @param currentActiveCount 当前处于启用状态（status=1）的 API 账号数量（不含待启用的这个）
+     * @throws BusinessException 启用后将超额时抛出
+     */
+    public void checkEnableApiAccountQuota(long currentActiveCount) {
+        BmlLicense license = getEffectiveLicense();
+        if (license == null) {
+            return;
+        }
+        int max = license.getMaxApiAccounts();
+        if (max > 0 && currentActiveCount >= max) {
+            log.warn("[License] API 账号启用被拒绝: 当前活跃账号 {}, 配额上限 {}", currentActiveCount, max);
+            throw new BusinessException(GlobalErrorCode.LICENSE_QUOTA_API_ACCOUNT_EXCEEDED.getCode(),
+                    String.format("启用失败：当前活跃 API 账号数已达许可证上限（%d 个），请先停用其他账号或联系供应商升级许可证", max));
+        }
+    }
+
+    /**
      * 获取当前生效的许可证。
      * <p>
      * 如果许可证校验未启用或无有效许可证，返回 {@code null}（表示不做配额限制）。

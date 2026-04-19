@@ -57,8 +57,8 @@ spring:
     baseline-version: 0
     # 编码
     encoding: UTF-8
-    # 是否允许乱序执行（建议 false，强制按版本顺序）
-    out-of-order: false
+    # 是否允许乱序执行（开发环境下建议设为 true，允许插入旧版本的迁移脚本）
+    out-of-order: true
 
 # ── 服务器配置 ──
 server:
@@ -187,5 +187,10 @@ bml:
     refresh-interval-ms: ${BML_MONITOR_REFRESH_INTERVAL_MS:3000}
     # 是否获取公网 IP（需要访问外网，内网环境可关闭）
     public-ip-enabled: ${BML_MONITOR_PUBLIC_IP_ENABLED:true}
-    # 公网 IP 查询服务地址
-    public-ip-provider-url: ${BML_MONITOR_PUBLIC_IP_PROVIDER_URL:http://checkip.amazonaws.com}
+    # 公网 IP 查询服务地址（主用）
+    # 说明：原默认值 checkip.amazonaws.com 为境外服务，国内访问超时。
+    # 现改为 ipinfo.io/ip，国内可访问；若不通，后端会自动降级到备用地址：
+    #   备用1: https://myip.ipip.net
+    #   备用2: https://ip.3322.net
+    #   备用3: https://api.ipify.org
+    public-ip-provider-url: ${BML_MONITOR_PUBLIC_IP_PROVIDER_URL:https://ipinfo.io/ip}

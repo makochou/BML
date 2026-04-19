@@ -213,6 +213,48 @@ samp {
   border-radius: var(--bml-radius-sm) !important;
 }
 
+/* ── 全局复选框样式增强（多选下拉、表格行选择等通用场景） ── */
+
+/* 未选中状态：加粗边框 + 轻微圆角，使复选框轮廓清晰可见 */
+.arco-checkbox-icon {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #c9cdd4 !important;
+  border-radius: 4px;
+  background: #fff;
+  transition: all 0.2s ease;
+}
+
+/* 鼠标悬停时：边框变为主色调，提示可交互 */
+.arco-checkbox:hover .arco-checkbox-icon {
+  border-color: var(--bml-primary) !important;
+}
+
+/* 选中状态：主色填充 + 白色对勾，醒目区分已选/未选 */
+.arco-checkbox-checked .arco-checkbox-icon {
+  border-color: var(--bml-primary) !important;
+  background: var(--bml-primary) !important;
+}
+
+/* 半选状态（全选按钮部分选中时）：保持主色边框 + 填充 */
+.arco-checkbox-indeterminate .arco-checkbox-icon {
+  border-color: var(--bml-primary) !important;
+  background: var(--bml-primary) !important;
+}
+
+/* 多选下拉面板中的选项：增加 hover 背景和行高，提升可读性 */
+.arco-select-option .arco-checkbox {
+  margin-right: 6px;
+}
+
+.arco-select-option {
+  min-height: 36px;
+}
+
+.arco-select-option:hover {
+  background-color: rgba(22, 93, 255, 0.06);
+}
+
 /* ── 工具类 ── */
 
 /* 文字截断 */

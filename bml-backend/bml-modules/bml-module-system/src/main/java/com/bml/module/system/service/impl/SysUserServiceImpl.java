@@ -3,6 +3,7 @@ package com.bml.module.system.service.impl;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.bml.core.base.service.impl.BaseServiceImpl;
+import com.bml.core.common.constant.GlobalConstants;
 import com.bml.core.framework.license.LicenseQuotaChecker;
 import com.bml.core.framework.security.utils.SecurityUtils;
 import com.bml.module.system.converter.UserConverter;
@@ -70,9 +71,23 @@ public class SysUserServiceImpl extends BaseServiceImpl<SysUserMapper, SysUser> 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean insertUser(SysUserDTO userDto) {
-        // 许可证配额校验：前台业务用户数量不得超过许可证 maxTotalUsers 上限
+        // 许可证配额校验1：前台业务用户数量不得超过许可证 maxTotalUsers 上限
         long currentUserCount = this.count();
         licenseQuotaChecker.checkUserQuota(currentUserCount);
+
+        // 许可证配额校验2：如果是由 API 账号创建（userId < 0），需校验 API 用户全局额度
+        try {
+            Long currentUserId = SecurityUtils.getUserId();
+            if (currentUserId != null && currentUserId < 0) {
+                long activeApiUserCount = baseMapper.selectCount(
+                        new LambdaQueryWrapper<SysUser>()
+                                .eq(SysUser::getStatus, GlobalConstants.STATUS_NORMAL)
+                                .lt(SysUser::getCreateBy, 0L));
+                licenseQuotaChecker.checkApiUserQuota(activeApiUserCount);
+            }
+        } catch (Exception e) {
+            // 忽略非认证环境调用
+        }
 
         SysUser user = UserConverter.INSTANCE.toEntity(userDto);
         if (StringUtils.hasText(user.getPassword())) {
@@ -88,6 +103,28 @@ public class SysUserServiceImpl extends BaseServiceImpl<SysUserMapper, SysUser> 
     public boolean updateUser(SysUserDTO userDto) {
         SysUser user = UserConverter.INSTANCE.toEntity(userDto);
         checkUserAllowed(user);
+
+        // 许可证配额校验：如果用户状态变更为「启用」，检查活跃用户数是否会超出许可证配额
+        if (GlobalConstants.STATUS_NORMAL.equals(user.getStatus())) {
+            SysUser existingUser = baseMapper.selectById(user.getId());
+            // 仅在从「停用」变更为「启用」时校验（避免不必要的查询）
+            if (existingUser != null && !GlobalConstants.STATUS_NORMAL.equals(existingUser.getStatus())) {
+                long activeUserCount = baseMapper.selectCount(
+                        new LambdaQueryWrapper<SysUser>()
+                                .eq(SysUser::getStatus, GlobalConstants.STATUS_NORMAL));
+                licenseQuotaChecker.checkEnableUserQuota(activeUserCount);
+
+                // 如果该用户原本是由 API 账号创建的，还要占用 API 创建用户的配额
+                if (existingUser.getCreateBy() != null && existingUser.getCreateBy() < 0) {
+                    long activeApiUserCount = baseMapper.selectCount(
+                            new LambdaQueryWrapper<SysUser>()
+                                    .eq(SysUser::getStatus, GlobalConstants.STATUS_NORMAL)
+                                    .lt(SysUser::getCreateBy, 0L));
+                    licenseQuotaChecker.checkEnableApiUserQuota(activeApiUserCount);
+                }
+            }
+        }
+
         if (StringUtils.hasText(user.getPassword())) {
             user.setPassword(SecurityUtils.encryptPassword(user.getPassword()));
         }

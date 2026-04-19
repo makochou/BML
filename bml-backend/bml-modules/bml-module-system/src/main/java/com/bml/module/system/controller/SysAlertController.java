@@ -30,7 +30,7 @@ import java.util.List;
  *
  * @author BML Team
  */
-@Tag(name = "系统告警通知接口")
+@Tag(name = "告警监测", description = "告警信息查询与治理")
 @RestController
 @RequestMapping("/system/alert")
 @RequiredArgsConstructor

@@ -1,8 +1,10 @@
 <template>
+  <!-- 凭证交付弹窗：单屏展示全部内容，无需滚动 -->
   <a-modal
     v-model:visible="visibleModel"
     width="1000px"
     :footer="false"
+    :closable="false"
     class="credential-delivery-modal-v2"
     unmount-on-close
     :mask-closable="false"
@@ -350,14 +352,14 @@ async function copyCredentialBundle() {
 :deep(.credential-delivery-modal-v2 .arco-modal-body) {
   padding: 0;
   background: #fff;
-  max-height: 85vh; /* 限制最大高度 */
-  overflow-y: auto; /* 允许内部滚动 */
-  border: none !important; /* 移除 body 边框 */
+  max-height: 96vh; /* 尽可能利用视口高度 */
+  overflow-y: auto; /* 仅在极小屏幕下允许滚动 */
+  border: none !important;
   border-top: none !important;
   border-bottom: none !important;
   border-left: none !important;
   border-right: none !important;
-  border-radius: 24px; /* 添加圆角 */
+  border-radius: 24px;
 }
 
 .credential-cert {
@@ -375,15 +377,15 @@ async function copyCredentialBundle() {
 /* 顶部 Header：冰川蓝渐变 + 装饰性光球 */
 .cert-header {
   position: relative;
-  padding: 20px 40px; /* 减少 padding，从 16px 48px 改为 20px 40px */
+  padding: 16px 32px; /* 紧凑内边距，减少纵向占用 */
   background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
   color: #fff;
   overflow: hidden;
-  border: none !important; /* 确保没有边框 */
-  border-top: none !important; /* 特别移除顶部边框 */
-  margin-top: 0 !important; /* 移除顶部外边距 */
-  border-top-left-radius: 24px; /* 添加顶部圆角 */
-  border-top-right-radius: 24px; /* 添加顶部圆角 */
+  border: none !important;
+  border-top: none !important;
+  margin-top: 0 !important;
+  border-top-left-radius: 24px;
+  border-top-right-radius: 24px;
 }
 
 .cert-header__decoration .orb {
@@ -439,8 +441,8 @@ async function copyCredentialBundle() {
 }
 
 .cert-status__text h2 {
-  margin: 4px 0 0;
-  font-size: 24px;
+  margin: 2px 0 0;
+  font-size: 22px;
   font-weight: 800;
 }
 
@@ -458,20 +460,20 @@ async function copyCredentialBundle() {
   color: #fbbf24;
 }
 
-/* 主体内容 */
+/* 主体内容：紧凑内边距，确保单屏展示 */
 .cert-content {
-  padding: 20px 40px; /* 减少 padding，从 16px 48px 改为 20px 40px */
+  padding: 14px 32px 16px;
 }
 
 .cert-section {
-  margin-bottom: 20px; /* 减少间距，从 16px 改为 20px */
+  margin-bottom: 14px;
 }
 
 .section-title {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 8px;
+  gap: 8px;
+  margin-bottom: 6px;
 }
 
 .section-title .arco-icon {
@@ -481,7 +483,7 @@ async function copyCredentialBundle() {
 
 .section-title h3 {
   margin: 0;
-  font-size: 18px;
+  font-size: 15px;
   font-weight: 700;
   color: #0f172a;
 }
@@ -497,12 +499,12 @@ async function copyCredentialBundle() {
 .key-cards {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16px; /* 减少间距，从 24px 改为 16px */
+  gap: 12px;
 }
 
 .key-card {
-  padding: 12px 20px;
-  border-radius: 20px;
+  padding: 10px 16px;
+  border-radius: 14px;
   background: #fff;
   border: 1px solid #e2e8f0;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -536,20 +538,20 @@ async function copyCredentialBundle() {
 }
 
 .key-card__value {
-  margin-top: 8px;
+  margin-top: 6px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px;
 }
 
 .key-card__value code {
   flex: 1;
-  padding: 6px 10px;
+  padding: 5px 10px;
   background: #0f172a;
   color: #f8fafc;
-  border-radius: 12px;
-  font-size: 14px;
+  border-radius: 10px;
+  font-size: 13px;
   font-family: 'JetBrains Mono', 'Fira Code', monospace;
   word-break: break-all;
 }
@@ -567,27 +569,27 @@ async function copyCredentialBundle() {
   border-color: #3b82f6;
 }
 
-/* 详情网格 */
+/* 详情网格：身份画像 + 运行时配置并排 */
 .cert-grid {
   display: grid;
   grid-template-columns: 1.2fr 1fr;
-  gap: 24px; /* 减少间距，从 40px 改为 24px */
+  gap: 16px;
 }
 
 .profile-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  padding: 12px;
+  gap: 6px;
+  padding: 10px;
   background: #fff;
-  border-radius: 20px;
+  border-radius: 14px;
   border: 1px solid #e2e8f0;
 }
 
 .profile-item {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 3px;
 }
 
 .profile-item__label {
@@ -618,17 +620,17 @@ async function copyCredentialBundle() {
 .runtime-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  margin-bottom: 12px;
+  gap: 6px;
+  margin-bottom: 8px;
 }
 
 .runtime-item {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 8px;
+  gap: 4px;
+  padding: 6px 8px;
   background: #fff;
-  border-radius: 16px;
+  border-radius: 10px;
   border: 1px solid #e2e8f0;
 }
 
@@ -643,14 +645,14 @@ async function copyCredentialBundle() {
 }
 
 .whitelist-summary {
-  padding: 10px;
+  padding: 8px 10px;
   background: rgba(241, 245, 249, 0.5);
-  border-radius: 16px;
+  border-radius: 10px;
   border: 1px dashed #cbd5e1;
 }
 
 .whitelist-summary p {
-  margin: 0 0 10px;
+  margin: 0 0 6px;
   font-size: 12px;
   font-weight: 700;
   color: #64748b;
@@ -668,23 +670,23 @@ async function copyCredentialBundle() {
   font-style: italic;
 }
 
-/* 底部功能区 */
+/* 底部功能区：紧凑排列 */
 .cert-footer {
-  margin-top: 8px; /* 减少间距，从 4px 改为 8px */
-  padding-top: 20px; /* 减少 padding，从 16px 改为 20px */
+  margin-top: 4px;
+  padding-top: 12px;
   border-top: 1px solid #e2e8f0;
 }
 
 .safety-notices {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 12px; /* 增加间距，从 10px 改为 12px */
-  margin-bottom: 16px; /* 减少间距，从 12px 改为 16px */
+  gap: 10px;
+  margin-bottom: 12px;
 }
 
 .safety-notice {
   display: flex;
-  gap: 12px;
+  gap: 8px;
 }
 
 .safety-notice .arco-icon {
@@ -695,7 +697,7 @@ async function copyCredentialBundle() {
 
 .safety-notice strong {
   display: block;
-  font-size: 14px;
+  font-size: 13px;
   color: #1e293b;
 }
 

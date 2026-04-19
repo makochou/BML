@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
  *
  * @author BML Team
  */
-@Tag(name = "服务器监控", description = "提供硬件、环境监控及 JVM 治理功能")
+@Tag(name = "硬件监测", description = "提供硬件、环境监控及 JVM 治理功能")
 @RestController
 @RequestMapping("/system/monitor")
 public class SysServerMonitorController {

@@ -69,9 +69,8 @@
         <!-- MariaDB JDBC 驱动 -->
         <mariadb.version>3.4.1</mariadb.version>
 
-        <!-- ── 缓存与分布式 ── -->
         <!-- Redisson 提供 Redis 分布式锁、分布式集合等高级功能 -->
-        <redisson.version>3.37.0</redisson.version>
+        <redisson.version>3.40.0</redisson.version>
 
         <!-- ── 工具库 ── -->
         <!-- Lombok：编译期代码生成，减少样板代码 -->
@@ -95,9 +94,12 @@
         <!-- BouncyCastle：提供 AES/RSA 等高强度加密算法，用于 SecretKey 加密存储 -->
         <bouncycastle.version>1.79</bouncycastle.version>
 
-        <!-- ── 系统监控 ── -->
+        <!-- 系统监控 -->
         <!-- OSHI：跨平台系统信息库，用于采集 CPU/内存/磁盘/JVM 等指标 -->
         <oshi.version>6.6.5</oshi.version>
+
+        <!-- Lombok 与 MapStruct 桥接插件版本 -->
+        <lombok-mapstruct-binding.version>0.2.0</lombok-mapstruct-binding.version>
 
         <!-- ── Maven 插件版本 ── -->
         <!-- 所有插件版本统一在此处锁定，避免子模块自行漂移 -->
@@ -389,6 +391,11 @@
                             <groupId>org.mapstruct</groupId>
                             <artifactId>mapstruct-processor</artifactId>
                             <version>${mapstruct.version}</version>
+                        </path>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok-mapstruct-binding</artifactId>
+                            <version>${lombok-mapstruct-binding.version}</version>
                         </path>
                     </annotationProcessorPaths>
                 </configuration>

@@ -4,6 +4,7 @@ import com.bml.core.common.enums.GlobalErrorCode;
 import com.bml.core.common.result.Result;
 import com.bml.core.framework.license.BmlLicense;
 import com.bml.core.framework.license.BmlLicenseHolder;
+import com.bml.core.framework.license.LicenseQuotaEnforcer;
 import com.bml.module.system.vo.LicenseStatusVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -16,11 +17,15 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.sql.DataSource;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 
 /**
  * 许可证管理控制器。
@@ -43,15 +48,32 @@ import java.nio.file.StandardCopyOption;
  * @author BML Team
  */
 @Slf4j
-@Tag(name = "许可证管理", description = "许可证上传与状态查询")
+@Tag(name = "授权管理", description = "许可证上传与状态查询")
 @RestController
 @RequestMapping("/system/license")
 public class SysLicenseController {
 
     private final BmlLicenseHolder licenseHolder;
 
-    public SysLicenseController(BmlLicenseHolder licenseHolder) {
+    /**
+     * 使用 DataSource 原生 JDBC 查询当前配额使用量。
+     * 由于 sys_api_account 实体属于 bml-module-api 模块，
+     * 此处通过原生 JDBC 直接计数以避免跨模块编译依赖。
+     * DataSource 由 Spring Boot 数据源自动配置提供，无需额外引入依赖。
+     */
+    private final DataSource dataSource;
+
+    /**
+     * 许可证配额强制执行器。
+     * 许可证更新/上传后自动冻结超额用户，确保系统始终符合授权约束。
+     */
+    private final LicenseQuotaEnforcer licenseQuotaEnforcer;
+
+    public SysLicenseController(BmlLicenseHolder licenseHolder, DataSource dataSource,
+                                LicenseQuotaEnforcer licenseQuotaEnforcer) {
         this.licenseHolder = licenseHolder;
+        this.dataSource = dataSource;
+        this.licenseQuotaEnforcer = licenseQuotaEnforcer;
     }
 
     /**
@@ -71,6 +93,10 @@ public class SysLicenseController {
                 licenseHolder.isEnabled(),
                 licenseHolder.getLastError());
         vo.setFilePath(licenseHolder.resolveLicensePath().toAbsolutePath().toString());
+
+        // 填充当前配额使用量，供前端配额进度展示
+        populateCurrentUsage(vo);
+
         return Result.ok(vo);
     }
 
@@ -156,11 +182,16 @@ public class SysLicenseController {
         // 重新加载
         licenseHolder.reload();
 
+        // 配额降级时自动冻结超额资源（用户 + API 账号）
+        LicenseQuotaEnforcer.EnforceResult enforceResult =
+                licenseQuotaEnforcer.enforceAll(licenseHolder.getCurrentLicense());
+
         LicenseStatusVO vo = LicenseStatusVO.from(
                 licenseHolder.getCurrentLicense(),
                 licenseHolder.isEnabled(),
                 licenseHolder.getLastError());
         vo.setFilePath(licenseHolder.resolveLicensePath().toAbsolutePath().toString());
+        applyEnforceResult(vo, enforceResult);
         return Result.ok(vo);
     }
 
@@ -234,11 +265,20 @@ public class SysLicenseController {
         // 5. 重新加载
         licenseHolder.reload();
 
+        // 6. 配额降级时自动冻结超额资源（用户 + API 账号）
+        LicenseQuotaEnforcer.EnforceResult enforceResult =
+                licenseQuotaEnforcer.enforceAll(licenseHolder.getCurrentLicense());
+        if (enforceResult.hasEnforcement()) {
+            log.info("[License] 许可证更新后配额降级执行报告：冻结用户={}, 冻结API账号={}",
+                    enforceResult.getFrozenUserCount(), enforceResult.getFrozenApiAccountCount());
+        }
+
         LicenseStatusVO vo = LicenseStatusVO.from(
                 licenseHolder.getCurrentLicense(),
                 licenseHolder.isEnabled(),
                 licenseHolder.getLastError());
         vo.setFilePath(licenseHolder.resolveLicensePath().toAbsolutePath().toString());
+        applyEnforceResult(vo, enforceResult);
         return Result.ok(vo);
     }
 
@@ -274,5 +314,117 @@ public class SysLicenseController {
                 licenseHolder.getLastError());
         vo.setFilePath(licensePath.toAbsolutePath().toString());
         return Result.ok(vo);
+    }
+
+    // ======================== 私有方法 ========================
+
+    /**
+     * 将配额强制执行结果映射到 VO。
+     *
+     * @param vo 许可证状态 VO
+     * @param result 配额强制执行结果
+     */
+    private void applyEnforceResult(LicenseStatusVO vo, LicenseQuotaEnforcer.EnforceResult result) {
+        if (result == null) {
+            return;
+        }
+        vo.setFrozenUserCount(result.getFrozenUserCount() > 0 ? result.getFrozenUserCount() : null);
+        vo.setFrozenApiAccountCount(result.getFrozenApiAccountCount() > 0 ? result.getFrozenApiAccountCount() : null);
+        vo.setFrozenApiUserCount(result.getFrozenApiUserCount() > 0 ? result.getFrozenApiUserCount() : null);
+    }
+
+    /**
+     * 填充当前配额使用量。
+     * <p>
+     * 通过原生 JDBC 直接查询数据库计数，避免跨模块编译依赖。
+     * 同时统计「总数」和「启用数」，供前端展示详细的配额使用分布。
+     * 查询失败时不影响主流程，仅记录日志并保留使用量为 null。
+     * </p>
+     *
+     * @param vo 许可证状态 VO
+     */
+    private void populateCurrentUsage(LicenseStatusVO vo) {
+        // 注意：BaseEntity 使用 @TableLogic 逻辑删除（deleted=0 存在，deleted=1 已删除），
+        // 此处必须加 WHERE deleted = 0 与 MyBatis-Plus 的 count() 保持一致。
+
+        // 业务用户统计 (系统/管理员手工创建的，或所有用户)
+        // 按照要求，“业务用户上限”通常指所有可登录的业务用户。如果也包含API创建的用户，就是查全表。
+        // 原有逻辑是查全表，我们保持不变。
+        vo.setCurrentTotalUsers(countTable("sys_user"));
+        vo.setActiveTotalUsers(countTableByStatus("sys_user", 1));
+
+        // API 账号自身维度统计
+        vo.setCurrentApiAccounts(countTable("sys_api_account"));
+        vo.setActiveApiAccounts(countTableByStatus("sys_api_account", 1));
+
+        // API 账号全局累计创建的业务用户统计
+        // 由于安全框架设计：API账号鉴权后构造的 OpenApiLoginUser 会将其 userId 设为负数的 accountId。
+        // 因此 create_by < 0 的记录即为所有 API 账号创建的资源。
+        vo.setCurrentApiUsers(countSysUserCreatedByApi());
+        vo.setActiveApiUsers(countActiveSysUserCreatedByApi());
+    }
+
+    private long countSysUserCreatedByApi() {
+        String sql = "SELECT COUNT(*) FROM sys_user WHERE deleted = 0 AND create_by < 0";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            return rs.next() ? rs.getLong(1) : 0L;
+        } catch (Exception ex) {
+            log.debug("[License] 查询 API 创建用户总量失败: {}", ex.getMessage());
+            return 0L;
+        }
+    }
+
+    private long countActiveSysUserCreatedByApi() {
+        String sql = "SELECT COUNT(*) FROM sys_user WHERE deleted = 0 AND status = 1 AND create_by < 0";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            return rs.next() ? rs.getLong(1) : 0L;
+        } catch (Exception ex) {
+            log.debug("[License] 查询 API 创建的活跃用户量失败: {}", ex.getMessage());
+            return 0L;
+        }
+    }
+
+    /**
+     * 通过原生 JDBC 统计指定表中未删除记录数。
+     * 查询失败时返回 0（表可能尚未创建），不影响主流程。
+     *
+     * @param tableName 表名
+     * @return 记录数
+     */
+    private long countTable(String tableName) {
+        String sql = "SELECT COUNT(*) FROM " + tableName + " WHERE deleted = 0";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            return rs.next() ? rs.getLong(1) : 0L;
+        } catch (Exception ex) {
+            log.debug("[License] 查询 {} 数量失败（表可能尚未创建）: {}", tableName, ex.getMessage());
+            return 0L;
+        }
+    }
+
+    /**
+     * 通过原生 JDBC 统计指定表中指定状态的未删除记录数。
+     *
+     * @param tableName 表名
+     * @param status 状态值（1=启用，0=停用）
+     * @return 记录数
+     */
+    private long countTableByStatus(String tableName, int status) {
+        String sql = "SELECT COUNT(*) FROM " + tableName + " WHERE deleted = 0 AND status = ?";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, status);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getLong(1) : 0L;
+            }
+        } catch (Exception ex) {
+            log.debug("[License] 查询 {} status={} 数量失败: {}", tableName, status, ex.getMessage());
+            return 0L;
+        }
     }
 }

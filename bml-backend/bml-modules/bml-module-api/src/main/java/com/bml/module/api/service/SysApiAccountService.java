@@ -6,6 +6,7 @@ import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.bml.core.common.exception.BusinessException;
+import com.bml.core.common.constant.GlobalConstants;
 import com.bml.core.common.result.PageResult;
 import com.bml.core.common.support.ApiIpWhitelistSupport;
 import com.bml.core.framework.license.LicenseQuotaChecker;
@@ -211,6 +212,10 @@ public class SysApiAccountService extends ServiceImpl<SysApiAccountMapper, SysAp
         validateAccountNameUnique(accountName, id);
         String accessEnvironment = normalizeAccessEnvironment(command.getAccessEnvironment());
 
+        // 许可证配额校验：如果状态变更为「启用」，检查活跃账号数是否会超额
+        Integer newStatus = command.getStatus() == null ? DEFAULT_STATUS : command.getStatus();
+        checkEnableQuotaIfNeeded(account, newStatus);
+
         account.setAccountName(accountName);
         account.setDescription(normalizeDescription(command.getDescription()));
         account.setAccountType(command.getAccountType() == null ? DEFAULT_ACCOUNT_TYPE : command.getAccountType());
@@ -226,7 +231,7 @@ public class SysApiAccountService extends ServiceImpl<SysApiAccountMapper, SysAp
         account.setCallbackUrl(normalizeCallbackUrl(command.getCallbackUrl()));
         account.setRateLimit(command.getRateLimit() == null ? DEFAULT_RATE_LIMIT : command.getRateLimit());
         account.setExpireTime(command.getExpireTime());
-        account.setStatus(command.getStatus() == null ? DEFAULT_STATUS : command.getStatus());
+        account.setStatus(newStatus);
         account.setRemark(normalizeRemark(command.getRemark()));
         return this.updateById(account);
     }
@@ -261,6 +266,10 @@ public class SysApiAccountService extends ServiceImpl<SysApiAccountMapper, SysAp
     @Transactional(rollbackFor = Exception.class)
     public boolean updateAccountStatus(Long id, Integer status) {
         SysApiAccount account = getRequiredAccount(id);
+
+        // 许可证配额校验：如果状态变更为「启用」，检查活跃账号数是否会超额
+        checkEnableQuotaIfNeeded(account, status);
+
         account.setStatus(status);
         return this.updateById(account);
     }
@@ -589,6 +598,32 @@ public class SysApiAccountService extends ServiceImpl<SysApiAccountMapper, SysAp
                 accessEnvironment,
                 environmentWhitelistMap,
                 fallbackWhitelist);
+    }
+
+    /**
+     * 校验启用 API 账号时是否会超出许可证配额。
+     * <p>
+     * 仅在账号从「停用」变更为「启用」时触发校验。
+     * 统计当前所有启用状态的账号数，如果已达上限则拒绝操作。
+     * </p>
+     *
+     * @param account 当前账号实体（已从数据库加载的原始状态）
+     * @param newStatus 即将设置的新状态值
+     */
+    private void checkEnableQuotaIfNeeded(SysApiAccount account, Integer newStatus) {
+        // 仅处理「从停用变更为启用」的场景
+        if (!GlobalConstants.STATUS_NORMAL.equals(newStatus)) {
+            return;
+        }
+        if (GlobalConstants.STATUS_NORMAL.equals(account.getStatus())) {
+            // 状态未变化（本来就是启用的），无需校验
+            return;
+        }
+        // 统计当前活跃 API 账号数（不含本账号，因为本账号当前是停用状态）
+        long activeAccountCount = baseMapper.selectCount(
+                new LambdaQueryWrapper<SysApiAccount>()
+                        .eq(SysApiAccount::getStatus, GlobalConstants.STATUS_NORMAL));
+        licenseQuotaChecker.checkEnableApiAccountQuota(activeAccountCount);
     }
 
     /**

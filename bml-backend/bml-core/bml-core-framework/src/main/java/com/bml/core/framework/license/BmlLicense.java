@@ -22,7 +22,7 @@ import java.util.List;
  *     <li>{@code productVersion}：授权的产品版本号</li>
  *     <li>{@code features}：授权的功能模块列表</li>
  *     <li>{@code maxApiAccounts}：最大 API 账号数量</li>
- *     <li>{@code maxUsersPerAccount}：单个 API 账号最大用户数</li>
+ *     <li>{@code maxUsersPerAccount}：允许 API 账号调用新增的用户数</li>
  *     <li>{@code maxTotalUsers}：前端业务系统最大用户数（不含中台管理员）</li>
  *     <li>{@code issueDate}：签发日期</li>
  *     <li>{@code expireDate}：到期日期</li>
@@ -55,7 +55,7 @@ public class BmlLicense implements Serializable {
     /** 最大 API 账号数量（0 表示不限） */
     private int maxApiAccounts;
 
-    /** 单个 API 账号最大用户配额（0 表示不限） */
+    /** 允许 API 账号调用新增的用户数（0 表示不限） */
     private int maxUsersPerAccount;
 
     /**

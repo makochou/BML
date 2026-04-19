@@ -84,7 +84,6 @@
               <div class="authorization-tree-actions">
                 <a-button @click="$emit('selectVisible')">全选当前视图</a-button>
                 <a-button @click="$emit('clearVisible')">清空当前视图</a-button>
-                <a-button type="primary" :loading="saving" @click="$emit('save')">提交</a-button>
               </div>
             </div>
             <div class="authorization-tree-shell">

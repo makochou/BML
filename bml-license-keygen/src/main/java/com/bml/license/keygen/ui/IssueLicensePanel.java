@@ -123,12 +123,13 @@ public class IssueLicensePanel extends JPanel {
         JPanel quotaCard = createCard("配额设置");
         quotaCard.setLayout(new MigLayout("insets 12 16 12 16, gap 8 8", "[][120!]", "[][][]"));
 
+        /* 排列顺序与前端配额面板保持一致：业务用户上限 → 最大 API 账号 → 允许 API 账号调用新增用户 */
+        quotaCard.add(createLabel("业务用户上限"), "right");
+        quotaCard.add(maxTotalUsersSpinner, "growx, wrap");
         quotaCard.add(createLabel("最大 API 账号"), "right");
         quotaCard.add(maxApiAccountsSpinner, "growx, wrap");
-        quotaCard.add(createLabel("单账号最大用户"), "right");
+        quotaCard.add(createLabel("允许API账号调用新增用户"), "right");
         quotaCard.add(maxUsersPerAccountSpinner, "growx, wrap");
-        quotaCard.add(createLabel("业务用户数"), "right");
-        quotaCard.add(maxTotalUsersSpinner, "growx, wrap");
 
         JLabel quotaHint = new JLabel("* 0 = 不限制");
         quotaHint.setFont(new Font("微软雅黑", Font.ITALIC, 11));
@@ -328,6 +329,7 @@ public class IssueLicensePanel extends JPanel {
      * 构建确认弹窗消息。
      */
     private String buildConfirmMessage(LicensePayload p) {
+        /* 配额展示顺序与前端配额面板保持一致：业务用户上限 → 最大 API 账号 → 允许 API 账号调用新增用户 */
         return String.format("""
                 \u8bf7\u786e\u8ba4\u4ee5\u4e0b\u8bb8\u53ef\u8bc1\u4fe1\u606f\uff1a
 
@@ -335,18 +337,18 @@ public class IssueLicensePanel extends JPanel {
                 \u5ba2\u6237\u7f16\u7801:  %s
                 \u4ea7\u54c1\u7248\u672c:  %s
                 \u6388\u6743\u6a21\u5757:  %s
+                \u4e1a\u52a1\u7528\u6237\u4e0a\u9650: %s
                 \u6700\u5927API\u8d26\u53f7: %s
-                \u5355\u8d26\u53f7\u7528\u6237: %s
-                \u5168\u5c40\u7528\u6237:    %s
+                \u5141\u8bb8API\u8d26\u53f7\u8c03\u7528\u65b0\u589e\u7528\u6237: %s
                 \u5230\u671f\u65e5\u671f:  %s
                 """,
                 p.getCustomerName(),
                 p.getCustomerCode(),
                 p.getProductVersion(),
                 p.getFeatures() != null ? String.join(", ", p.getFeatures()) : "\u65e0",
+                p.getMaxTotalUsers() == 0 ? "\u4e0d\u9650" : p.getMaxTotalUsers(),
                 p.getMaxApiAccounts() == 0 ? "\u4e0d\u9650" : p.getMaxApiAccounts(),
                 p.getMaxUsersPerAccount() == 0 ? "\u4e0d\u9650" : p.getMaxUsersPerAccount(),
-                p.getMaxTotalUsers() == 0 ? "\u4e0d\u9650" : p.getMaxTotalUsers(),
                 p.getExpireDate());
     }
 
@@ -452,9 +454,9 @@ public class IssueLicensePanel extends JPanel {
         sb.append(">> 产品版本: ").append(nullSafe(payload.getProductVersion())).append("\n");
         sb.append(">> 签发日期: ").append(payload.getIssueDate() != null ? payload.getIssueDate().format(DATE_FMT) : "-").append("\n");
         sb.append(">> 到期日期: ").append(payload.getExpireDate() != null ? payload.getExpireDate().format(DATE_FMT) : "-").append("\n");
-        sb.append(">> 配额: API账号=").append(formatQuota(payload.getMaxApiAccounts()));
-        sb.append(", 单账号用户=").append(formatQuota(payload.getMaxUsersPerAccount()));
-        sb.append(", 业务用户=").append(formatQuota(payload.getMaxTotalUsers())).append("\n");
+        sb.append(">> 配额: 业务用户上限=").append(formatQuota(payload.getMaxTotalUsers()));
+        sb.append(", API账号=").append(formatQuota(payload.getMaxApiAccounts()));
+        sb.append(", 允许API账号调用新增用户=").append(formatQuota(payload.getMaxUsersPerAccount())).append("\n");
 
         if (payload.getFeatures() != null && !payload.getFeatures().isEmpty()) {
             sb.append(">> 授权模块: ").append(String.join(", ", payload.getFeatures())).append("\n");

@@ -308,22 +308,101 @@ public class ServerMonitorServiceImpl implements ServerMonitorService {
         return total;
     }
 
+    /**
+     * 解析服务器公网 IP。
+     * <p>
+     * 策略：
+     * <ol>
+     *   <li>若功能未启用，直接返回"未启用"；</li>
+     *   <li>若缓存未过期（1小时内），直接返回缓存值，避免频繁外网请求；</li>
+     *   <li>依次尝试多个国内可用的公网 IP 查询服务（主用 + 备用），任意一个成功即返回；</li>
+     *   <li>全部失败时返回"获取失败"，不再使用"离线或不可达"等歧义文案。</li>
+     * </ol>
+     * </p>
+     *
+     * <p>
+     * 国内可用的公网 IP 查询服务列表（按优先级排序）：
+     * <ul>
+     *   <li>主配置：由 {@code bml.monitor.public-ip-provider-url} 指定（默认 ipinfo.io/ip）</li>
+     *   <li>备用1：https://myip.ipip.net（国内 CDN，速度快）</li>
+     *   <li>备用2：https://ip.3322.net（老牌国内服务）</li>
+     *   <li>备用3：https://api.ipify.org（国际服务，作为最后兜底）</li>
+     * </ul>
+     * </p>
+     *
+     * @return 公网 IP 字符串，或状态描述文案
+     */
     private String resolvePublicIp() {
         if (!publicIpEnabled) {
             return "未启用";
         }
         long currentTime = System.currentTimeMillis();
-        if (cachedPublicIp != null && currentTime - lastPublicIpRefreshTime < PUBLIC_IP_REFRESH_INTERVAL_MS) {
+        // 缓存命中：1小时内不重复请求外网，避免频繁调用
+        if (cachedPublicIp != null
+                && !cachedPublicIp.equals("未启用")
+                && !cachedPublicIp.equals("获取失败")
+                && currentTime - lastPublicIpRefreshTime < PUBLIC_IP_REFRESH_INTERVAL_MS) {
             return cachedPublicIp;
         }
-        try {
-            String wanIp = cn.hutool.http.HttpUtil.get(publicIpProviderUrl, 2000);
-            cachedPublicIp = wanIp == null || wanIp.isBlank() ? "获取失败" : wanIp.trim();
-        } catch (Exception ex) {
-            cachedPublicIp = "离线或不可达";
+
+        // 备用查询地址列表：主配置优先，依次降级
+        // 全部为国内可访问的服务，避免 checkip.amazonaws.com 境外超时问题
+        String[] providers = {
+                publicIpProviderUrl,          // 主配置（默认 https://ipinfo.io/ip）
+                "https://myip.ipip.net",      // 备用1：国内 CDN，返回格式 "当前 IP：x.x.x.x"
+                "https://ip.3322.net",        // 备用2：老牌国内服务，直接返回 IP
+                "https://api.ipify.org"       // 备用3：国际兜底
+        };
+
+        for (String provider : providers) {
+            try {
+                // 超时设置为 3 秒，避免单个服务阻塞过久
+                String raw = cn.hutool.http.HttpUtil.get(provider, 3000);
+                if (raw == null || raw.isBlank()) {
+                    continue;
+                }
+                // myip.ipip.net 返回格式为 "当前 IP：1.2.3.4  来自于：..."，需要提取 IP 部分
+                String ip = extractIpFromResponse(raw.trim());
+                if (ip != null && !ip.isBlank()) {
+                    cachedPublicIp = ip;
+                    lastPublicIpRefreshTime = currentTime;
+                    return cachedPublicIp;
+                }
+            } catch (Exception ex) {
+                // 当前服务不可用，静默跳过，尝试下一个备用地址
+            }
         }
+
+        // 所有服务均不可用
+        cachedPublicIp = "获取失败";
         lastPublicIpRefreshTime = currentTime;
         return cachedPublicIp;
+    }
+
+    /**
+     * 从公网 IP 查询服务的响应文本中提取纯 IP 地址。
+     * <p>
+     * 不同服务返回格式不同：
+     * <ul>
+     *   <li>ipinfo.io / ip.3322.net / api.ipify.org：直接返回 IP，如 {@code 1.2.3.4}</li>
+     *   <li>myip.ipip.net：返回 {@code 当前 IP：1.2.3.4  来自于：中国 北京}</li>
+     * </ul>
+     * 使用正则统一提取，兼容所有格式。
+     * </p>
+     *
+     * @param raw 原始响应文本
+     * @return 提取到的 IP 地址，若无法提取则返回 null
+     */
+    private String extractIpFromResponse(String raw) {
+        // 使用正则匹配 IPv4 地址（兼容各种响应格式）
+        java.util.regex.Pattern ipPattern = java.util.regex.Pattern.compile(
+                "\\b(\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3})\\b"
+        );
+        java.util.regex.Matcher matcher = ipPattern.matcher(raw);
+        if (matcher.find()) {
+            return matcher.group(1);
+        }
+        return null;
     }
 
     private String formatDiskSize(long size) {
