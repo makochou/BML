@@ -43,8 +43,8 @@
       </a-table>
     </div>
 
-    <!-- 新增/编辑弹窗 -->
-    <a-modal v-model:visible="dialogVisible" :title="dialogTitle" :width="580" :mask-closable="false" @before-ok="handleSubmit">
+    <!-- 新增/编辑弹窗（BmlModal：支持拖拽、缩放、全屏） -->
+    <BmlModal v-model:visible="dialogVisible" :title="dialogTitle" :width="640" :height="560" :min-width="480" :min-height="360">
       <a-form :model="formData" ref="formRef" :rules="formRules" layout="vertical">
         <a-row :gutter="16">
           <a-col :span="12">
@@ -111,7 +111,11 @@
           </a-col>
         </a-row>
       </a-form>
-    </a-modal>
+      <template #footer>
+        <a-button @click="dialogVisible = false">取消</a-button>
+        <a-button type="primary" :loading="submitting" @click="handleSubmit">确定</a-button>
+      </template>
+    </BmlModal>
   </div>
 </template>
 
@@ -121,6 +125,7 @@ import { Message } from '@arco-design/web-vue';
 import { IconSearch, IconRefresh, IconPlus, IconEdit, IconDelete } from '@arco-design/web-vue/es/icon';
 import { fetchUserList, createUser, updateUser, deleteUser, type UserVO, type UserForm } from '../../../../api/system';
 import { fetchRoleList, type RoleVO } from '../../../../api/system';
+import BmlModal from '../../../../components/BmlModal.vue';
 
 const loading = ref(false);
 const tableData = ref<UserVO[]>([]);
@@ -171,10 +176,12 @@ const handleEdit = (row: UserVO) => {
   dialogVisible.value = true;
 };
 
-const handleSubmit = async (done: (closed: boolean) => void) => {
+const submitting = ref(false);
+const handleSubmit = async () => {
   try {
     const errors = await formRef.value?.validate();
-    if (errors) { done(false); return; }
+    if (errors) return;
+    submitting.value = true;
     if (formData.id) {
       await updateUser(formData);
       Message.success('修改成功');
@@ -182,9 +189,10 @@ const handleSubmit = async (done: (closed: boolean) => void) => {
       await createUser(formData);
       Message.success('新增成功');
     }
-    done(true);
+    dialogVisible.value = false;
     loadData();
-  } catch { done(false); }
+  } catch { /* 保持弹窗打开 */ }
+  finally { submitting.value = false; }
 };
 
 const handleDelete = async (id: number) => {

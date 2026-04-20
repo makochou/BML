@@ -1,10 +1,11 @@
 package com.bml.core.framework.license;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import lombok.Data;
 
 import java.io.Serializable;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -68,22 +69,29 @@ public class BmlLicense implements Serializable {
      */
     private int maxTotalUsers;
 
-    /** 许可证签发日期 */
-    private LocalDate issueDate;
+    /** 许可证签发日期（精确到时分秒，兼容旧版仅日期格式） */
+    @JsonDeserialize(using = FlexibleLocalDateTimeDeserializer.class)
+    private LocalDateTime issueDate;
 
-    /** 许可证到期日期 */
-    private LocalDate expireDate;
+    /** 许可证到期日期（精确到时分秒，兼容旧版仅日期格式） */
+    @JsonDeserialize(using = FlexibleLocalDateTimeDeserializer.class)
+    private LocalDateTime expireDate;
 
     /** 附加说明信息 */
     private String remark;
 
     /**
      * 判断许可证是否已过期。
+     * <p>
+     * 比较精确到秒：当前时间超过 expireDate 则视为过期。
+     * 旧版许可证反序列化后 expireDate 为当天 00:00:00，
+     * 即到期日当天就会被视为过期（与旧版 LocalDate.isAfter 行为一致）。
+     * </p>
      *
      * @return 已过期返回 {@code true}
      */
     public boolean isExpired() {
-        return expireDate != null && LocalDate.now().isAfter(expireDate);
+        return expireDate != null && LocalDateTime.now().isAfter(expireDate);
     }
 
     /**

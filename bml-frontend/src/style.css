@@ -203,9 +203,24 @@ samp {
   border-radius: var(--bml-radius-lg) 0 0 var(--bml-radius-lg);
 }
 
-/* 统一 Message 提示样式 */
+/* 统一 Message 提示样式 ——
+   容器固定在视口顶部居中，z-index 拉到最高层确保不被遮挡 */
+.arco-message-wrapper {
+  position: fixed !important;
+  top: 8px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  z-index: 9999 !important;
+  pointer-events: none;
+}
+
+.arco-message-wrapper .arco-message {
+  pointer-events: auto;
+}
+
 .arco-message {
   border-radius: var(--bml-radius-md) !important;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12) !important;
 }
 
 /* 统一 Tag 圆角 */

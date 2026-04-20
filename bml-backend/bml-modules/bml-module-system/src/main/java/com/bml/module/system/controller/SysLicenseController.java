@@ -5,6 +5,8 @@ import com.bml.core.common.result.Result;
 import com.bml.core.framework.license.BmlLicense;
 import com.bml.core.framework.license.BmlLicenseHolder;
 import com.bml.core.framework.license.LicenseQuotaEnforcer;
+import com.bml.module.system.entity.SysAlert;
+import com.bml.module.system.service.ISysAlertService;
 import com.bml.module.system.vo.LicenseStatusVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -69,11 +71,19 @@ public class SysLicenseController {
      */
     private final LicenseQuotaEnforcer licenseQuotaEnforcer;
 
+    /**
+     * 系统告警服务。
+     * 许可证配额降级时自动写入告警记录，由前端告警中心统一展示。
+     */
+    private final ISysAlertService sysAlertService;
+
     public SysLicenseController(BmlLicenseHolder licenseHolder, DataSource dataSource,
-                                LicenseQuotaEnforcer licenseQuotaEnforcer) {
+                                LicenseQuotaEnforcer licenseQuotaEnforcer,
+                                ISysAlertService sysAlertService) {
         this.licenseHolder = licenseHolder;
         this.dataSource = dataSource;
         this.licenseQuotaEnforcer = licenseQuotaEnforcer;
+        this.sysAlertService = sysAlertService;
     }
 
     /**
@@ -186,6 +196,9 @@ public class SysLicenseController {
         LicenseQuotaEnforcer.EnforceResult enforceResult =
                 licenseQuotaEnforcer.enforceAll(licenseHolder.getCurrentLicense());
 
+        // 配额降级记录写入告警中心（由前端轮询自动弹窗展示）
+        createQuotaDowngradeAlerts(enforceResult);
+
         LicenseStatusVO vo = LicenseStatusVO.from(
                 licenseHolder.getCurrentLicense(),
                 licenseHolder.isEnabled(),
@@ -273,6 +286,9 @@ public class SysLicenseController {
                     enforceResult.getFrozenUserCount(), enforceResult.getFrozenApiAccountCount());
         }
 
+        // 配额降级记录写入告警中心（由前端轮询自动弹窗展示）
+        createQuotaDowngradeAlerts(enforceResult);
+
         LicenseStatusVO vo = LicenseStatusVO.from(
                 licenseHolder.getCurrentLicense(),
                 licenseHolder.isEnabled(),
@@ -317,6 +333,63 @@ public class SysLicenseController {
     }
 
     // ======================== 私有方法 ========================
+
+    /**
+     * 许可证配额降级后，将降级详情写入 sys_alert 告警表。
+     * <p>
+     * 写入的告警会被前端 30 秒轮询自动捕获，并通过 AlertToast 弹窗 + 告警中心统一展示。
+     * 每种被降级的资源维度生成一条独立告警，便于运维逐条确认处理。
+     * </p>
+     *
+     * @param result 配额强制执行结果
+     */
+    private void createQuotaDowngradeAlerts(LicenseQuotaEnforcer.EnforceResult result) {
+        if (result == null || !result.hasEnforcement()) {
+            return;
+        }
+
+        // 业务用户被冻结
+        if (result.getFrozenUserCount() > 0) {
+            SysAlert alert = new SysAlert();
+            alert.setAlertType("LICENSE_QUOTA_DOWNGRADE");
+            alert.setAlertLevel("warning");
+            alert.setAlertTitle("业务用户上限降级");
+            alert.setAlertContent(String.format(
+                    "许可证配额调整：已自动停用 %d 个最近创建的业务用户，请前往用户管理页面确认被停用的资源。",
+                    result.getFrozenUserCount()));
+            alert.setReadStatus(0);
+            sysAlertService.save(alert);
+        }
+
+        // API 账号被冻结
+        if (result.getFrozenApiAccountCount() > 0) {
+            SysAlert alert = new SysAlert();
+            alert.setAlertType("LICENSE_QUOTA_DOWNGRADE");
+            alert.setAlertLevel("warning");
+            alert.setAlertTitle("API 账号上限降级");
+            alert.setAlertContent(String.format(
+                    "许可证配额调整：已自动停用 %d 个最近创建的 API 账号，请前往授权管理页面确认被停用的资源。",
+                    result.getFrozenApiAccountCount()));
+            alert.setReadStatus(0);
+            sysAlertService.save(alert);
+        }
+
+        // API 来源用户被冻结
+        if (result.getFrozenApiUserCount() > 0) {
+            SysAlert alert = new SysAlert();
+            alert.setAlertType("LICENSE_QUOTA_DOWNGRADE");
+            alert.setAlertLevel("warning");
+            alert.setAlertTitle("API 来源用户上限降级");
+            alert.setAlertContent(String.format(
+                    "许可证配额调整：已自动停用 %d 个最近由 API 创建的业务用户，请前往用户管理页面确认被停用的资源。",
+                    result.getFrozenApiUserCount()));
+            alert.setReadStatus(0);
+            sysAlertService.save(alert);
+        }
+
+        log.info("[License] 配额降级告警已写入告警中心：冻结用户={}, 冻结API账号={}, 冻结API用户={}",
+                result.getFrozenUserCount(), result.getFrozenApiAccountCount(), result.getFrozenApiUserCount());
+    }
 
     /**
      * 将配额强制执行结果映射到 VO。

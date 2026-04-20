@@ -6,7 +6,7 @@
             <div class="brand-logo">
                 <icon-thunderbolt />
             </div>
-            <h1 class="brand-name">BML<span class="highlight">Pro</span></h1>
+            <h1 class="brand-name">BML</h1>
             <p class="brand-slogan">企业级 API 中台管理解决方案</p>
         </div>
         <div class="illustration">
@@ -183,9 +183,6 @@ onUnmounted(() => {
     letter-spacing: 1px;
 }
 
-.brand-name .highlight {
-    color: #ffd700;
-}
 
 .brand-slogan {
     font-size: 16px;

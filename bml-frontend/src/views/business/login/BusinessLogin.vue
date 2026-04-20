@@ -1,129 +1,269 @@
 <template>
-  <div class="business-login-wrapper">
-    <!-- 背景装饰 -->
-    <div class="bg-decoration">
-      <div class="bg-circle bg-circle-1"></div>
-      <div class="bg-circle bg-circle-2"></div>
-      <div class="bg-circle bg-circle-3"></div>
-    </div>
+  <!-- ======================================================================
+       BML 业务系统登录页（左右分栏布局）
+       ======================================================================
+       设计特点：
+         1. 左侧 60%：展示区（可替换背景图 + 品牌信息叠加 + 微光动画）
+         2. 右侧 40%：纯白登录表单区（简约、干净、易读）
+         3. 图形验证码（后端开关控制是否展示）
+         4. 背景图、登录框顶部图、favicon 均支持中台管理动态替换
+         5. 移除中台管理入口链接
+         6. 响应式：移动端自动切换为单列垂直布局
+       ====================================================================== -->
+  <div class="bl-page">
+    <!-- ════════════════════════════════════════════════════
+         左侧展示区（60%）
+         ════════════════════════════════════════════════════ -->
+    <div class="bl-showcase" :style="showcaseStyle">
+      <!-- 渐变叠加层（保证文字可读性） -->
+      <div class="bl-showcase__overlay" />
 
-    <div class="login-container">
-      <!-- 左侧品牌区域 -->
-      <div class="brand-panel">
-        <div class="brand-content">
-          <div class="brand-icon">
-            <icon-apps :size="36" />
-          </div>
-          <h1 class="brand-title">BML</h1>
-          <p class="brand-subtitle">业务管理系统</p>
-          <div class="brand-divider"></div>
-          <p class="brand-desc">
-            统一身份认证 · 角色权限管理<br/>
-            组织架构维护 · 菜单资源配置
-          </p>
-        </div>
-        <div class="brand-footer">
-          <span>Business Management Platform</span>
-        </div>
+      <!-- 微光粒子动画 -->
+      <div class="bl-showcase__particles" aria-hidden="true">
+        <span v-for="i in 15" :key="i" class="bl-particle" :style="particleStyle(i)" />
       </div>
 
-      <!-- 右侧登录表单 -->
-      <div class="form-panel">
-        <div class="form-inner">
-          <h2 class="form-title">用户登录</h2>
-          <p class="form-hint">请使用系统账号登录</p>
+      <!-- 品牌信息 -->
+      <div class="bl-showcase__content">
+        <div class="bl-showcase__badge">
+          <svg viewBox="0 0 36 36" width="36" height="36" fill="none">
+            <rect width="36" height="36" rx="8" fill="rgba(255,255,255,0.15)" />
+            <path d="M10 10h7v7h-7zM19 10h7v7h-7zM10 19h7v7h-7zM19 19h7v7h-7z"
+                  fill="#fff" opacity="0.85" />
+          </svg>
+        </div>
+        <h1 class="bl-showcase__brand">BML</h1>
+        <p class="bl-showcase__slogan">Business Management Platform</p>
+        <div class="bl-showcase__divider" />
+        <p class="bl-showcase__desc">
+          统一身份认证 · 权限精细管控 · 安全高效协同
+        </p>
+      </div>
 
-          <a-form
-            :model="form"
-            @submit="handleSubmit"
-            layout="vertical"
-            class="login-form"
-          >
-            <a-form-item field="username" hide-label>
+      <!-- 底部版权 -->
+      <p class="bl-showcase__copyright">COPYRIGHT &copy; 2026 BML TEAM</p>
+    </div>
+
+    <!-- ════════════════════════════════════════════════════
+         右侧登录区（40%）
+         ════════════════════════════════════════════════════ -->
+    <div class="bl-form-side">
+      <div class="bl-form-container">
+        <!-- 顶部装饰图（可替换，登录框背景图） -->
+        <div v-if="cardBgImageUrl" class="bl-form-hero">
+          <img :src="cardBgImageUrl" alt="装饰图" class="bl-form-hero__img" />
+        </div>
+
+        <!-- 欢迎标题 -->
+        <div class="bl-form-header">
+          <h2 class="bl-form-header__title">欢迎回来</h2>
+          <p class="bl-form-header__sub">请输入您的账号信息登录系统</p>
+        </div>
+
+        <!-- 登录表单 -->
+        <a-form :model="form" @submit="handleSubmit" layout="vertical" class="bl-form">
+          <!-- 用户名 -->
+          <a-form-item field="username" hide-label>
+            <a-input
+              v-model="form.username"
+              placeholder="用户名"
+              allow-clear
+              size="large"
+            >
+              <template #prefix><icon-user /></template>
+            </a-input>
+          </a-form-item>
+
+          <!-- 密码 -->
+          <a-form-item field="password" hide-label>
+            <a-input-password
+              v-model="form.password"
+              placeholder="密码"
+              allow-clear
+              size="large"
+            >
+              <template #prefix><icon-lock /></template>
+            </a-input-password>
+          </a-form-item>
+
+          <!-- 验证码（仅在后端开启时显示） -->
+          <a-form-item v-if="captchaEnabled" field="captchaCode" hide-label>
+            <div class="bl-captcha-row">
               <a-input
-                v-model="form.username"
-                placeholder="请输入用户名"
+                v-model="form.captchaCode"
+                placeholder="请输入验证码"
                 allow-clear
                 size="large"
+                class="bl-captcha-input"
+                @keyup.enter="handleSubmit({ errors: undefined })"
               >
-                <template #prefix><icon-user /></template>
+                <template #prefix><icon-safe /></template>
               </a-input>
-            </a-form-item>
+              <div class="bl-captcha-img" @click="refreshCaptcha" title="点击刷新验证码">
+                <img v-if="captchaImage" :src="captchaImage" alt="验证码" />
+                <span v-else class="bl-captcha-placeholder">加载中</span>
+              </div>
+            </div>
+          </a-form-item>
 
-            <a-form-item field="password" hide-label>
-              <a-input-password
-                v-model="form.password"
-                placeholder="请输入密码"
-                allow-clear
-                size="large"
-              >
-                <template #prefix><icon-lock /></template>
-              </a-input-password>
-            </a-form-item>
-
-            <a-form-item>
-              <a-button
-                type="primary"
-                html-type="submit"
-                long
-                size="large"
-                :loading="loading"
-                class="submit-btn"
-              >
-                登 录
-              </a-button>
-            </a-form-item>
-          </a-form>
-
-          <div class="form-footer">
-            <a-link @click="goAdmin" :hoverable="false">
-              <icon-settings :size="14" style="margin-right: 4px;" />
-              中台管理入口
-            </a-link>
-          </div>
-        </div>
+          <!-- 登录按钮 -->
+          <a-form-item hide-label>
+            <a-button
+              type="primary"
+              html-type="submit"
+              long
+              size="large"
+              :loading="loading"
+              class="bl-submit-btn"
+            >
+              登 录
+            </a-button>
+          </a-form-item>
+        </a-form>
       </div>
-    </div>
-
-    <div class="copyright">
-      COPYRIGHT &copy; 2026 BML TEAM. ALL RIGHTS RESERVED.
     </div>
   </div>
 </template>
 
 <script lang="ts" setup>
 /**
- * 前台业务系统登录页
+ * BML 前台业务系统登录页
  * <p>
- * 使用数据库用户（sys_user 表）进行认证，登录成功后跳转至业务系统首页。
- * 与中台管理平台共用后端 /auth/login 接口，但登录后跳转路径不同。
+ * 采用左右分栏布局：
+ *   - 左侧 60%：展示区（品牌 Logo、标语、可替换背景图、微光粒子动画）
+ *   - 右侧 40%：纯白登录表单区（简约干净，信息清晰）
+ *
+ * 功能说明：
+ *   1. 页面初始化时调用 /auth/login/config 获取登录配置（验证码开关、品牌图片）
+ *   2. 若开启验证码，自动加载图形验证码图片
+ *   3. 登录成功后存储 Token 并跳转至业务系统首页
+ *   4. 背景图、登录框装饰图、favicon 均从配置动态读取，支持中台替换
  * </p>
  */
-import { reactive, ref } from 'vue';
+import { reactive, ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { Message } from '@arco-design/web-vue';
-import { IconUser, IconLock, IconApps, IconSettings } from '@arco-design/web-vue/es/icon';
+import { IconUser, IconLock, IconSafe } from '@arco-design/web-vue/es/icon';
 import request from '../../../utils/request';
 import { setAuthTokens } from '../../../utils/auth';
+import { fetchLoginConfig, fetchCaptcha } from '../../../api/auth';
 
 const router = useRouter();
 const loading = ref(false);
 
+// ═══════════════════════════════════════════════════════
+// 表单数据
+// ═══════════════════════════════════════════════════════
 const form = reactive({
   username: '',
-  password: ''
+  password: '',
+  captchaCode: ''
 });
 
-/** 处理登录提交 */
+// ═══════════════════════════════════════════════════════
+// 配置状态（由后端 /auth/login/config 接口返回）
+// ═══════════════════════════════════════════════════════
+const captchaEnabled = ref(false);
+const captchaImage = ref('');
+const captchaKey = ref('');
+const bgImageUrl = ref('');
+const cardBgImageUrl = ref('');
+
+/**
+ * 左侧展示区背景样式
+ * 有自定义背景图时使用图片，否则使用内置深色渐变
+ */
+const showcaseStyle = computed(() => {
+  if (bgImageUrl.value) {
+    return { backgroundImage: `url(${bgImageUrl.value})` };
+  }
+  return {};
+});
+
+/**
+ * 粒子动画样式生成
+ * 每个粒子具有随机大小、位置、延迟和持续时间
+ */
+const particleStyle = (_i: number) => {
+  const size = 2 + Math.random() * 4;
+  const left = Math.random() * 100;
+  const delay = Math.random() * 20;
+  const duration = 18 + Math.random() * 22;
+  const opacity = 0.15 + Math.random() * 0.35;
+  return {
+    width: `${size}px`,
+    height: `${size}px`,
+    left: `${left}%`,
+    animationDelay: `${delay}s`,
+    animationDuration: `${duration}s`,
+    opacity: `${opacity}`
+  };
+};
+
+/**
+ * 加载登录页配置
+ * 包含验证码开关、品牌图片 URL、favicon 等
+ */
+const loadConfig = async () => {
+  try {
+    const res = await fetchLoginConfig() as any;
+    const config = res.data || {};
+    captchaEnabled.value = config['sys.login.captchaEnabled'] === 'true';
+    bgImageUrl.value = config['sys.login.bgImage'] || '';
+    cardBgImageUrl.value = config['sys.login.cardBgImage'] || '';
+
+    // 动态更新浏览器标签图标
+    const faviconUrl = config['sys.login.favicon'];
+    if (faviconUrl) {
+      const link = document.querySelector<HTMLLinkElement>("link[rel~='icon']");
+      if (link) link.href = faviconUrl;
+    }
+
+    // 如果开启了验证码，自动加载
+    if (captchaEnabled.value) {
+      await refreshCaptcha();
+    }
+  } catch {
+    /* 配置加载失败不阻塞页面渲染，使用默认值即可 */
+  }
+};
+
+/** 刷新图形验证码 */
+const refreshCaptcha = async () => {
+  try {
+    const res = await fetchCaptcha() as any;
+    captchaKey.value = res.data.captchaKey;
+    captchaImage.value = res.data.captchaImage;
+  } catch {
+    captchaImage.value = '';
+  }
+};
+
+/** 处理登录表单提交 */
 const handleSubmit = async ({ errors }: { errors?: unknown }) => {
   if (errors) return;
 
+  if (!form.username || !form.password) {
+    Message.warning('请输入用户名和密码');
+    return;
+  }
+  if (captchaEnabled.value && !form.captchaCode) {
+    Message.warning('请输入验证码');
+    return;
+  }
+
   loading.value = true;
   try {
-    const { data } = await request.post('/auth/login', {
+    const payload: Record<string, string> = {
       username: form.username,
       password: form.password
-    });
+    };
+    if (captchaEnabled.value) {
+      payload.captchaKey = captchaKey.value;
+      payload.captchaCode = form.captchaCode;
+    }
+
+    const { data } = await request.post('/auth/login', payload);
     setAuthTokens({
       accessToken: data.accessToken,
       refreshToken: data.refreshToken,
@@ -131,229 +271,343 @@ const handleSubmit = async ({ errors }: { errors?: unknown }) => {
     });
     Message.success('登录成功');
     router.push('/dashboard');
+  } catch {
+    // 登录失败，自动刷新验证码
+    if (captchaEnabled.value) {
+      form.captchaCode = '';
+      await refreshCaptcha();
+    }
   } finally {
     loading.value = false;
   }
 };
 
-/** 跳转中台管理入口 */
-const goAdmin = () => {
-  router.push('/admin/login');
-};
+onMounted(() => {
+  loadConfig();
+});
 </script>
 
 <style scoped>
-.business-login-wrapper {
+/* ══════════════════════════════════════════════════════
+   页面容器 — 全屏左右分栏
+   ══════════════════════════════════════════════════════ */
+.bl-page {
   position: fixed;
   inset: 0;
   display: flex;
+  font-family: var(--bml-font-family, 'Inter', -apple-system, BlinkMacSystemFont,
+    'PingFang SC', 'Microsoft YaHei', sans-serif);
+}
+
+/* ══════════════════════════════════════════════════════
+   左侧展示区（60%）
+   ══════════════════════════════════════════════════════ */
+.bl-showcase {
+  position: relative;
+  flex: 0 0 60%;
+  background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+  background-size: cover;
+  background-position: center;
+  display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   overflow: hidden;
 }
 
-/* 背景装饰 */
-.bg-decoration {
+/* ── 渐变叠加层 ── */
+.bl-showcase__overlay {
   position: absolute;
   inset: 0;
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.1) 0%, rgba(0, 0, 0, 0.4) 100%),
+    radial-gradient(ellipse at 30% 20%, rgba(99, 102, 241, 0.2) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 80%, rgba(168, 85, 247, 0.15) 0%, transparent 50%);
   pointer-events: none;
-}
-.bg-circle {
-  position: absolute;
-  border-radius: 50%;
-  opacity: 0.1;
-}
-.bg-circle-1 {
-  width: 600px;
-  height: 600px;
-  background: #fff;
-  top: -200px;
-  right: -100px;
-}
-.bg-circle-2 {
-  width: 400px;
-  height: 400px;
-  background: #fff;
-  bottom: -150px;
-  left: -100px;
-}
-.bg-circle-3 {
-  width: 200px;
-  height: 200px;
-  background: #fff;
-  top: 40%;
-  left: 20%;
-}
-
-/* 登录容器 */
-.login-container {
-  display: flex;
-  width: 840px;
-  min-height: 480px;
-  border-radius: 24px;
-  overflow: hidden;
-  background: #fff;
-  box-shadow:
-    0 32px 80px rgba(0, 0, 0, 0.2),
-    0 0 0 1px rgba(255, 255, 255, 0.1);
   z-index: 1;
 }
 
-/* 左侧品牌 */
-.brand-panel {
-  flex: 0 0 340px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  padding: 48px 36px 32px;
-  background: linear-gradient(160deg, #4f46e5 0%, #7c3aed 50%, #a855f7 100%);
-  color: #fff;
+/* ── 微光粒子 ── */
+.bl-showcase__particles {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  overflow: hidden;
 }
-.brand-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
+.bl-particle {
+  position: absolute;
+  bottom: -10px;
+  background: #fff;
+  border-radius: 50%;
+  animation: bl-float linear infinite;
 }
-.brand-icon {
-  width: 64px;
-  height: 64px;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(8px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 24px;
-}
-.brand-title {
-  font-size: 40px;
-  font-weight: 900;
-  letter-spacing: 4px;
-  margin: 0;
-  line-height: 1;
-}
-.brand-subtitle {
-  font-size: 16px;
-  font-weight: 500;
-  margin: 8px 0 0;
-  opacity: 0.9;
-  letter-spacing: 2px;
-}
-.brand-divider {
-  width: 40px;
-  height: 3px;
-  background: rgba(255, 255, 255, 0.4);
-  border-radius: 2px;
-  margin: 24px 0;
-}
-.brand-desc {
-  font-size: 14px;
-  line-height: 2;
-  opacity: 0.75;
-  margin: 0;
-}
-.brand-footer {
-  font-size: 11px;
-  opacity: 0.4;
-  letter-spacing: 1px;
-  text-transform: uppercase;
+@keyframes bl-float {
+  0% {
+    transform: translateY(0) scale(1);
+    opacity: 0.3;
+  }
+  100% {
+    transform: translateY(-110vh) scale(0.2);
+    opacity: 0;
+  }
 }
 
-/* 右侧表单 */
-.form-panel {
-  flex: 1;
+/* ── 品牌内容 ── */
+.bl-showcase__content {
+  position: relative;
+  z-index: 3;
+  text-align: center;
+  color: #fff;
+  padding: 0 48px;
+  animation: bl-fade-in 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both;
+}
+@keyframes bl-fade-in {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.bl-showcase__badge {
+  display: inline-flex;
+  margin-bottom: 20px;
+}
+.bl-showcase__brand {
+  font-size: 52px;
+  font-weight: 900;
+  letter-spacing: 10px;
+  margin: 0;
+  line-height: 1.1;
+  text-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+}
+.bl-showcase__slogan {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.5);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  margin: 8px 0 0;
+}
+.bl-showcase__divider {
+  width: 48px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  margin: 28px auto;
+  border-radius: 1px;
+}
+.bl-showcase__desc {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.55);
+  letter-spacing: 2px;
+  margin: 0;
+  line-height: 1.8;
+}
+
+/* ── 底部版权 ── */
+.bl-showcase__copyright {
+  position: absolute;
+  bottom: 28px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.2);
+  letter-spacing: 2px;
+  z-index: 3;
+  margin: 0;
+}
+
+/* ══════════════════════════════════════════════════════
+   右侧登录区（40%）
+   ══════════════════════════════════════════════════════ */
+.bl-form-side {
+  flex: 0 0 40%;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 48px 40px;
+  background: #fff;
+  overflow-y: auto;
+  padding: 40px;
 }
-.form-inner {
+.bl-form-container {
   width: 100%;
-  max-width: 320px;
+  max-width: 380px;
+  animation: bl-slide-in 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both;
 }
-.form-title {
-  font-size: 24px;
-  font-weight: 700;
+@keyframes bl-slide-in {
+  from { opacity: 0; transform: translateX(24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ── 顶部装饰图（登录框背景图） ── */
+.bl-form-hero {
+  width: 100%;
+  border-radius: 16px;
+  overflow: hidden;
+  margin-bottom: 28px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+}
+.bl-form-hero__img {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+  display: block;
+}
+
+/* ── 欢迎标题 ── */
+.bl-form-header {
+  margin-bottom: 32px;
+}
+.bl-form-header__title {
+  font-size: 28px;
+  font-weight: 800;
   color: #1d2129;
-  margin: 0 0 4px;
+  margin: 0 0 8px;
+  line-height: 1.2;
 }
-.form-hint {
+.bl-form-header__sub {
   font-size: 14px;
   color: #86909c;
-  margin: 0 0 32px;
+  margin: 0;
+  line-height: 1.5;
 }
 
-/* 表单样式 */
-.login-form :deep(.arco-input-wrapper) {
-  border-radius: 12px;
+/* ══════════════════════════════════════════════════════
+   表单样式（亮色主题）
+   ══════════════════════════════════════════════════════ */
+.bl-form :deep(.arco-form-item) {
+  margin-bottom: 20px;
+}
+.bl-form :deep(.arco-input-wrapper) {
   height: 48px;
+  border-radius: 12px;
   background: #f7f8fa;
-  border: 1px solid #e5e6eb;
-  transition: all 0.3s;
+  border: 1.5px solid #e5e6eb;
+  transition: all 0.25s ease;
 }
-.login-form :deep(.arco-input-wrapper:hover),
-.login-form :deep(.arco-input-wrapper.arco-input-focus) {
+.bl-form :deep(.arco-input-wrapper:hover) {
+  border-color: #c9cdd4;
+  background: #f2f3f5;
+}
+.bl-form :deep(.arco-input-wrapper.arco-input-focus) {
   background: #fff;
-  border-color: #4f46e5;
-  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+  border-color: #165dff;
+  box-shadow: 0 0 0 3px rgba(22, 93, 255, 0.1);
 }
-.submit-btn {
+.bl-form :deep(.arco-input) {
+  color: #1d2129;
+}
+.bl-form :deep(.arco-input::placeholder) {
+  color: #c9cdd4;
+}
+.bl-form :deep(.arco-input-prefix) {
+  color: #86909c;
+}
+.bl-form :deep(.arco-input-suffix .arco-icon),
+.bl-form :deep(.arco-input-clear-btn) {
+  color: #c9cdd4;
+}
+
+/* ── 验证码行 ── */
+.bl-captcha-row {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+}
+.bl-captcha-input {
+  flex: 1;
+}
+.bl-captcha-img {
+  flex: 0 0 130px;
+  height: 48px;
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  background: #f7f8fa;
+  border: 1.5px solid #e5e6eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.25s;
+}
+.bl-captcha-img:hover {
+  border-color: #165dff;
+  background: #f2f3f5;
+}
+.bl-captcha-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.bl-captcha-placeholder {
+  font-size: 12px;
+  color: #c9cdd4;
+}
+
+/* ── 登录按钮 ── */
+.bl-submit-btn {
   height: 48px;
   border-radius: 12px;
   font-size: 16px;
-  font-weight: 600;
-  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  font-weight: 700;
+  letter-spacing: 6px;
+  background: linear-gradient(135deg, #165dff 0%, #3c7eff 100%);
   border: none;
-  margin-top: 8px;
+  box-shadow: 0 4px 16px rgba(22, 93, 255, 0.25);
+  transition: all 0.3s ease;
 }
-.submit-btn:hover {
-  background: linear-gradient(135deg, #4338ca, #6d28d9);
-  box-shadow: 0 8px 24px rgba(79, 70, 229, 0.35);
+.bl-submit-btn:hover {
+  background: linear-gradient(135deg, #0e42d2 0%, #306fff 100%);
+  box-shadow: 0 6px 24px rgba(22, 93, 255, 0.35);
   transform: translateY(-1px);
 }
-
-/* 底部链接 */
-.form-footer {
-  text-align: center;
-  margin-top: 24px;
-}
-.form-footer :deep(.arco-link) {
-  color: #86909c;
-  font-size: 13px;
-}
-.form-footer :deep(.arco-link:hover) {
-  color: #4f46e5;
+.bl-submit-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 12px rgba(22, 93, 255, 0.2);
 }
 
-/* 版权 */
-.copyright {
-  position: absolute;
-  bottom: 20px;
-  width: 100%;
-  text-align: center;
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.4);
-  letter-spacing: 1px;
-  z-index: 1;
-}
-
-/* 响应式 */
+/* ══════════════════════════════════════════════════════
+   响应式适配 — 移动端切换为垂直布局
+   ══════════════════════════════════════════════════════ */
 @media (max-width: 900px) {
-  .login-container {
+  .bl-page {
     flex-direction: column;
-    width: 90%;
+  }
+  .bl-showcase {
+    flex: 0 0 240px;
+  }
+  .bl-showcase__brand {
+    font-size: 36px;
+    letter-spacing: 6px;
+  }
+  .bl-showcase__desc,
+  .bl-showcase__divider,
+  .bl-showcase__copyright {
+    display: none;
+  }
+  .bl-form-side {
+    flex: 1;
+    padding: 32px 24px;
+  }
+  .bl-form-container {
     max-width: 420px;
-    min-height: auto;
   }
-  .brand-panel {
-    flex: 0 0 auto;
-    padding: 32px 24px 24px;
+}
+@media (max-width: 500px) {
+  .bl-showcase {
+    flex: 0 0 180px;
   }
-  .brand-icon { display: none; }
-  .brand-title { font-size: 28px; }
-  .brand-desc { display: none; }
-  .form-panel { padding: 32px 24px; }
+  .bl-showcase__brand {
+    font-size: 28px;
+    letter-spacing: 4px;
+  }
+  .bl-showcase__slogan {
+    display: none;
+  }
+  .bl-form-side {
+    padding: 24px 20px;
+  }
+  .bl-form-header__title {
+    font-size: 22px;
+  }
+  .bl-captcha-img {
+    flex: 0 0 110px;
+  }
 }
 </style>

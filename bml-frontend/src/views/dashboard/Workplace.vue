@@ -235,25 +235,42 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/* 严格的 Zero-Scroll (溢出隐藏，利用流式自适应充满整个屏幕高度) */
+/*
+ * ═══════════════════════════════════════════════════════════════════
+ * 工作台容器 — 严格视口填充（Zero-Scroll）
+ * ═══════════════════════════════════════════════════════════════════
+ * 设计目标：100% 缩放时全部内容恰好在一屏内展示，不产生任何滚动条。
+ *
+ * 父容器高度链路：
+ *   100vh
+ *     └─ a-layout-content: calc(100vh - 48px)     ← header 48px
+ *          ├─ tags-view-wrapper: 44px - 6px = 38px
+ *          └─ page-container: flex:1 → 剩余空间 = 100vh - 86px
+ *               └─ workplace-container: height:100% → 精确填满
+ *
+ * 紧凑策略：各区块使用最小化间距 + 精简内边距，确保 1080p 含浏览器
+ * 工具栏（实际视口约 900px）的场景下也能完整展示。
+ */
 .workplace-container {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 60px - 44px); /* 视窗高度减去顶栏和内边距 */
+  height: 100%;
   box-sizing: border-box;
-  padding: 16px 20px;
+  padding: 12px 16px;
   background: #f2f3f5;
   overflow: hidden;
-  gap: 16px;
+  gap: 10px;
 }
 
-/* ── 头部欢迎与授权看板 ── */
+/* ══════════════════════════════════════════════════════════════════
+   头部欢迎横幅 — 紧凑版（84px）
+   ══════════════════════════════════════════════════════════════════ */
 .welcome-banner {
   flex-shrink: 0;
-  height: 110px;
+  height: 84px;
   background: linear-gradient(135deg, #165dff 0%, #632ef3 100%);
   border-radius: 12px;
-  padding: 0 32px;
+  padding: 0 28px;
   color: white;
   position: relative;
   overflow: hidden;
@@ -265,6 +282,7 @@ onUnmounted(() => {
   box-shadow: 0 4px 10px rgba(245, 63, 63, 0.2);
 }
 
+/* 装饰圆形背景 */
 .banner-bg-graphics {
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
@@ -272,15 +290,16 @@ onUnmounted(() => {
 }
 .circle-1 {
   position: absolute; top: -50px; right: 20%;
-  width: 200px; height: 200px; border-radius: 50%;
+  width: 180px; height: 180px; border-radius: 50%;
   background: rgba(255, 255, 255, 0.08);
 }
 .circle-2 {
   position: absolute; bottom: -80px; right: -20px;
-  width: 150px; height: 150px; border-radius: 50%;
+  width: 140px; height: 140px; border-radius: 50%;
   background: rgba(255, 255, 255, 0.05);
 }
 
+/* 横幅内容布局 */
 .banner-content {
   flex: 1;
   display: flex;
@@ -289,129 +308,141 @@ onUnmounted(() => {
   position: relative;
   z-index: 1;
 }
-
 .banner-left {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 16px;
 }
 .welcome-icon {
-  width: 56px; height: 56px;
+  width: 46px; height: 46px;
   background: rgba(255, 255, 255, 0.2);
-  border-radius: 12px;
+  border-radius: 10px;
   display: flex; align-items: center; justify-content: center;
-  font-size: 28px;
+  font-size: 24px;
   backdrop-filter: blur(8px);
 }
-.welcome-title { margin: 0 0 6px 0; font-size: 22px; font-weight: 700; letter-spacing: 0.5px; }
-.welcome-subtitle { margin: 0; font-size: 14px; opacity: 0.9; }
+.welcome-title { margin: 0 0 4px 0; font-size: 19px; font-weight: 700; letter-spacing: 0.5px; }
+.welcome-subtitle { margin: 0; font-size: 13px; opacity: 0.9; }
 
+/* 右侧授权倒计时 */
 .banner-right {
   display: flex;
   align-items: center;
 }
 .auth-countdown {
   text-align: right;
-  padding-left: 24px;
+  padding-left: 20px;
   border-left: 1px solid rgba(255, 255, 255, 0.2);
 }
-.countdown-label { font-size: 12px; opacity: 0.8; margin-bottom: 2px; }
-.countdown-value { font-size: 32px; font-weight: 900; font-family: 'Inter', sans-serif; }
-.countdown-unit { font-size: 14px; padding-left: 4px; opacity: 0.9; }
-.countdown-sub { font-size: 12px; opacity: 0.7; margin-top: -2px; }
+.countdown-label { font-size: 11px; opacity: 0.8; margin-bottom: 1px; }
+.countdown-value { font-size: 28px; font-weight: 900; font-family: 'Inter', sans-serif; }
+.countdown-unit { font-size: 13px; padding-left: 3px; opacity: 0.9; }
+.countdown-sub { font-size: 11px; opacity: 0.7; margin-top: -2px; }
 
-/* ── 核心运行指标四格卡片 ── */
+/* ══════════════════════════════════════════════════════════════════
+   核心运行指标四格卡片 — 紧凑版
+   ══════════════════════════════════════════════════════════════════ */
 .stats-grid {
   flex-shrink: 0;
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
+  gap: 10px;
 }
 .stat-card {
-  background: white; border-radius: 12px; padding: 20px;
-  display: flex; align-items: center; gap: 16px;
+  background: white; border-radius: 10px; padding: 14px 16px;
+  display: flex; align-items: center; gap: 12px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.03);
   position: relative; overflow: hidden;
 }
 .stat-card::before {
-  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
   background: var(--card-theme);
 }
 .stat-icon {
-  width: 48px; height: 48px; border-radius: 12px;
+  width: 40px; height: 40px; border-radius: 10px;
   background: color-mix(in srgb, var(--card-theme) 12%, transparent);
   color: var(--card-theme);
   display: flex; align-items: center; justify-content: center;
-  font-size: 22px; flex-shrink: 0;
+  font-size: 20px; flex-shrink: 0;
 }
 .stat-info { flex: 1; }
-.stat-value { font-size: 24px; font-weight: 800; color: #1d2129; line-height: 1.1; font-family: 'Inter', sans-serif;}
-.stat-sub { font-size: 14px; font-weight: 500; color: #86909c; }
-.stat-label { font-size: 13px; color: #86909c; margin-top: 6px; }
+.stat-value { font-size: 22px; font-weight: 800; color: #1d2129; line-height: 1.1; font-family: 'Inter', sans-serif; }
+.stat-sub { font-size: 13px; font-weight: 500; color: #86909c; }
+.stat-label { font-size: 12px; color: #86909c; margin-top: 4px; }
 
-/* ── 快捷入口区块 ── */
+/* ══════════════════════════════════════════════════════════════════
+   快捷入口区块 — 紧凑版
+   ══════════════════════════════════════════════════════════════════ */
 .section-title {
   flex-shrink: 0;
-  font-size: 15px; font-weight: 600; color: #1d2129;
+  font-size: 14px; font-weight: 600; color: #1d2129;
   padding-left: 10px; border-left: 3px solid #165dff;
-  margin: 4px 0 0px 0;
+  margin: 0;
 }
 .quick-actions {
   flex-shrink: 0;
-  display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
 }
 .action-card {
-  background: white; border-radius: 12px; padding: 16px 20px;
-  display: flex; align-items: center; gap: 14px;
+  background: white; border-radius: 10px; padding: 12px 16px;
+  display: flex; align-items: center; gap: 12px;
   cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.03);
   transition: all 0.25s ease;
 }
-.action-card:hover { transform: translateY(-3px); box-shadow: 0 6px 16px rgba(0,0,0,0.08); }
+.action-card:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.08); }
 .action-icon {
-  width: 42px; height: 42px; border-radius: 10px;
+  width: 36px; height: 36px; border-radius: 8px;
   display: flex; align-items: center; justify-content: center;
-  font-size: 20px; color: white; flex-shrink: 0;
+  font-size: 18px; color: white; flex-shrink: 0;
 }
 .action-text { flex: 1; }
-.action-title { font-size: 15px; font-weight: 600; color: #1d2129; margin-bottom: 3px; }
-.action-desc { font-size: 12px; color: #86909c; }
-.action-arrow { color: #c9cdd4; font-size: 18px; transition: transform 0.2s; }
+.action-title { font-size: 14px; font-weight: 600; color: #1d2129; margin-bottom: 2px; }
+.action-desc { font-size: 11px; color: #86909c; }
+.action-arrow { color: #c9cdd4; font-size: 16px; transition: transform 0.2s; }
 .action-card:hover .action-arrow { color: #165dff; transform: translateX(3px); }
 
-/* ── 底部双布局（状态与日志），动态填充余下空间 ── */
+/* ══════════════════════════════════════════════════════════════════
+   底部双面板 — 动态填充剩余高度
+   ══════════════════════════════════════════════════════════════════ */
 .status-row {
-  flex: 1; /* 占据剩余全部高度 */
-  min-height: 0; /* 必须设置，否则 flex 子项无法被内部滚动控制 */
-  display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;
+  flex: 1; /* 占据全部剩余空间 */
+  min-height: 0; /* flex 子项允许收缩 */
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
 }
 .status-panel {
-  background: white; border-radius: 12px; padding: 20px;
+  background: white; border-radius: 10px; padding: 14px 16px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.03);
   display: flex; flex-direction: column;
+  overflow: hidden;
 }
 .panel-header {
   display: flex; justify-content: space-between; align-items: center;
-  margin-bottom: 20px; flex-shrink: 0;
+  margin-bottom: 12px; flex-shrink: 0;
 }
-.panel-title { font-size: 16px; font-weight: 600; color: #1d2129; }
+.panel-title { font-size: 15px; font-weight: 600; color: #1d2129; }
 
-/* 主机指标 */
+/* 主机运行指标 */
 .monitor-items {
   flex: 1; display: flex; flex-direction: column; justify-content: space-around;
 }
-.monitor-item { margin-bottom: 12px; }
-.m-label { display: flex; justify-content: space-between; font-size: 13px; color: #4e5969; margin-bottom: 8px; }
-.m-val { font-weight: 700; color: #1d2129; font-family: 'Inter', sans-serif;}
+.monitor-item { margin-bottom: 6px; }
+.monitor-item:last-child { margin-bottom: 0; }
+.m-label { display: flex; justify-content: space-between; font-size: 13px; color: #4e5969; margin-bottom: 6px; }
+.m-val { font-weight: 700; color: #1d2129; font-family: 'Inter', sans-serif; }
 
-/* 活动日志：超过高度后出内部滚动条，保证主体大框架 Zero-Scroll */
+/* 近期告警日志 — 超出面板高度时出内部滚动条 */
 .activity-list {
-  flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 14px;
-  padding-right: 8px;
+  flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;
+  padding-right: 6px;
+  /* 细滚动条（仅此区域可内滚，主框架 Zero-Scroll） */
+  scrollbar-width: thin;
+  scrollbar-color: #e5e6eb transparent;
 }
 .activity-list::-webkit-scrollbar { width: 4px; }
 .activity-list::-webkit-scrollbar-thumb { background: #e5e6eb; border-radius: 2px; }
-.activity-item { display: flex; align-items: center; gap: 10px; padding: 4px 0; }
-.act-dot { width: 8px; height: 8px; border-radius: 50%; box-shadow: 0 0 0 2px rgba(255,255,255,0.8); }
-.act-text { flex: 1; font-size: 13px; color: #4e5969;  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
-.act-time { font-size: 12px; color: #86909c; white-space: nowrap;}
+.activity-list::-webkit-scrollbar-thumb:hover { background: #c9cdd4; }
+.activity-item { display: flex; align-items: center; gap: 10px; padding: 2px 0; flex-shrink: 0; }
+.act-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; box-shadow: 0 0 0 2px rgba(255,255,255,0.8); }
+.act-text { flex: 1; font-size: 13px; color: #4e5969; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.act-time { font-size: 12px; color: #86909c; white-space: nowrap; }
 </style>

@@ -14,6 +14,11 @@ describe('userScopedStorage utils', () => {
                 store.delete(key);
             }
         });
+
+        // 模拟 window.location.pathname（双入口认证隔离需要）
+        vi.stubGlobal('window', {
+            location: { pathname: '/admin/dashboard' }
+        });
     });
 
     afterEach(() => {

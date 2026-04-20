@@ -2,7 +2,7 @@ package com.bml.license.keygen.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -41,11 +41,11 @@ public class LicensePayload {
     /** 前端应用系统最大用户总数（0=不限，不含中心管理人员） */
     private int maxTotalUsers;
 
-    /** 许可证签发日期 */
-    private LocalDate issueDate;
+    /** 许可证签发日期（精确到时分秒） */
+    private LocalDateTime issueDate;
 
-    /** 许可证到期日期 */
-    private LocalDate expireDate;
+    /** 许可证到期日期（精确到时分秒） */
+    private LocalDateTime expireDate;
 
     /** 附加说明 */
     private String remark;
@@ -76,11 +76,11 @@ public class LicensePayload {
     public int getMaxTotalUsers() { return maxTotalUsers; }
     public void setMaxTotalUsers(int maxTotalUsers) { this.maxTotalUsers = maxTotalUsers; }
 
-    public LocalDate getIssueDate() { return issueDate; }
-    public void setIssueDate(LocalDate issueDate) { this.issueDate = issueDate; }
+    public LocalDateTime getIssueDate() { return issueDate; }
+    public void setIssueDate(LocalDateTime issueDate) { this.issueDate = issueDate; }
 
-    public LocalDate getExpireDate() { return expireDate; }
-    public void setExpireDate(LocalDate expireDate) { this.expireDate = expireDate; }
+    public LocalDateTime getExpireDate() { return expireDate; }
+    public void setExpireDate(LocalDateTime expireDate) { this.expireDate = expireDate; }
 
     public String getRemark() { return remark; }
     public void setRemark(String remark) { this.remark = remark; }

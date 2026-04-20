@@ -16,6 +16,8 @@ import java.awt.event.ActionEvent;
 import java.io.File;
 import java.nio.file.Path;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.HashSet;
@@ -34,7 +36,11 @@ import java.util.UUID;
  */
 public class IssueLicensePanel extends JPanel {
 
-    private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    /** 日期时间格式（精确到秒），用于表单输入和文件展示 */
+    private static final DateTimeFormatter DATETIME_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+    /** 仅日期格式，用于兼容旧格式解析回填 */
+    private static final DateTimeFormatter DATE_ONLY_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
     /**
      * 可选授权模块定义。
@@ -53,7 +59,8 @@ public class IssueLicensePanel extends JPanel {
     private final JSpinner maxApiAccountsSpinner = new JSpinner(new SpinnerNumberModel(0, 0, 99999, 1));
     private final JSpinner maxUsersPerAccountSpinner = new JSpinner(new SpinnerNumberModel(0, 0, 99999, 1));
     private final JSpinner maxTotalUsersSpinner = new JSpinner(new SpinnerNumberModel(0, 0, 99999, 1));
-    private final JTextField expireDateField = createTextField(LocalDate.now().plusYears(1).format(DATE_FMT));
+    private final JTextField expireDateField = createTextField(
+            LocalDate.now().plusYears(1).atTime(23, 59, 59).format(DATETIME_FMT));
     private final JTextArea remarkArea = new JTextArea(2, 30);
     private final JCheckBox[] featureChecks;
 
@@ -254,7 +261,7 @@ public class IssueLicensePanel extends JPanel {
 
         // 构建 payload
         LicensePayload payload = new LicensePayload();
-        String licenseId = "LIC-" + LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"))
+        String licenseId = "LIC-" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"))
                 + "-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
         payload.setLicenseId(licenseId);
         payload.setCustomerName(customerName);
@@ -276,12 +283,12 @@ public class IssueLicensePanel extends JPanel {
         payload.setMaxUsersPerAccount((int) maxUsersPerAccountSpinner.getValue());
         payload.setMaxTotalUsers((int) maxTotalUsersSpinner.getValue());
 
-        // 日期
-        payload.setIssueDate(LocalDate.now());
+        // 日期（精确到秒）
+        payload.setIssueDate(LocalDateTime.now());
         try {
-            payload.setExpireDate(LocalDate.parse(expireDateField.getText().trim(), DATE_FMT));
+            payload.setExpireDate(parseExpireDateTime(expireDateField.getText().trim()));
         } catch (DateTimeParseException ex) {
-            payload.setExpireDate(LocalDate.now().plusYears(1));
+            payload.setExpireDate(LocalDate.now().plusYears(1).atTime(23, 59, 59));
         }
 
         // 备注
@@ -302,7 +309,7 @@ public class IssueLicensePanel extends JPanel {
         try {
             String fileName = String.format("BML-LIC-%s-%s.lic",
                     payload.getCustomerCode(),
-                    LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd")));
+                    LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
             Path outputPath = BmlLicenseKeygenApp.OUTPUT_DIR.resolve(fileName);
 
             generator.generate(payload, outputPath);
@@ -349,7 +356,7 @@ public class IssueLicensePanel extends JPanel {
                 p.getMaxTotalUsers() == 0 ? "\u4e0d\u9650" : p.getMaxTotalUsers(),
                 p.getMaxApiAccounts() == 0 ? "\u4e0d\u9650" : p.getMaxApiAccounts(),
                 p.getMaxUsersPerAccount() == 0 ? "\u4e0d\u9650" : p.getMaxUsersPerAccount(),
-                p.getExpireDate());
+                p.getExpireDate() != null ? p.getExpireDate().format(DATETIME_FMT) : "未设置");
     }
 
     // ── 加载已有许可证 ──
@@ -417,7 +424,7 @@ public class IssueLicensePanel extends JPanel {
 
         // 到期日期
         if (payload.getExpireDate() != null) {
-            expireDateField.setText(payload.getExpireDate().format(DATE_FMT));
+            expireDateField.setText(payload.getExpireDate().format(DATETIME_FMT));
         }
 
         // 配额
@@ -452,8 +459,8 @@ public class IssueLicensePanel extends JPanel {
         sb.append(">> 客户名称: ").append(nullSafe(payload.getCustomerName())).append("\n");
         sb.append(">> 客户编码: ").append(nullSafe(payload.getCustomerCode())).append("\n");
         sb.append(">> 产品版本: ").append(nullSafe(payload.getProductVersion())).append("\n");
-        sb.append(">> 签发日期: ").append(payload.getIssueDate() != null ? payload.getIssueDate().format(DATE_FMT) : "-").append("\n");
-        sb.append(">> 到期日期: ").append(payload.getExpireDate() != null ? payload.getExpireDate().format(DATE_FMT) : "-").append("\n");
+        sb.append(">> 签发日期: ").append(payload.getIssueDate() != null ? payload.getIssueDate().format(DATETIME_FMT) : "-").append("\n");
+        sb.append(">> 到期日期: ").append(payload.getExpireDate() != null ? payload.getExpireDate().format(DATETIME_FMT) : "-").append("\n");
         sb.append(">> 配额: 业务用户上限=").append(formatQuota(payload.getMaxTotalUsers()));
         sb.append(", API账号=").append(formatQuota(payload.getMaxApiAccounts()));
         sb.append(", 允许API账号调用新增用户=").append(formatQuota(payload.getMaxUsersPerAccount())).append("\n");
@@ -481,7 +488,7 @@ public class IssueLicensePanel extends JPanel {
         customerNameField.setText("");
         customerCodeField.setText("");
         productVersionField.setText("2.0.0");
-        expireDateField.setText(LocalDate.now().plusYears(1).format(DATE_FMT));
+        expireDateField.setText(LocalDate.now().plusYears(1).atTime(23, 59, 59).format(DATETIME_FMT));
         maxApiAccountsSpinner.setValue(0);
         maxUsersPerAccountSpinner.setValue(0);
         maxTotalUsersSpinner.setValue(0);
@@ -501,6 +508,27 @@ public class IssueLicensePanel extends JPanel {
     }
 
     // ── 辅助方法 ──
+
+    /**
+     * 解析到期日期输入，兼容 yyyy-MM-dd 和 yyyy-MM-dd HH:mm:ss 两种格式。
+     * <p>
+     * 如果用户仅输入日期（无时间部分），自动补充为当天 23:59:59，
+     * 确保许可证在到期日当天全天有效。
+     * </p>
+     *
+     * @param text 用户输入的日期或日期时间字符串
+     * @return 解析后的 LocalDateTime
+     * @throws DateTimeParseException 格式不合法时抛出
+     */
+    private static LocalDateTime parseExpireDateTime(String text) {
+        try {
+            // 优先尝试完整日期时间格式
+            return LocalDateTime.parse(text, DATETIME_FMT);
+        } catch (DateTimeParseException ignored) {
+            // 回退到仅日期格式，自动补充 23:59:59
+            return LocalDate.parse(text, DATE_ONLY_FMT).atTime(23, 59, 59);
+        }
+    }
 
     /**
      * 格式化配额显示（0 表示不限）。

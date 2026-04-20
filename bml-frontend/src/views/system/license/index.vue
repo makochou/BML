@@ -302,33 +302,16 @@
       </div>
     </section>
 
-    <!-- ── 许可证更新对比弹窗（全屏可视，无需滚动） ── -->
-    <a-modal
+    <!-- ── 许可证更新对比弹窗（BmlModal：支持拖拽、缩放、全屏） ── -->
+    <BmlModal
       v-model:visible="compareVisible"
+      title="授权更新确认"
       :width="1080"
-      :mask-closable="false"
-      :closable="false"
-      :footer="false"
-      :header="false"
-      class="license-compare-modal"
-      modal-class="license-compare-modal__wrap"
+      :height="680"
+      :min-width="700"
+      :min-height="480"
     >
       <section class="compare-shell">
-        <!-- 顶部：标题行 + 关闭按钮（紧凑设计，减少纵向占用） -->
-        <header class="compare-shell__header">
-          <div class="compare-shell__title">
-            <div class="compare-shell__icon">
-              <icon-swap />
-            </div>
-            <div>
-              <h3>授权更新确认</h3>
-              <p>{{ compareSummary }}</p>
-            </div>
-          </div>
-          <button class="compare-shell__close" type="button" @click="closeCompare">
-            <icon-close />
-          </button>
-        </header>
 
         <!-- 降级警告提示横幅 -->
         <div v-if="downgradeWarnings.length" class="compare-shell__warning">
@@ -413,78 +396,75 @@
           </section>
         </div>
 
-        <!-- 底部操作栏：醒目的确认按钮 + 安全提示 -->
-        <footer class="compare-shell__footer">
-          <div class="compare-shell__footer-tip">
-            <icon-lock />
-            <span>系统将先备份旧许可证，再覆盖为新许可证并即时刷新内存状态。</span>
-          </div>
-          <div class="compare-shell__actions">
-            <a-button size="large" @click="closeCompare">取消</a-button>
-            <a-button
-              type="primary"
-              size="large"
-              :loading="uploading"
-              class="compare-confirm-btn"
-              @click="confirmUpdate"
-            >
-              <template #icon><icon-check-circle /></template>
-              确认更新许可证
-            </a-button>
-          </div>
-        </footer>
       </section>
-    </a-modal>
+      <template #footer>
+        <div class="compare-shell__footer-tip">
+          <icon-lock />
+          <span>系统将先备份旧许可证，再覆盖为新许可证并即时刷新内存状态。</span>
+        </div>
+        <div class="compare-shell__actions">
+          <a-button size="large" @click="closeCompare">取消</a-button>
+          <a-button
+            type="primary"
+            size="large"
+            :loading="uploading"
+            class="compare-confirm-btn"
+            @click="confirmUpdate"
+          >
+            <template #icon><icon-check-circle /></template>
+            确认更新许可证
+          </a-button>
+        </div>
+      </template>
+    </BmlModal>
 
     <!-- ==================== 危险操作：重置许可证确认弹窗 ==================== -->
-    <a-modal
+    <BmlModal
       v-model:visible="resetModalVisible"
-      :closable="false"
-      :footer="false"
-      :mask-closable="false"
-      modal-class="lv-danger-modal"
+      title="系统高危操作确认"
+      :width="500"
+      :height="380"
+      :min-width="400"
+      :min-height="300"
     >
       <div class="lv-danger-modal__content">
         <div class="lv-danger-modal__icon">
           <icon-exclamation-circle-fill />
         </div>
-        <h3 class="lv-danger-modal__title">系统高危操作确认</h3>
         <div class="lv-danger-modal__desc">
           <p>您即将<strong>彻底删除</strong>当前系统中的授权许可证，并将整个 BML 系统重置为未激活的阻断状态。</p>
           <p>执行此操作后，所有前台业务系统将立即停止服务，直到您上传新的有效许可证为止。</p>
         </div>
-        
-        <div class="lv-danger-modal__actions">
-          <a-button
-            class="lv-danger-btn lv-danger-btn--cancel"
-            size="large"
-            shape="round"
-            @click="resetModalVisible = false"
-            :disabled="resetting"
-          >
-            我再想想
-          </a-button>
-          <a-button
-            class="lv-danger-btn lv-danger-btn--confirm"
-            status="danger"
-            type="primary"
-            size="large"
-            shape="round"
-            :loading="resetting"
-            @click="handleReset"
-          >
-            <template #icon><icon-delete /></template>
-            确认强制重置
-          </a-button>
-        </div>
       </div>
-    </a-modal>
+      <template #footer>
+        <a-button
+          size="large"
+          shape="round"
+          @click="resetModalVisible = false"
+          :disabled="resetting"
+        >
+          我再想想
+        </a-button>
+        <a-button
+          status="danger"
+          type="primary"
+          size="large"
+          shape="round"
+          :loading="resetting"
+          @click="handleReset"
+        >
+          <template #icon><icon-delete /></template>
+          确认强制重置
+        </a-button>
+      </template>
+    </BmlModal>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { Message, Notification } from '@arco-design/web-vue';
+import BmlModal from '../../../components/BmlModal.vue';
 import type { FileItem } from '@arco-design/web-vue';
 import {
   IconApps,
@@ -655,7 +635,7 @@ const parseDateOnly = (value?: string | null) => {
   if (!value) {
     return null;
   }
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim());
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value.trim());
   if (!match) {
     return null;
   }
@@ -1338,11 +1318,13 @@ const confirmUpdate = async () => {
     }
 
     if (warnings.length > 0) {
-      Notification.warning({
+      // 配额降级提示：使用右下角 Notification 替代顶部 Message，属于「提示类」通知
+      Notification.info({
         id: 'license-quota-downgrade',
-        title: '配额降级：资源已被自动调整',
-        content: warnings.join('\n') + '\n\n请前往对应管理页面确认被停用的资源。',
-        duration: 0,
+        title: '系统提示',
+        content: warnings.join('\n'),
+        position: 'bottomRight',
+        duration: 8000,
         closable: true,
       });
     }
@@ -2086,7 +2068,7 @@ onMounted(() => {
     align-items: flex-start;
     justify-content: space-between;
     gap: 10px;
-    padding: 14px 16px 8px;
+    padding: 10px 14px 6px;
 
     h2 {
       margin: 2px 0 0;
@@ -2114,7 +2096,7 @@ onMounted(() => {
     min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
-    padding: 0 16px 14px;
+    padding: 0 14px 10px;
     scrollbar-width: none;
     &::-webkit-scrollbar { display: none; }
   }
@@ -2169,15 +2151,15 @@ onMounted(() => {
 /* 配额卡片列表 */
 .lv-quota-list {
   display: grid;
-  gap: 12px;
+  gap: 8px;
 }
 
 /* 单个配额卡片：标题行 + 进度条 + 三列统计 */
 .lv-quota-card {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 14px 16px;
+  gap: 6px;
+  padding: 10px 14px;
   border-radius: 14px;
   background:
     linear-gradient(135deg, rgba(20, 201, 201, 0.03), rgba(22, 93, 255, 0.03)),
@@ -2254,7 +2236,7 @@ onMounted(() => {
       gap: 4px;
 
       .lv-quota-stat {
-        padding: 6px 0;
+        padding: 4px 0;
         strong {
           font-size: 15px;
         }
@@ -2273,13 +2255,13 @@ onMounted(() => {
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  padding: 6px 0;
+  padding: 5px 0;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.7);
   border: 1px solid rgba(226, 232, 240, 0.5);
 
   strong {
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 900;
     line-height: 1;
     letter-spacing: -0.03em;
@@ -2476,7 +2458,7 @@ onMounted(() => {
    许可证对比弹窗样式（紧凑布局，单屏全部展示）
    ============================================================ */
 .compare-shell {
-  padding: 20px 24px;
+  padding: 0;
 
   &__header,
   &__footer {
@@ -2784,9 +2766,12 @@ onMounted(() => {
   }
 
   .activation-story,
-  .activation-console,
-  .compare-shell {
+  .activation-console {
     padding: 16px;
+  }
+
+  .compare-shell {
+    padding: 0;
   }
 
   .activation-story__metrics {

@@ -343,40 +343,49 @@
             <div class="account-modal-resize-handle account-modal-resize-handle--sw"
               @mousedown.stop.prevent="(e) => accountModalController.startResize('sw', e)"></div>
 
+            <!--
+              标题栏：所有元素在同一行水平排列，不随内容滚动。
+              布局顺序：标题 → 徽章 → 表单操作按钮 → 窗口控制按钮
+            -->
             <div class="arco-modal-header" @mousedown="accountModalController.startDrag">
               <div class="account-modal-title">
                 <div class="account-modal-title__main">
                   <strong>{{ accountModalTitle }}</strong>
                 </div>
-                <div class="account-modal-title__actions">
-                  <span class="account-modal-title__badge">{{ accountModalTitleBadge }}</span>
-                  <div class="account-modal-title__action-group">
-                    <a-tooltip :content="accountModalController.fullscreen.value ? '退出全屏' : '全屏展示'">
-                      <a-button size="mini" class="account-modal-title__action-btn"
-                        @click.stop="toggleAccountModalFullscreen">
-                        <template #icon>
-                          <component
-                            :is="accountModalController.fullscreen.value ? IconFullscreenExit : IconFullscreen" />
-                        </template>
-                      </a-button>
-                    </a-tooltip>
-                    <a-tooltip v-if="accountModal.mode === 'edit'" content="以此为模板复制并新建">
-                      <a-button size="mini" class="account-modal-title__action-btn" @click.stop="handleCopyInsideModal">
-                        <template #icon>
-                          <icon-copy />
-                        </template>
-                      </a-button>
-                    </a-tooltip>
-                    <a-tooltip content="关闭窗口">
-                      <a-button size="mini"
-                        class="account-modal-title__action-btn account-modal-title__action-btn--close"
-                        @click.stop="closeAccountModal">
-                        <template #icon>
-                          <icon-close />
-                        </template>
-                      </a-button>
-                    </a-tooltip>
-                  </div>
+                <span class="account-modal-title__badge">{{ accountModalTitleBadge }}</span>
+                <!-- 表单操作按钮：重置 / 提交，紧跟徽章右侧（关闭功能由右侧 ✕ 按钮承担） -->
+                <div class="account-modal-title__form-actions">
+                  <a-button size="small" @click="resetAccountForm">重置表单</a-button>
+                  <a-button size="small" type="primary" html-type="submit" :loading="accountModal.submitting"
+                    @click.prevent="submitAccountForm">{{ accountModalSubmitText }}</a-button>
+                </div>
+                <!-- 窗口控制按钮：全屏 / 复制 / 关闭 -->
+                <div class="account-modal-title__action-group">
+                  <a-tooltip :content="accountModalController.fullscreen.value ? '退出全屏' : '全屏展示'">
+                    <a-button size="mini" class="account-modal-title__action-btn"
+                      @click.stop="toggleAccountModalFullscreen">
+                      <template #icon>
+                        <component
+                          :is="accountModalController.fullscreen.value ? IconFullscreenExit : IconFullscreen" />
+                      </template>
+                    </a-button>
+                  </a-tooltip>
+                  <a-tooltip v-if="accountModal.mode === 'edit'" content="以此为模板复制并新建">
+                    <a-button size="mini" class="account-modal-title__action-btn" @click.stop="handleCopyInsideModal">
+                      <template #icon>
+                        <icon-copy />
+                      </template>
+                    </a-button>
+                  </a-tooltip>
+                  <a-tooltip content="关闭窗口">
+                    <a-button size="mini"
+                      class="account-modal-title__action-btn account-modal-title__action-btn--close"
+                      @click.stop="closeAccountModal">
+                      <template #icon>
+                        <icon-close />
+                      </template>
+                    </a-button>
+                  </a-tooltip>
                 </div>
               </div>
             </div>
@@ -417,14 +426,6 @@
                               surface-mode="flat" :readonly="isDetailMode" />
                           </section>
 
-                          <div class="account-create-footer account-create-footer--actions-only">
-                            <div class="account-create-footer__actions">
-                              <a-button @click="closeAccountModal">取消</a-button>
-                              <a-button @click="resetAccountForm">重置表单</a-button>
-                              <a-button type="primary" html-type="submit" :loading="accountModal.submitting"
-                                @click.prevent="submitAccountForm">{{ accountModalSubmitText }}</a-button>
-                            </div>
-                          </div>
                         </div>
                       </div>
                     </div>
@@ -3180,19 +3181,24 @@ onBeforeUnmount(() => {
   color: var(--text-primary);
 }
 
+/**
+ * 标题区：单行水平布局。
+ * 顺序：标题 → 徽章 → 表单操作按钮 → 窗口控制按钮
+ * 所有元素在同一行，固定在顶部不随内容滚动。
+ */
 .account-modal-title {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
   width: 100%;
 }
 
 .account-modal-title__main {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 2px;
   min-width: 0;
+  flex-shrink: 1;
 }
 
 .account-modal-title__markers {
@@ -3212,16 +3218,17 @@ onBeforeUnmount(() => {
 }
 
 .account-modal-title__main strong {
-  font-size: 26px;
-  line-height: 1.2;
+  font-size: 18px;
+  line-height: 1.3;
   color: var(--text-primary);
+  white-space: nowrap;
 }
 
 .account-modal-title__badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 8px 14px;
+  padding: 4px 12px;
   border-radius: 999px;
   background: linear-gradient(135deg, rgba(23, 105, 255, 0.08), rgba(18, 184, 166, 0.12));
   color: #0f766e;
@@ -3229,15 +3236,48 @@ onBeforeUnmount(() => {
   font-weight: 600;
   line-height: 1.5;
   text-align: center;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
-.account-modal-title__actions {
+/** 表单操作按钮组（取消/重置/提交），通过 margin-left:auto 推到右侧 */
+.account-modal-title__form-actions {
   display: inline-flex;
   align-items: center;
-  justify-content: flex-end;
-  flex-wrap: wrap;
-  gap: 12px;
-  max-width: min(100%, 420px);
+  gap: 8px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.account-modal-title__form-actions :deep(.arco-btn) {
+  min-width: 76px;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.account-modal-title__form-actions :deep(.arco-btn:not(.arco-btn-primary)) {
+  border-color: rgba(191, 206, 228, 0.9);
+  background: linear-gradient(180deg, #ffffff, #f5f8ff);
+  color: #334155;
+}
+
+.account-modal-title__form-actions :deep(.arco-btn:not(.arco-btn-primary):hover) {
+  border-color: rgba(47, 109, 246, 0.38);
+  color: #1d4ed8;
+}
+
+.account-modal-title__form-actions :deep(.arco-btn-primary) {
+  border: 0;
+  background: linear-gradient(135deg, #2f6df6 0%, #1f8bff 46%, #12b8a6 100%);
+  box-shadow: 0 6px 16px rgba(47, 109, 246, 0.22);
+}
+
+.account-modal-title__form-actions :deep(.arco-btn-primary:hover) {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(47, 109, 246, 0.28);
 }
 
 .account-modal-title__window-grip {
@@ -3288,8 +3328,7 @@ onBeforeUnmount(() => {
 }
 
 :deep(.account-modal.account-modal--create .account-modal-title) {
-  align-items: flex-start;
-  gap: 20px;
+  gap: 10px;
 }
 
 :deep(.account-modal.account-modal--create .account-modal-title__markers) {
@@ -3303,22 +3342,18 @@ onBeforeUnmount(() => {
 }
 
 :deep(.account-modal.account-modal--create .account-modal-title__main strong) {
-  font-size: 24px;
+  font-size: 18px;
   color: #0f172a;
 }
 
 :deep(.account-modal.account-modal--create .account-modal-title__badge) {
-  min-height: 40px;
-  padding: 0 16px;
+  min-height: 30px;
+  padding: 0 12px;
   background: linear-gradient(135deg, rgba(15, 118, 110, 0.08), rgba(18, 184, 166, 0.14));
   color: #0f766e;
   font-weight: 700;
 }
 
-:deep(.account-modal.account-modal--create .account-modal-title__actions) {
-  flex: 0 0 auto;
-  margin-left: auto;
-}
 
 .account-modal-resize-handle {
   position: absolute;
@@ -6308,7 +6343,7 @@ onBeforeUnmount(() => {
 }
 
 :deep(.account-modal.account-modal--create .account-modal-title__main strong) {
-  font-size: 22px;
+  font-size: 18px;
   letter-spacing: 0.02em;
   color: #0f172a;
 }
@@ -6568,10 +6603,8 @@ onBeforeUnmount(() => {
     align-items: stretch;
   }
 
-  .account-modal-title__actions {
-    width: 100%;
-    max-width: 100%;
-    justify-content: space-between;
+  .account-modal-title__form-actions {
+    margin-left: auto;
   }
 
   .account-modal-title__badge {

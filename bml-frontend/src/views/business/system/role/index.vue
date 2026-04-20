@@ -43,8 +43,8 @@
       </a-table>
     </div>
 
-    <!-- 新增/编辑弹窗 -->
-    <a-modal v-model:visible="dialogVisible" :title="dialogTitle" :width="580" :mask-closable="false" @before-ok="handleSubmit">
+    <!-- 新增/编辑弹窗（BmlModal：支持拖拽、缩放、全屏） -->
+    <BmlModal v-model:visible="dialogVisible" :title="dialogTitle" :width="640" :height="580" :min-width="480" :min-height="360">
       <a-form :model="formData" ref="formRef" :rules="formRules" layout="vertical">
         <a-row :gutter="16">
           <a-col :span="12">
@@ -90,7 +90,11 @@
           <a-textarea v-model="formData.remark" placeholder="请输入备注" :auto-size="{ minRows: 2, maxRows: 4 }" />
         </a-form-item>
       </a-form>
-    </a-modal>
+      <template #footer>
+        <a-button @click="dialogVisible = false">取消</a-button>
+        <a-button type="primary" :loading="submitting" @click="handleSubmit">确定</a-button>
+      </template>
+    </BmlModal>
   </div>
 </template>
 
@@ -99,6 +103,7 @@ import { ref, reactive, onMounted } from 'vue';
 import { Message } from '@arco-design/web-vue';
 import { IconSearch, IconRefresh, IconPlus, IconEdit, IconDelete } from '@arco-design/web-vue/es/icon';
 import { fetchRoleList, createRole, updateRole, deleteRole, fetchMenuList, type RoleVO, type RoleForm, type MenuVO } from '../../../../api/system';
+import BmlModal from '../../../../components/BmlModal.vue';
 
 const loading = ref(false);
 const tableData = ref<RoleVO[]>([]);
@@ -148,10 +153,12 @@ const handleEdit = (row: RoleVO) => {
   dialogVisible.value = true;
 };
 
-const handleSubmit = async (done: (closed: boolean) => void) => {
+const submitting = ref(false);
+const handleSubmit = async () => {
   try {
     const errors = await formRef.value?.validate();
-    if (errors) { done(false); return; }
+    if (errors) return;
+    submitting.value = true;
     if (formData.id) {
       await updateRole(formData);
       Message.success('修改成功');
@@ -159,9 +166,10 @@ const handleSubmit = async (done: (closed: boolean) => void) => {
       await createRole(formData);
       Message.success('新增成功');
     }
-    done(true);
+    dialogVisible.value = false;
     loadData();
-  } catch { done(false); }
+  } catch { /* 保持弹窗打开 */ }
+  finally { submitting.value = false; }
 };
 
 const handleDelete = async (id: number) => {
