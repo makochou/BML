@@ -12,10 +12,16 @@ export interface LoginConfig {
     'sys.login.captchaEnabled'?: string;
     /** 登录页全屏背景图 URL */
     'sys.login.bgImage'?: string;
-    /** 登录框背景图 URL */
-    'sys.login.cardBgImage'?: string;
     /** 浏览器标签图标 URL */
     'sys.login.favicon'?: string;
+    /** 侧边栏 Logo 图片 URL（业务系统左侧导航顶部） */
+    'sys.sidebar.logo'?: string;
+    /** 品牌标题（登录页左侧展示） */
+    'sys.login.brandTitle'?: string;
+    /** 品牌副标题 */
+    'sys.login.brandSlogan'?: string;
+    /** 品牌描述文字 */
+    'sys.login.brandDesc'?: string;
     [key: string]: string | undefined;
 }
 

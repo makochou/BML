@@ -53,12 +53,18 @@ public class SysConfigController {
     // ────────────────────────────────────────────
 
     /**
-     * 查询登录页相关配置（验证码开关、背景图等）
+     * 查询登录页及品牌相关配置（验证码开关、背景图、侧边栏 Logo 等）
+     * <p>
+     * 同时返回 sys.login.* 和 sys.sidebar.* 前缀的全部配置项，
+     * 供前端登录页、业务系统布局等统一读取。
+     * </p>
      */
-    @Operation(summary = "查询登录配置", description = "查询 sys.login.* 前缀的所有配置项")
+    @Operation(summary = "查询登录配置", description = "查询 sys.login.* 和 sys.sidebar.* 前缀的所有配置项")
     @GetMapping("/login")
     public Result<Map<String, String>> getLoginConfig() {
-        return Result.ok(configService.getConfigsByPrefix("sys.login."));
+        Map<String, String> configs = new java.util.HashMap<>(configService.getConfigsByPrefix("sys.login."));
+        configs.putAll(configService.getConfigsByPrefix("sys.sidebar."));
+        return Result.ok(configs);
     }
 
     /**
@@ -78,16 +84,16 @@ public class SysConfigController {
     // ────────────────────────────────────────────
 
     /**
-     * 上传品牌图片（登录页背景、登录框背景、favicon）
+     * 上传品牌图片（登录页背景、侧边栏 Logo、favicon）
      * <p>
      * 上传成功后将图片访问路径写入 sys_config 对应的配置项中。
      * </p>
      *
-     * @param type 图片类型：loginBg（登录页背景）、loginCardBg（登录框背景）、favicon（浏览器标签图标）
+     * @param type 图片类型：loginBg（登录页背景）、sidebarLogo（侧边栏 Logo）、favicon（浏览器标签图标）
      * @param file 图片文件
      * @return 图片访问 URL
      */
-    @Operation(summary = "上传品牌图片", description = "上传登录页背景/登录框背景/favicon")
+    @Operation(summary = "上传品牌图片", description = "上传登录页背景/侧边栏 Logo/favicon")
     @PostMapping("/branding/upload")
     public Result<Map<String, String>> uploadBrandingImage(
             @RequestParam("type") String type,
@@ -100,7 +106,7 @@ public class SysConfigController {
         // 校验图片类型
         String configKey = switch (type) {
             case "loginBg" -> "sys.login.bgImage";
-            case "loginCardBg" -> "sys.login.cardBgImage";
+            case "sidebarLogo" -> "sys.sidebar.logo";
             case "favicon" -> "sys.login.favicon";
             default -> null;
         };
@@ -199,7 +205,7 @@ public class SysConfigController {
     public Result<Void> deleteBrandingImage(@PathVariable String type) {
         String configKey = switch (type) {
             case "loginBg" -> "sys.login.bgImage";
-            case "loginCardBg" -> "sys.login.cardBgImage";
+            case "sidebarLogo" -> "sys.sidebar.logo";
             case "favicon" -> "sys.login.favicon";
             default -> null;
         };

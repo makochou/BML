@@ -24,7 +24,7 @@ export function batchUpdateConfig(configs: Record<string, string>) {
 
 /**
  * 上传品牌图片
- * @param type 图片类型：loginBg / loginCardBg / favicon
+ * @param type 图片类型：loginBg / sidebarLogo / favicon
  * @param file 图片文件
  */
 export function uploadBrandingImage(type: string, file: File) {

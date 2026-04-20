@@ -35,31 +35,31 @@ const staticRoutes: RouteRecordRaw[] = [
                 path: 'dashboard',
                 name: 'BusinessDashboard',
                 component: () => import('../views/business/dashboard/index.vue'),
-                meta: { title: '工作台' }
+                meta: { title: '工作台', affix: true }
             },
             {
                 path: 'system/user',
                 name: 'SystemUser',
                 component: () => import('../views/business/system/user/index.vue'),
-                meta: { title: '用户管理' }
+                meta: { title: '用户管理', parentTitle: '系统管理' }
             },
             {
                 path: 'system/role',
                 name: 'SystemRole',
                 component: () => import('../views/business/system/role/index.vue'),
-                meta: { title: '角色管理' }
+                meta: { title: '角色管理', parentTitle: '系统管理' }
             },
             {
                 path: 'system/menu',
                 name: 'SystemMenu',
                 component: () => import('../views/business/system/menu/index.vue'),
-                meta: { title: '菜单管理' }
+                meta: { title: '菜单管理', parentTitle: '系统管理' }
             },
             {
                 path: 'system/dept',
                 name: 'SystemDept',
                 component: () => import('../views/business/system/dept/index.vue'),
-                meta: { title: '部门管理' }
+                meta: { title: '部门管理', parentTitle: '系统管理' }
             }
         ]
     },

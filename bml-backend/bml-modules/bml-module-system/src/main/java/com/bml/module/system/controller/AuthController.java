@@ -187,16 +187,18 @@ public class AuthController {
     }
 
     /**
-     * 获取登录页配置
+     * 获取登录页及品牌相关配置
      * <p>
-     * 无需认证即可调用，用于前端登录页动态展示验证码、背景图等。
-     * 返回以 {@code sys.login.} 为前缀的所有配置项。
+     * 无需认证即可调用，用于前端登录页动态展示验证码、背景图，
+     * 以及业务系统布局加载侧边栏 Logo 等品牌配置。
+     * 同时返回 {@code sys.login.*} 和 {@code sys.sidebar.*} 前缀的所有配置项。
      * </p>
      */
-    @Operation(summary = "获取登录页配置", description = "返回验证码开关、登录页背景图等配置")
+    @Operation(summary = "获取登录页配置", description = "返回验证码开关、登录页背景图、侧边栏 Logo 等配置")
     @GetMapping("/login/config")
     public Result<java.util.Map<String, String>> loginConfig() {
-        java.util.Map<String, String> config = configService.getConfigsByPrefix("sys.login.");
+        java.util.Map<String, String> config = new java.util.HashMap<>(configService.getConfigsByPrefix("sys.login."));
+        config.putAll(configService.getConfigsByPrefix("sys.sidebar."));
         return Result.ok(config);
     }
 

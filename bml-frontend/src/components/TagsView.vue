@@ -70,7 +70,10 @@ interface TagActionContext {
   source: TagActionSource;
 }
 
-const dashboardFallbackPath = '/admin/dashboard';
+/** 根据当前路径判断所属布局，返回对应的工作台首页路径 */
+const dashboardFallbackPath = computed(() =>
+  route.path.startsWith('/admin') ? '/admin/dashboard' : '/dashboard'
+);
 const tagActionLabels: Record<TagActionKey, string> = {
   closeCurrent: '\u5173\u95ed\u5f53\u524d\u6807\u7b7e',
   closeOthers: '\u5173\u95ed\u5176\u4ed6\u6807\u7b7e\u9875',
@@ -126,12 +129,21 @@ const navigateToView = async (targetView?: TagView | null) => {
     return;
   }
 
-  await router.push(dashboardFallbackPath);
+  await router.push(dashboardFallbackPath.value);
 };
 
 const initTags = () => {
   const routes = router.getRoutes();
-  const affixTags = routes.filter((routeRecord) => routeRecord.meta?.affix);
+  /** 判断当前是否处于中台管理布局（/admin 前缀） */
+  const isAdmin = route.path.startsWith('/admin');
+  /**
+   * 仅保留与当前布局上下文匹配的 affix 路由，
+   * 避免业务系统标签页中混入中台的工作台标签（反之亦然）
+   */
+  const affixTags = routes.filter((r) => {
+    if (!r.meta?.affix) return false;
+    return isAdmin ? r.path.startsWith('/admin') : !r.path.startsWith('/admin');
+  });
 
   for (const affixTag of affixTags) {
     if (!affixTag.name) {

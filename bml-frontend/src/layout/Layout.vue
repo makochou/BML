@@ -6,7 +6,8 @@
         :collapsed="collapsed" 
         :class="[`sidebar-${appStore.sidebarTheme}`]"
     >
-      <div class="logo">BML中台管理</div>
+      <!-- 点击 Logo 返回中台工作台首页 -->
+      <div class="logo" style="cursor: pointer;" @click="$router.push('/admin')">BML中台管理</div>
       <!-- 展开状态：使用 Arco 标准菜单 -->
       <a-menu
         v-if="!collapsed"

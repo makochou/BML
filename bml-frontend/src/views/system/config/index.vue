@@ -5,9 +5,10 @@
        设计特点：
          1. 铺满整个内容区域，现代卡片网格布局
          2. 顶部 Banner 状态栏（验证码开关 + 实时状态指示）
-         3. 三列品牌图片管理卡片（登录背景、登录框背景、Favicon）
-         4. 每张卡片显示推荐尺寸、格式提示
-         5. 大面积图片预览 + 悬浮操作层（替换 / 删除）
+         3. 品牌文案编辑区（标题、副标题、描述，实时保存到数据库）
+         4. 三列品牌图片管理卡片（登录背景、登录框背景、Favicon）
+         5. 每张卡片显示推荐尺寸、格式提示
+         6. 大面积图片预览 + 悬浮操作层（替换 / 删除）
        ====================================================================== -->
   <div class="sc-page">
     <a-spin :loading="loading" class="sc-page__spin">
@@ -41,6 +42,42 @@
       </div>
 
       <!-- ════════════════════════════════════════════════
+           登录页品牌文案编辑
+           ════════════════════════════════════════════════ -->
+      <div class="sc-brand-editor">
+        <div class="sc-brand-editor__header">
+          <div class="sc-brand-editor__icon-wrap">
+            <icon-edit :size="22" />
+          </div>
+          <div class="sc-brand-editor__info">
+            <h3 class="sc-banner__title">登录页品牌文案</h3>
+            <p class="sc-banner__desc">
+              编辑业务系统登录页左侧品牌展示区的标题、副标题和描述文字
+            </p>
+          </div>
+        </div>
+        <div class="sc-brand-editor__body">
+          <div class="sc-brand-editor__field">
+            <label class="sc-brand-editor__label">品牌标题</label>
+            <a-input v-model="brandTitle" placeholder="BML" allow-clear :max-length="20" show-word-limit />
+          </div>
+          <div class="sc-brand-editor__field">
+            <label class="sc-brand-editor__label">品牌副标题</label>
+            <a-input v-model="brandSlogan" placeholder="智慧企业管理平台" allow-clear :max-length="60" show-word-limit />
+          </div>
+          <div class="sc-brand-editor__field">
+            <label class="sc-brand-editor__label">品牌描述</label>
+            <a-input v-model="brandDesc" placeholder="统一身份认证 · 权限精细管控 · 流程高效协同 · 数据驱动决策" allow-clear :max-length="80" show-word-limit />
+          </div>
+          <div class="sc-brand-editor__actions">
+            <a-button type="primary" :loading="brandSaving" @click="saveBrandText">
+              <icon-check :size="14" /> 保存文案
+            </a-button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ════════════════════════════════════════════════
            品牌图片管理网格
            ════════════════════════════════════════════════ -->
       <div class="sc-grid">
@@ -58,20 +95,34 @@
               </p>
             </div>
           </div>
-          <div class="sc-card__preview" :class="{ 'sc-card__preview--empty': !loginBgUrl }">
-            <img v-if="loginBgUrl" :src="loginBgUrl" alt="登录页背景" class="sc-card__img" />
-            <div v-else class="sc-card__empty">
-              <icon-image :size="40" class="sc-card__empty-icon" />
-              <span>暂未设置</span>
-              <span class="sc-card__empty-hint">将使用默认渐变背景</span>
-            </div>
-            <!-- 悬浮操作层 -->
-            <div v-if="loginBgUrl" class="sc-card__overlay">
+          <!-- 未设置：整个虚线区域可点击上传 -->
+          <a-upload
+            v-if="!loginBgUrl"
+            :auto-upload="false"
+            :show-file-list="false"
+            accept="image/*"
+            @change="onLoginBgChange"
+          >
+            <template #upload-button>
+              <div class="sc-card__preview sc-card__preview--empty sc-card__preview--clickable">
+                <div class="sc-card__empty">
+                  <icon-image :size="40" class="sc-card__empty-icon" />
+                  <span>暂未设置</span>
+                  <span class="sc-card__empty-hint">将使用默认渐变背景</span>
+                  <span class="sc-card__upload-cta"><icon-upload :size="12" /> 点击上传图片</span>
+                </div>
+              </div>
+            </template>
+          </a-upload>
+          <!-- 已设置：显示预览 + 悬浮操作层 -->
+          <div v-else class="sc-card__preview">
+            <img :src="loginBgUrl" alt="登录页背景" class="sc-card__img" />
+            <div class="sc-card__overlay">
               <a-upload
                 :auto-upload="false"
                 :show-file-list="false"
                 accept="image/*"
-                @change="(_: any, file: any) => handleUploadBranding('loginBg', file)"
+                @change="onLoginBgChange"
               >
                 <template #upload-button>
                   <a-button type="outline" size="small" class="sc-card__action-btn">
@@ -86,50 +137,48 @@
               </a-popconfirm>
             </div>
           </div>
-          <!-- 未设置时的上传入口 -->
-          <div v-if="!loginBgUrl" class="sc-card__footer">
-            <a-upload
-              :auto-upload="false"
-              :show-file-list="false"
-              accept="image/*"
-              @change="(_: any, file: any) => handleUploadBranding('loginBg', file)"
-            >
-              <template #upload-button>
-                <a-button type="primary" size="small" long>
-                  <icon-upload :size="14" style="margin-right: 6px;" /> 上传背景图
-                </a-button>
-              </template>
-            </a-upload>
-          </div>
         </div>
 
-        <!-- ── 登录框背景图 ── -->
+        <!-- ── 侧边栏 Logo 图片 ── -->
         <div class="sc-card">
           <div class="sc-card__header">
             <div class="sc-card__icon sc-card__icon--purple">
               <icon-layers :size="18" />
             </div>
             <div>
-              <h4 class="sc-card__title">登录框背景图</h4>
+              <h4 class="sc-card__title">侧边栏 Logo 图片</h4>
               <p class="sc-card__hint">
-                显示在登录页右侧登录表单顶部，推荐尺寸 <strong>800 × 500</strong>，
-                支持 JPG / PNG / WebP 格式
+                显示在业务系统左侧导航栏顶部，推荐尺寸 <strong>200 × 60</strong>，
+                支持 PNG / SVG / WebP 透明背景格式效果更佳
               </p>
             </div>
           </div>
-          <div class="sc-card__preview" :class="{ 'sc-card__preview--empty': !cardBgUrl }">
-            <img v-if="cardBgUrl" :src="cardBgUrl" alt="登录框背景" class="sc-card__img" />
-            <div v-else class="sc-card__empty">
-              <icon-layers :size="40" class="sc-card__empty-icon" />
-              <span>暂未设置</span>
-              <span class="sc-card__empty-hint">将使用默认毛玻璃效果</span>
-            </div>
-            <div v-if="cardBgUrl" class="sc-card__overlay">
+          <a-upload
+            v-if="!sidebarLogoUrl"
+            :auto-upload="false"
+            :show-file-list="false"
+            accept="image/*"
+            @change="onSidebarLogoChange"
+          >
+            <template #upload-button>
+              <div class="sc-card__preview sc-card__preview--empty sc-card__preview--clickable">
+                <div class="sc-card__empty">
+                  <icon-layers :size="40" class="sc-card__empty-icon" />
+                  <span>暂未设置</span>
+                  <span class="sc-card__empty-hint">将显示默认渐变文字 Logo</span>
+                  <span class="sc-card__upload-cta"><icon-upload :size="12" /> 点击上传图片</span>
+                </div>
+              </div>
+            </template>
+          </a-upload>
+          <div v-else class="sc-card__preview">
+            <img :src="sidebarLogoUrl" alt="侧边栏 Logo" class="sc-card__img" />
+            <div class="sc-card__overlay">
               <a-upload
                 :auto-upload="false"
                 :show-file-list="false"
                 accept="image/*"
-                @change="(_: any, file: any) => handleUploadBranding('loginCardBg', file)"
+                @change="onSidebarLogoChange"
               >
                 <template #upload-button>
                   <a-button type="outline" size="small" class="sc-card__action-btn">
@@ -137,26 +186,12 @@
                   </a-button>
                 </template>
               </a-upload>
-              <a-popconfirm content="确定删除此图片？将恢复默认效果" @ok="handleDeleteBranding('loginCardBg')">
+              <a-popconfirm content="确定删除此图片？将恢复默认文字 Logo" @ok="handleDeleteBranding('sidebarLogo')">
                 <a-button type="outline" status="danger" size="small" class="sc-card__action-btn">
                   <icon-delete :size="14" /> 删除
                 </a-button>
               </a-popconfirm>
             </div>
-          </div>
-          <div v-if="!cardBgUrl" class="sc-card__footer">
-            <a-upload
-              :auto-upload="false"
-              :show-file-list="false"
-              accept="image/*"
-              @change="(_: any, file: any) => handleUploadBranding('loginCardBg', file)"
-            >
-              <template #upload-button>
-                <a-button type="primary" size="small" long>
-                  <icon-upload :size="14" style="margin-right: 6px;" /> 上传背景图
-                </a-button>
-              </template>
-            </a-upload>
           </div>
         </div>
 
@@ -174,19 +209,32 @@
               </p>
             </div>
           </div>
-          <div class="sc-card__preview sc-card__preview--favicon" :class="{ 'sc-card__preview--empty': !faviconUrl }">
-            <img v-if="faviconUrl" :src="faviconUrl" alt="Favicon" class="sc-card__img sc-card__img--favicon" />
-            <div v-else class="sc-card__empty">
-              <icon-apps :size="40" class="sc-card__empty-icon" />
-              <span>暂未设置</span>
-              <span class="sc-card__empty-hint">将使用系统默认图标</span>
-            </div>
-            <div v-if="faviconUrl" class="sc-card__overlay">
+          <a-upload
+            v-if="!faviconUrl"
+            :auto-upload="false"
+            :show-file-list="false"
+            accept=".svg,.ico,.png,.jpg,.jpeg,.gif,.webp"
+            @change="onFaviconChange"
+          >
+            <template #upload-button>
+              <div class="sc-card__preview sc-card__preview--favicon sc-card__preview--empty sc-card__preview--clickable">
+                <div class="sc-card__empty">
+                  <icon-apps :size="40" class="sc-card__empty-icon" />
+                  <span>暂未设置</span>
+                  <span class="sc-card__empty-hint">将使用系统默认图标</span>
+                  <span class="sc-card__upload-cta"><icon-upload :size="12" /> 点击上传图标</span>
+                </div>
+              </div>
+            </template>
+          </a-upload>
+          <div v-else class="sc-card__preview sc-card__preview--favicon">
+            <img :src="faviconUrl" alt="Favicon" class="sc-card__img sc-card__img--favicon" />
+            <div class="sc-card__overlay">
               <a-upload
                 :auto-upload="false"
                 :show-file-list="false"
                 accept=".svg,.ico,.png,.jpg,.jpeg,.gif,.webp"
-                @change="(_: any, file: any) => handleUploadBranding('favicon', file)"
+                @change="onFaviconChange"
               >
                 <template #upload-button>
                   <a-button type="outline" size="small" class="sc-card__action-btn">
@@ -200,20 +248,6 @@
                 </a-button>
               </a-popconfirm>
             </div>
-          </div>
-          <div v-if="!faviconUrl" class="sc-card__footer">
-            <a-upload
-              :auto-upload="false"
-              :show-file-list="false"
-              accept=".svg,.ico,.png,.jpg,.jpeg,.gif,.webp"
-              @change="(_: any, file: any) => handleUploadBranding('favicon', file)"
-            >
-              <template #upload-button>
-                <a-button type="primary" size="small" long>
-                  <icon-upload :size="14" style="margin-right: 6px;" /> 上传图标
-                </a-button>
-              </template>
-            </a-upload>
           </div>
         </div>
       </div>
@@ -239,7 +273,7 @@ import { ref, onMounted } from 'vue';
 import { Message } from '@arco-design/web-vue';
 import {
   IconSafe, IconImage, IconLayers, IconApps,
-  IconUpload, IconDelete, IconSwap
+  IconUpload, IconDelete, IconSwap, IconEdit, IconCheck
 } from '@arco-design/web-vue/es/icon';
 import {
   fetchLoginConfig,
@@ -256,8 +290,14 @@ const loading = ref(false);
 // ═══════════════════════════════════════════════════════
 const captchaEnabled = ref(false);
 const loginBgUrl = ref('');
-const cardBgUrl = ref('');
+const sidebarLogoUrl = ref('');
 const faviconUrl = ref('');
+
+/** 品牌文案编辑状态 */
+const brandTitle = ref('');
+const brandSlogan = ref('');
+const brandDesc = ref('');
+const brandSaving = ref(false);
 
 /**
  * 加载登录页相关配置
@@ -270,8 +310,11 @@ const loadConfig = async () => {
     const config = res.data || {};
     captchaEnabled.value = config['sys.login.captchaEnabled'] === 'true';
     loginBgUrl.value = config['sys.login.bgImage'] || '';
-    cardBgUrl.value = config['sys.login.cardBgImage'] || '';
+    sidebarLogoUrl.value = config['sys.sidebar.logo'] || '';
     faviconUrl.value = config['sys.login.favicon'] || '';
+    brandTitle.value = config['sys.login.brandTitle'] || '';
+    brandSlogan.value = config['sys.login.brandSlogan'] || '';
+    brandDesc.value = config['sys.login.brandDesc'] || '';
   } catch {
     Message.error('加载配置失败');
   } finally {
@@ -298,12 +341,18 @@ const saveCaptchaSwitch = (): Promise<boolean> => {
 };
 
 /**
- * 上传品牌图片
- * @param type  图片类型标识（loginBg / loginCardBg / favicon）
- * @param file  Arco Upload 组件回传的文件对象
+ * 通用品牌图片上传处理。
+ * <p>
+ * 从 Arco Upload 的 change 回调中提取原始 File 对象，
+ * 调用后端接口上传并将返回的 URL 写入对应的响应式变量。
+ * </p>
+ *
+ * @param type     图片类型标识（loginBg / sidebarLogo / favicon）
+ * @param fileList Arco Upload change 回调的第一个参数（文件列表，此处不使用）
+ * @param fileItem Arco Upload change 回调的第二个参数（当前操作的文件项）
  */
-const handleUploadBranding = async (type: string, file: any) => {
-  const rawFile = file?.file;
+const handleUploadBranding = async (type: string, _fileList: any, fileItem: any) => {
+  const rawFile = fileItem?.file;
   if (!rawFile) return;
 
   try {
@@ -313,12 +362,22 @@ const handleUploadBranding = async (type: string, file: any) => {
 
     // 更新本地状态
     if (type === 'loginBg') loginBgUrl.value = url;
-    else if (type === 'loginCardBg') cardBgUrl.value = url;
+    else if (type === 'sidebarLogo') sidebarLogoUrl.value = url;
     else if (type === 'favicon') faviconUrl.value = url;
   } catch {
     Message.error('上传失败');
   }
 };
+
+/**
+ * 三个上传区域的 change 事件处理器。
+ * 将 Arco Upload 的 (fileList, fileItem) 参数转发给通用上传方法。
+ * 注意：不能在 Vue 模板中使用 TypeScript 类型注解（如 `_: any`），
+ * 否则 Vue 模板编译器可能无法正确解析，导致事件绑定失败。
+ */
+const onLoginBgChange = (fileList: any, fileItem: any) => handleUploadBranding('loginBg', fileList, fileItem);
+const onSidebarLogoChange = (fileList: any, fileItem: any) => handleUploadBranding('sidebarLogo', fileList, fileItem);
+const onFaviconChange = (fileList: any, fileItem: any) => handleUploadBranding('favicon', fileList, fileItem);
 
 /**
  * 删除品牌图片（恢复系统默认）
@@ -330,10 +389,30 @@ const handleDeleteBranding = async (type: string) => {
     Message.success('已恢复默认');
 
     if (type === 'loginBg') loginBgUrl.value = '';
-    else if (type === 'loginCardBg') cardBgUrl.value = '';
+    else if (type === 'sidebarLogo') sidebarLogoUrl.value = '';
     else if (type === 'favicon') faviconUrl.value = '';
   } catch {
     Message.error('删除失败');
+  }
+};
+
+/**
+ * 保存品牌文案
+ * 将品牌标题、副标题、描述批量写入 sys_config 表
+ */
+const saveBrandText = async () => {
+  brandSaving.value = true;
+  try {
+    await batchUpdateConfig({
+      'sys.login.brandTitle': brandTitle.value,
+      'sys.login.brandSlogan': brandSlogan.value,
+      'sys.login.brandDesc': brandDesc.value
+    });
+    Message.success('品牌文案已保存');
+  } catch {
+    Message.error('保存失败');
+  } finally {
+    brandSaving.value = false;
   }
 };
 
@@ -535,6 +614,33 @@ onMounted(() => {
   font-size: 11px;
   color: #c9cdd4;
 }
+/* 上传引导文字（点击上传图片/图标） */
+.sc-card__upload-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  padding: 4px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #165dff;
+  background: rgba(22, 93, 255, 0.06);
+  border-radius: 20px;
+  transition: background 0.2s, color 0.2s;
+}
+/* 可点击空状态：悬浮时高亮 + 手型光标 */
+.sc-card__preview--clickable {
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+.sc-card__preview--clickable:hover {
+  border-color: #165dff;
+  background: rgba(22, 93, 255, 0.02);
+}
+.sc-card__preview--clickable:hover .sc-card__upload-cta {
+  background: rgba(22, 93, 255, 0.1);
+  color: #0e42d2;
+}
 
 /* ── 悬浮操作层 ── */
 .sc-card__overlay {
@@ -566,8 +672,58 @@ onMounted(() => {
   border-color: #fff !important;
 }
 
-/* ── 卡片底部操作栏（未设置图片时显示） ── */
-.sc-card__footer {
-  padding: 16px 20px 20px;
+/* .sc-card__footer 已移除 —— 空状态时整个预览区域即为上传触发器 */
+
+/* ══════════════════════════════════════════════════════
+   登录页品牌文案编辑区
+   ══════════════════════════════════════════════════════ */
+.sc-brand-editor {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  margin-bottom: 20px;
+  transition: box-shadow 0.3s;
+}
+.sc-brand-editor:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+}
+.sc-brand-editor__header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 28px;
+  border-bottom: 1px solid #f0f0f5;
+}
+.sc-brand-editor__icon-wrap {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.sc-brand-editor__body {
+  padding: 20px 28px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.sc-brand-editor__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.sc-brand-editor__label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--bml-text-secondary, #4e5969);
+}
+.sc-brand-editor__actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 4px;
 }
 </style>
