@@ -12,7 +12,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -29,7 +28,6 @@ import java.util.List;
 public class ExcelRecordManager {
 
     private static final String SHEET_NAME = "许可证签发记录";
-    private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final DateTimeFormatter DATETIME_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     /** 列标题 */
@@ -95,8 +93,8 @@ public class ExcelRecordManager {
         createCell(row, col++, payload.getMaxApiAccounts(), dataStyle);
         createCell(row, col++, payload.getMaxUsersPerAccount(), dataStyle);
         createCell(row, col++, payload.getMaxTotalUsers(), dataStyle);
-        createCell(row, col++, formatDate(payload.getIssueDate()), dateStyle);
-        createCell(row, col++, formatDate(payload.getExpireDate()), dateStyle);
+        createCell(row, col++, formatDateTime(payload.getIssueDate()), dateStyle);
+        createCell(row, col++, formatDateTime(payload.getExpireDate()), dateStyle);
         createCell(row, col++, LocalDateTime.now().format(DATETIME_FMT), dateStyle);
         createCell(row, col, payload.getRemark() != null ? payload.getRemark() : "", dataStyle);
 
@@ -250,7 +248,7 @@ public class ExcelRecordManager {
     private CellStyle createDateCellStyle(Workbook wb, boolean even) {
         CellStyle style = createDataCellStyle(wb, even);
         DataFormat fmt = wb.createDataFormat();
-        style.setDataFormat(fmt.getFormat("yyyy-mm-dd"));
+        style.setDataFormat(fmt.getFormat("yyyy-mm-dd hh:mm:ss"));
         return style;
     }
 
@@ -275,7 +273,13 @@ public class ExcelRecordManager {
         return String.join(", ", features);
     }
 
-    private String formatDate(LocalDate date) {
-        return date != null ? date.format(DATE_FMT) : "";
+    /**
+     * 格式化日期时间为字符串（精确到秒）。
+     *
+     * @param dateTime 日期时间对象
+     * @return 格式化后的字符串，null 时返回空串
+     */
+    private String formatDateTime(LocalDateTime dateTime) {
+        return dateTime != null ? dateTime.format(DATETIME_FMT) : "";
     }
 }

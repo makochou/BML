@@ -5,15 +5,27 @@ import io.swagger.v3.oas.annotations.media.Schema.RequiredMode;
 import lombok.Data;
 
 /**
- * Login request body.
+ * 登录请求体
+ * <p>
+ * 包含用户名、密码以及可选的图形验证码参数。
+ * 当系统开启验证码功能时，captchaKey 和 captchaCode 为必填项。
+ * </p>
+ *
+ * @author BML Team
  */
 @Data
-@Schema(description = "Login request body")
+@Schema(description = "登录请求体")
 public class LoginBody {
 
-    @Schema(description = "Username", requiredMode = RequiredMode.REQUIRED)
+    @Schema(description = "用户名", requiredMode = RequiredMode.REQUIRED)
     private String username;
 
-    @Schema(description = "Password", requiredMode = RequiredMode.REQUIRED)
+    @Schema(description = "密码", requiredMode = RequiredMode.REQUIRED)
     private String password;
+
+    @Schema(description = "验证码唯一标识（由 /auth/captcha 接口返回）")
+    private String captchaKey;
+
+    @Schema(description = "用户输入的验证码")
+    private String captchaCode;
 }

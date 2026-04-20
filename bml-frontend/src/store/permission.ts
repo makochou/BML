@@ -46,12 +46,23 @@ const buildSidebarMenus = (routes: BackendRouteItem[]): SidebarMenuItem[] => {
         });
 };
 
-/** 前端静态菜单项（不依赖后端动态路由） */
-const STATIC_SIDEBAR_ITEMS: SidebarMenuItem[] = [
+/** 前端静态菜单项 — 靠前位置（插入到「工作台」之后） */
+const STATIC_SIDEBAR_ITEMS_FRONT: SidebarMenuItem[] = [
     {
         name: 'LicenseManagement',
         title: '授权管理',
         icon: 'safe',
+        hidden: false,
+        children: []
+    }
+];
+
+/** 前端静态菜单项 — 末尾位置（追加到菜单列表最后） */
+const STATIC_SIDEBAR_ITEMS_TAIL: SidebarMenuItem[] = [
+    {
+        name: 'SystemConfig',
+        title: '系统配置',
+        icon: 'settings',
         hidden: false,
         children: []
     }
@@ -67,9 +78,11 @@ export const usePermissionStore = defineStore('permission', {
         setBackendRoutes(routes: BackendRouteItem[]) {
             this.backendRoutes = routes;
             const dynamicMenus = buildSidebarMenus(routes);
-            // 将静态菜单项「授权管理」插入到「工作台」之后、「全源资产目录」之前（索引 1）
+            // 将「授权管理」插入到「工作台」之后（索引 1）
             const insertIdx = Math.min(1, dynamicMenus.length);
-            dynamicMenus.splice(insertIdx, 0, ...STATIC_SIDEBAR_ITEMS);
+            dynamicMenus.splice(insertIdx, 0, ...STATIC_SIDEBAR_ITEMS_FRONT);
+            // 将「系统配置」追加到菜单列表最末尾
+            dynamicMenus.push(...STATIC_SIDEBAR_ITEMS_TAIL);
             this.sidebarMenus = dynamicMenus;
             this.dynamicRoutesLoaded = true;
         },

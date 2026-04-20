@@ -27,6 +27,11 @@ describe('auth utils', () => {
             }
         });
 
+        // 模拟 window.location.pathname，默认 /admin 路径（中台入口）
+        vi.stubGlobal('window', {
+            location: { pathname: '/admin/dashboard' }
+        });
+
         if (typeof globalThis.atob !== 'function') {
             vi.stubGlobal('atob', (value: string) => Buffer.from(value, 'base64').toString('binary'));
         }

@@ -1,14 +1,86 @@
-const ACCESS_TOKEN_KEY = 'accessToken';
-const REFRESH_TOKEN_KEY = 'refreshToken';
+/**
+ * ═══════════════════════════════════════════════════════════
+ * 双入口认证隔离方案
+ * ───────────────────────────────────────────────────────────
+ * 项目有两个独立入口：
+ *   1. 中台管理平台：ip:port/admin（scope = 'admin'）
+ *   2. 前台业务系统：ip:port/     （scope = 'biz'）
+ *
+ * 两个入口的 token 使用不同的 localStorage 键前缀，
+ * 退出其中一个入口不会影响另一个入口的登录状态。
+ *
+ * 存储键命名规则：
+ *   admin 入口 → admin_accessToken / admin_refreshToken / admin_authUserIdentity
+ *   业务 入口 → biz_accessToken   / biz_refreshToken   / biz_authUserIdentity
+ * ═══════════════════════════════════════════════════════════
+ */
+
+/** 认证作用域类型 */
+type AuthScope = 'admin' | 'biz';
+
+/**
+ * 根据当前页面路径自动判断所属认证作用域。
+ * /admin 开头 → 中台管理平台；其他 → 前台业务系统。
+ */
+export const getAuthScope = (): AuthScope =>
+    window.location.pathname.startsWith('/admin') ? 'admin' : 'biz';
+
+/** 基础键名（不含前缀） */
+const BASE_ACCESS_TOKEN_KEY = 'accessToken';
+const BASE_REFRESH_TOKEN_KEY = 'refreshToken';
+const BASE_USER_IDENTITY_KEY = 'authUserIdentity';
+
+/** 旧版单键名（用于兼容迁移，读取后自动清除） */
 const LEGACY_TOKEN_KEY = 'token';
-const USER_IDENTITY_KEY = 'authUserIdentity';
+const LEGACY_ACCESS_TOKEN_KEY = 'accessToken';
+const LEGACY_REFRESH_TOKEN_KEY = 'refreshToken';
+const LEGACY_USER_IDENTITY_KEY = 'authUserIdentity';
+
+/** 根据作用域构造实际存储键 */
+const scopedKey = (scope: AuthScope, base: string): string => `${scope}_${base}`;
 
 type JwtPayload = Record<string, unknown>;
 const USER_IDENTITY_CLAIM_KEYS = ['userId', 'user_id', 'uid', 'sub', 'username', 'userName', 'loginName', 'name'] as const;
 
-export const getAccessToken = () => localStorage.getItem(ACCESS_TOKEN_KEY) || localStorage.getItem(LEGACY_TOKEN_KEY);
+/**
+ * 获取当前作用域的 accessToken。
+ * 优先读取新的带前缀键，兼容旧的无前缀键（首次迁移场景）。
+ */
+export const getAccessToken = (): string | null => {
+    const scope = getAuthScope();
+    const token = localStorage.getItem(scopedKey(scope, BASE_ACCESS_TOKEN_KEY));
+    if (token) {
+        return token;
+    }
+    // 兼容旧版：读取无前缀键并自动迁移到当前作用域
+    const legacy = localStorage.getItem(LEGACY_ACCESS_TOKEN_KEY) || localStorage.getItem(LEGACY_TOKEN_KEY);
+    if (legacy) {
+        localStorage.setItem(scopedKey(scope, BASE_ACCESS_TOKEN_KEY), legacy);
+        localStorage.removeItem(LEGACY_ACCESS_TOKEN_KEY);
+        localStorage.removeItem(LEGACY_TOKEN_KEY);
+        return legacy;
+    }
+    return null;
+};
 
-export const getRefreshToken = () => localStorage.getItem(REFRESH_TOKEN_KEY);
+/**
+ * 获取当前作用域的 refreshToken。
+ */
+export const getRefreshToken = (): string | null => {
+    const scope = getAuthScope();
+    const token = localStorage.getItem(scopedKey(scope, BASE_REFRESH_TOKEN_KEY));
+    if (token) {
+        return token;
+    }
+    // 兼容旧版
+    const legacy = localStorage.getItem(LEGACY_REFRESH_TOKEN_KEY);
+    if (legacy) {
+        localStorage.setItem(scopedKey(scope, BASE_REFRESH_TOKEN_KEY), legacy);
+        localStorage.removeItem(LEGACY_REFRESH_TOKEN_KEY);
+        return legacy;
+    }
+    return null;
+};
 
 /**
  * 解码 JWT payload。
@@ -78,9 +150,19 @@ const resolveUserIdentityFromJwt = (token: string): string => {
  * 3) 都失败则返回空字符串，由业务侧走匿名兜底键。
  */
 export const getCurrentUserIdentity = () => {
-    const storedIdentity = localStorage.getItem(USER_IDENTITY_KEY)?.trim();
+    const scope = getAuthScope();
+    const identityKey = scopedKey(scope, BASE_USER_IDENTITY_KEY);
+    const storedIdentity = localStorage.getItem(identityKey)?.trim();
     if (storedIdentity) {
         return storedIdentity;
+    }
+
+    // 兼容旧版无前缀键
+    const legacyIdentity = localStorage.getItem(LEGACY_USER_IDENTITY_KEY)?.trim();
+    if (legacyIdentity) {
+        localStorage.setItem(identityKey, legacyIdentity);
+        localStorage.removeItem(LEGACY_USER_IDENTITY_KEY);
+        return legacyIdentity;
     }
 
     const token = getAccessToken();
@@ -90,7 +172,7 @@ export const getCurrentUserIdentity = () => {
 
     const identityFromToken = resolveUserIdentityFromJwt(token);
     if (identityFromToken) {
-        localStorage.setItem(USER_IDENTITY_KEY, identityFromToken);
+        localStorage.setItem(identityKey, identityFromToken);
     }
     return identityFromToken;
 };
@@ -102,32 +184,38 @@ export const getCurrentUserIdentity = () => {
  * 3) 本地尚无标识时，再从 token 尝试提取并持久化。
  */
 const persistUserIdentity = (payload: { accessToken: string; userIdentity?: string }) => {
+    const scope = getAuthScope();
+    const identityKey = scopedKey(scope, BASE_USER_IDENTITY_KEY);
     const explicitIdentity = payload.userIdentity?.trim();
     if (explicitIdentity) {
-        localStorage.setItem(USER_IDENTITY_KEY, explicitIdentity);
+        localStorage.setItem(identityKey, explicitIdentity);
         return;
     }
 
-    const existingIdentity = localStorage.getItem(USER_IDENTITY_KEY)?.trim();
+    const existingIdentity = localStorage.getItem(identityKey)?.trim();
     if (existingIdentity) {
         return;
     }
 
     const identityFromToken = resolveUserIdentityFromJwt(payload.accessToken);
     if (identityFromToken) {
-        localStorage.setItem(USER_IDENTITY_KEY, identityFromToken);
+        localStorage.setItem(identityKey, identityFromToken);
     }
 };
 
 export const setAuthTokens = (payload: { accessToken: string; refreshToken?: string; userIdentity?: string }) => {
-    localStorage.setItem(ACCESS_TOKEN_KEY, payload.accessToken);
+    const scope = getAuthScope();
+    localStorage.setItem(scopedKey(scope, BASE_ACCESS_TOKEN_KEY), payload.accessToken);
+    // 清理旧版无前缀键（迁移完成后不再使用）
     localStorage.removeItem(LEGACY_TOKEN_KEY);
+    localStorage.removeItem(LEGACY_ACCESS_TOKEN_KEY);
     if (payload.refreshToken) {
-        localStorage.setItem(REFRESH_TOKEN_KEY, payload.refreshToken);
+        localStorage.setItem(scopedKey(scope, BASE_REFRESH_TOKEN_KEY), payload.refreshToken);
+        localStorage.removeItem(LEGACY_REFRESH_TOKEN_KEY);
     }
 
     /**
-     * 用户标识用于列表布局等“按账号隔离”的前端本地配置。
+     * 用户标识用于列表布局等"按账号隔离"的前端本地配置。
      * - 登录时优先落入传入的 userIdentity（通常为用户名）；
      * - 刷新 token 时若未传入，优先沿用当前标识；仅在缺失时才从新 token 提取。
      */
@@ -135,10 +223,16 @@ export const setAuthTokens = (payload: { accessToken: string; refreshToken?: str
 };
 
 export const clearAuthTokens = () => {
-    localStorage.removeItem(ACCESS_TOKEN_KEY);
-    localStorage.removeItem(REFRESH_TOKEN_KEY);
+    const scope = getAuthScope();
+    // 只清除当前作用域的 token，不影响另一个入口
+    localStorage.removeItem(scopedKey(scope, BASE_ACCESS_TOKEN_KEY));
+    localStorage.removeItem(scopedKey(scope, BASE_REFRESH_TOKEN_KEY));
+    localStorage.removeItem(scopedKey(scope, BASE_USER_IDENTITY_KEY));
+    // 同时清理旧版无前缀键（如果还残留）
     localStorage.removeItem(LEGACY_TOKEN_KEY);
-    localStorage.removeItem(USER_IDENTITY_KEY);
+    localStorage.removeItem(LEGACY_ACCESS_TOKEN_KEY);
+    localStorage.removeItem(LEGACY_REFRESH_TOKEN_KEY);
+    localStorage.removeItem(LEGACY_USER_IDENTITY_KEY);
 };
 
 export const redirectToLogin = () => {

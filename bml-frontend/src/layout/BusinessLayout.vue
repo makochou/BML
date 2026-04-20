@@ -1,6 +1,8 @@
 <template>
   <a-layout class="business-layout">
-    <a-layout-sider collapsible breakpoint="xl" :collapsed="collapsed" @collapse="onCollapse" :width="240" :collapsed-width="64">
+    <!-- 注意：不使用 collapsible / breakpoint，避免 Arco 进入 drawer 模式导致生成 mask 遮罩层拦截点击事件。
+         折叠由自定义 collapse-toggle 按钮控制。 -->
+    <a-layout-sider :collapsed="collapsed" :width="240" :collapsed-width="64">
       <div class="sidebar-logo" @click="goHome">
         <span v-if="!collapsed" class="logo-text">BML 业务系统</span>
         <span v-else class="logo-text-mini">B</span>
@@ -77,7 +79,6 @@ const selectedKeys = computed(() => { const name = route.name as string; return 
 const openKeys = ref(['system']);
 const pageTitle = computed(() => { const t = route.meta?.title; return typeof t === 'string' ? t : ''; });
 
-const onCollapse = (val: boolean) => { collapsed.value = val; };
 const onMenuClick = (key: string) => { router.push({ name: key }); };
 const goHome = () => { router.push('/dashboard'); };
 
@@ -108,6 +109,8 @@ onMounted(() => { loadUserInfo(); });
 
 .business-layout :deep(.arco-layout-sider) { background: #fff; border-right: 1px solid #e5e6eb; box-shadow: 2px 0 8px rgba(0,0,0,0.03); position: relative; z-index: 100; }
 .business-layout :deep(.arco-layout-sider-trigger) { display: none; }
+/* 安全兜底：确保 Arco sider 在任何情况下都不会生成遮罩层阻断内容区交互 */
+.business-layout :deep(.arco-layout-sider-mask) { display: none !important; }
 .business-layout :deep(.arco-layout-sider-children) { overflow-y: auto; overflow-x: hidden; padding-bottom: 60px; scrollbar-width: none; }
 .business-layout :deep(.arco-layout-sider-children)::-webkit-scrollbar { display: none; }
 

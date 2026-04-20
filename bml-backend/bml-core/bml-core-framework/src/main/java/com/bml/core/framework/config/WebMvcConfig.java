@@ -41,7 +41,8 @@ public class WebMvcConfig implements WebMvcConfigurer {
         if (activeUserInterceptor != null) {
             registry.addInterceptor(activeUserInterceptor)
                     .addPathPatterns("/**")
-                    .excludePathPatterns("/login", "/captchaImage", "/**/*.html", "/**/*.js", "/**/*.css")
+                    .excludePathPatterns("/login", "/captchaImage", "/auth/captcha", "/auth/login/config",
+                            "/system/config/branding/**", "/**/*.html", "/**/*.js", "/**/*.css")
                     .order(1);
         }
     }

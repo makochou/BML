@@ -13,6 +13,8 @@ import com.bml.module.system.dto.LoginBody;
 import com.bml.module.system.dto.RefreshTokenDTO;
 import com.bml.module.system.entity.SysMenu;
 import com.bml.module.system.entity.SysUser;
+import com.bml.module.system.service.CaptchaService;
+import com.bml.module.system.service.SysConfigService;
 import com.bml.module.system.service.SysLoginService;
 import com.bml.module.system.service.SysMenuService;
 import com.bml.module.system.service.SysRoleService;
@@ -104,6 +106,12 @@ public class AuthController {
     @Resource
     private SysRoleService roleService;
 
+    @Resource
+    private CaptchaService captchaService;
+
+    @Resource
+    private SysConfigService configService;
+
     /**
      * 用户登录
      * <p>
@@ -142,6 +150,17 @@ public class AuthController {
     @Operation(summary = "前台业务系统登录", description = "使用数据库用户（sys_user 表）进行认证，返回 AccessToken 和 RefreshToken")
     @PostMapping("/login")
     public Result<TokenVO> login(@RequestBody LoginBody loginBody) {
+        // 验证码校验（仅当系统开启验证码功能时生效）
+        String captchaEnabled = configService.getConfigValue("sys.login.captchaEnabled", "false");
+        if ("true".equalsIgnoreCase(captchaEnabled)) {
+            if (!StringUtils.hasText(loginBody.getCaptchaKey()) || !StringUtils.hasText(loginBody.getCaptchaCode())) {
+                return Result.badRequest("请输入验证码");
+            }
+            if (!captchaService.validateCaptcha(loginBody.getCaptchaKey(), loginBody.getCaptchaCode())) {
+                return Result.badRequest("验证码错误或已过期");
+            }
+        }
+
         // 设置为业务系统登录模式 → UserDetailsServiceImpl 仅查询 sys_user 表
         LoginModeHolder.setBusinessMode();
         try {
@@ -150,6 +169,35 @@ public class AuthController {
         } finally {
             LoginModeHolder.clear();
         }
+    }
+
+    /**
+     * 获取图形验证码
+     * <p>
+     * 返回验证码图片（Base64 编码）和唯一标识 key。
+     * 前端在登录时将 key 和用户输入的验证码一起提交。
+     * </p>
+     *
+     * @return captchaKey + captchaImage（Base64 PNG）
+     */
+    @Operation(summary = "获取图形验证码", description = "生成验证码图片，返回 Base64 编码的 PNG 和唯一标识 key")
+    @GetMapping("/captcha")
+    public Result<java.util.Map<String, String>> captcha() {
+        return Result.ok(captchaService.generateCaptcha());
+    }
+
+    /**
+     * 获取登录页配置
+     * <p>
+     * 无需认证即可调用，用于前端登录页动态展示验证码、背景图等。
+     * 返回以 {@code sys.login.} 为前缀的所有配置项。
+     * </p>
+     */
+    @Operation(summary = "获取登录页配置", description = "返回验证码开关、登录页背景图等配置")
+    @GetMapping("/login/config")
+    public Result<java.util.Map<String, String>> loginConfig() {
+        java.util.Map<String, String> config = configService.getConfigsByPrefix("sys.login.");
+        return Result.ok(config);
     }
 
     /**

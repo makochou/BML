@@ -1,10 +1,9 @@
 <template>
   <a-layout class="layout-demo">
+    <!-- 不使用 collapsible / breakpoint，避免 Arco 进入 drawer 模式生成 mask 遮罩层拦截点击事件。
+         折叠由自定义 collapse-btn 按钮控制。 -->
     <a-layout-sider 
-        collapsible 
-        breakpoint="xl" 
         :collapsed="collapsed" 
-        @collapse="onCollapse"
         :class="[`sidebar-${appStore.sidebarTheme}`]"
     >
       <div class="logo">BML中台管理</div>
@@ -234,9 +233,6 @@ const resolveMenuIcon = (icon?: string) => {
   return menuIconMap[icon.toLowerCase()] || IconApps;
 };
 
-const onCollapse = (val: boolean) => {
-  collapsed.value = val;
-};
 
 const toggleCollapse = () => {
     collapsed.value = !collapsed.value;
@@ -355,6 +351,10 @@ onUnmounted(() => {
 /* 隐藏默认 Trigger */
 .layout-demo :deep(.arco-layout-sider-trigger) {
     display: none;
+}
+/* 安全兜底：确保 Arco sider 在任何情况下都不会生成遮罩层阻断内容区交互 */
+.layout-demo :deep(.arco-layout-sider-mask) {
+    display: none !important;
 }
 
 /* 自定义悬浮收缩按钮 */
@@ -708,14 +708,14 @@ onUnmounted(() => {
   z-index: 98;
 }
 
-/* 主内容区域 - 占据剩余空间 */
+/* 主内容区域 - 精确占据剩余空间，禁止外层滚动 */
 .page-container {
   flex: 1;
   overflow: hidden;
   position: relative;
   display: flex;
   flex-direction: column;
-  padding: 0; /* Clear default padding if any */
+  padding: 0;
 }
 
 /* Transition */

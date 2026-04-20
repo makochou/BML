@@ -40,7 +40,9 @@ public class LicenseCheckInterceptor implements HandlerInterceptor {
             "/auth/login",
             "/auth/refresh",
             "/auth/register",
+            "/auth/captcha",
             "/system/license",
+            "/system/config/branding",
             "/actuator/health"
     );
 

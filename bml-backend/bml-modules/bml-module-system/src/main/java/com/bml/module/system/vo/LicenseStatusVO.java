@@ -4,7 +4,7 @@ import com.bml.core.framework.license.BmlLicense;
 import lombok.Builder;
 import lombok.Data;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -92,11 +92,11 @@ public class LicenseStatusVO {
      */
     private Integer frozenApiUserCount;
 
-    /** 签发日期 */
-    private LocalDate issueDate;
+    /** 签发日期（精确到时分秒） */
+    private LocalDateTime issueDate;
 
-    /** 到期日期 */
-    private LocalDate expireDate;
+    /** 到期日期（精确到时分秒） */
+    private LocalDateTime expireDate;
 
     /** 附加说明 */
     private String remark;

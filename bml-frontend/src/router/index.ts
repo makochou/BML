@@ -114,6 +114,12 @@ const staticRoutes: RouteRecordRaw[] = [
                 name: 'LicenseManagement',
                 component: () => import('../views/system/license/index.vue'),
                 meta: { title: '授权管理', icon: 'safe' }
+            },
+            {
+                path: 'config',
+                name: 'SystemConfig',
+                component: () => import('../views/system/config/index.vue'),
+                meta: { title: '系统配置', icon: 'settings' }
             }
         ]
     }
