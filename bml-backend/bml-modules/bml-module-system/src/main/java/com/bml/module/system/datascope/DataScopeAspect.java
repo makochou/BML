@@ -28,10 +28,22 @@ import java.util.Set;
  * 设计目标：
  * 1) 查询方法只关心业务条件，不重复写权限 SQL；
  * 2) 权限规则统一由切面组装，并通过 {@link DataScopeContext} 注入；
- * 3) 规则缺失时默认拒绝（fail-close），避免越权。
+ * 3) 规则缺失时默认拒绝（fail-close），避免越权；
+ * 4) 尊重机构 data_isolation 配置，隔离机构的数据不会泄露到父级/同级查询。
+ * </p>
+ * <p>
+ * <b>data_isolation 模式与 SQL 生成策略：</b>
+ * <ul>
+ *   <li>0（共享）— 包含在父级 ORG_AND_CHILD 查询中</li>
+ *   <li>1（完全隔离）— 从父级 ORG_AND_CHILD 查询中排除</li>
+ *   <li>2（汇总共享）— SQL 层面等同共享，业务层应限制为汇总</li>
+ *   <li>3（同级互通）— 包含在父级查询 + 兄弟机构查询中</li>
+ *   <li>4（按模块隔离）— 当前版本未实现模块配置表，等同共享</li>
+ * </ul>
  * </p>
  *
  * @author BML Team
+ * @see DataIsolationType
  */
 @Aspect
 @Component
@@ -139,21 +151,52 @@ public class DataScopeAspect {
         };
     }
 
+    /**
+     * 构建 ORG_AND_CHILD 范围 SQL：本机构 + 下级机构（排除隔离机构）+ 同级互通机构。
+     * <p>
+     * 逻辑说明：
+     * <ol>
+     *   <li>用户自身所在机构始终可见</li>
+     *   <li>后代机构中排除 data_isolation = 1（完全隔离）的记录</li>
+     *   <li>同级互通（data_isolation = 3）的兄弟机构也纳入可见范围</li>
+     * </ol>
+     * </p>
+     */
     private String buildOrgAndChildSql(String orgColumn, Long orgId, String creatorColumn, Long userId) {
         String column = normalizeColumn(orgColumn);
         if (StrUtil.isBlank(column) || orgId == null) {
             return fallbackToCreator(creatorColumn, userId);
         }
-        return column + " IN (SELECT id FROM sys_org WHERE id = " + orgId
-                + " OR FIND_IN_SET(" + orgId + ", ancestors))";
+        // 自身机构 + 非隔离的后代 + 同级互通兄弟
+        return column + " IN ("
+                + "SELECT id FROM sys_org WHERE id = " + orgId                               // 自身始终可见
+                + " OR (FIND_IN_SET(" + orgId + ", ancestors) AND data_isolation != " + DataIsolationType.ISOLATED.getCode() + ")"  // 非隔离后代
+                + " OR (data_isolation = " + DataIsolationType.SIBLING_SHARED.getCode()
+                +      " AND parent_id = (SELECT parent_id FROM sys_org WHERE id = " + orgId + ")"
+                +      " AND id != " + orgId + ")"                                           // 同级互通兄弟
+                + ")";
     }
 
+    /**
+     * 构建 ORG 范围 SQL：仅本机构 + 同级互通兄弟机构。
+     * <p>
+     * 若用户所在机构自身的 data_isolation = 3（同级互通），
+     * 则兄弟机构中同为 data_isolation = 3 的也纳入可见范围。
+     * </p>
+     */
     private String buildOrgSql(String orgColumn, Long orgId, String creatorColumn, Long userId) {
         String column = normalizeColumn(orgColumn);
         if (StrUtil.isBlank(column) || orgId == null) {
             return fallbackToCreator(creatorColumn, userId);
         }
-        return column + " = " + orgId;
+        // 自身机构 + 同级互通兄弟（如果自身也是同级互通模式）
+        return column + " IN ("
+                + "SELECT id FROM sys_org WHERE id = " + orgId                               // 自身始终可见
+                + " OR (data_isolation = " + DataIsolationType.SIBLING_SHARED.getCode()
+                +      " AND parent_id = (SELECT parent_id FROM sys_org WHERE id = " + orgId + ")"
+                +      " AND id != " + orgId
+                +      " AND (SELECT data_isolation FROM sys_org WHERE id = " + orgId + ") = " + DataIsolationType.SIBLING_SHARED.getCode() + ")"
+                + ")";
     }
 
     private String buildDeptAndChildSql(String deptColumn, Long deptId, String creatorColumn, Long userId) {

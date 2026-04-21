@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 import java.io.Serializable;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -42,11 +43,29 @@ public class SysUserVO implements Serializable {
     @Schema(description = "状态 (1:正常 0:停用)")
     private Integer status;
 
-    @Schema(description = "部门ID")
+    @Schema(description = "所属机构ID")
+    private Long orgId;
+
+    @Schema(description = "所属机构名称")
+    private String orgName;
+
+    @Schema(description = "所属部门ID")
     private Long deptId;
 
-    @Schema(description = "部门名称")
+    @Schema(description = "所属部门名称")
     private String deptName;
+
+    @Schema(description = "岗位ID")
+    private Long postId;
+
+    @Schema(description = "岗位名称")
+    private String postName;
+
+    @Schema(description = "工号")
+    private String employeeNo;
+
+    @Schema(description = "入职日期")
+    private LocalDate entryDate;
 
     @Schema(description = "角色ID列表")
     private List<Long> roleIds;

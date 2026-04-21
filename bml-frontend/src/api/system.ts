@@ -1,7 +1,7 @@
 /**
  * 系统管理 API 接口层
  * <p>
- * 统一封装前台业务系统的系统管理模块接口，包括用户、角色、菜单、部门管理。
+ * 统一封装前台业务系统的组织与权限模块接口，包括机构、部门、岗位、用户、角色管理。
  * 所有接口均需要 JWT 认证，通过 request 拦截器自动附加 Authorization 头。
  * </p>
  *
@@ -30,7 +30,11 @@ export interface UserForm {
   phone?: string;
   gender?: number;
   status?: number;
+  orgId?: number;
   deptId?: number;
+  postId?: number;
+  employeeNo?: string;
+  entryDate?: string;
   roleIds?: number[];
   remark?: string;
 }
@@ -45,8 +49,14 @@ export interface UserVO {
   gender: number;
   avatar: string;
   status: number;
+  orgId: number;
+  orgName: string;
   deptId: number;
   deptName: string;
+  postId: number;
+  postName: string;
+  employeeNo: string;
+  entryDate: string;
   roleIds: number[];
   roleNames: string[];
   createTime: string;
@@ -126,7 +136,11 @@ export interface MenuVO {
 export interface DeptForm {
   id?: number;
   parentId?: number;
+  orgId?: number;
   deptName?: string;
+  deptCode?: string;
+  deptType?: number;
+  funcType?: string;
   sort?: number;
   leader?: string;
   phone?: string;
@@ -138,7 +152,12 @@ export interface DeptForm {
 export interface DeptVO {
   id: number;
   parentId: number;
+  orgId: number;
+  orgName: string;
   deptName: string;
+  deptCode: string;
+  deptType: number;
+  funcType: string;
   sort: number;
   leader: string;
   phone: string;
@@ -146,6 +165,103 @@ export interface DeptVO {
   status: number;
   createTime: string;
   children: DeptVO[];
+}
+
+/** 机构查询参数 */
+export interface OrgQuery {
+  orgName?: string;
+  orgCode?: string;
+  orgType?: number;
+  status?: number;
+}
+
+/** 机构表单数据（新增/编辑） */
+export interface OrgForm {
+  id?: number;
+  parentId?: number;
+  orgName?: string;
+  orgCode?: string;
+  orgType?: number;
+  creditCode?: string;
+  legalPerson?: string;
+  registeredCapital?: number;
+  establishDate?: string;
+  sort?: number;
+  leader?: string;
+  phone?: string;
+  email?: string;
+  province?: string;
+  city?: string;
+  district?: string;
+  address?: string;
+  businessScope?: string;
+  status?: number;
+  remark?: string;
+  dataIsolation?: number;
+}
+
+/** 机构 VO */
+export interface OrgVO {
+  id: number;
+  parentId: number;
+  orgName: string;
+  orgCode: string;
+  orgType: number;
+  creditCode: string;
+  legalPerson: string;
+  registeredCapital: number;
+  establishDate: string;
+  sort: number;
+  leader: string;
+  phone: string;
+  email: string;
+  province: string;
+  city: string;
+  district: string;
+  address: string;
+  businessScope: string;
+  status: number;
+  remark: string;
+  dataIsolation: number;
+  createTime: string;
+  children: OrgVO[];
+}
+
+/** 岗位查询参数 */
+export interface PostQuery {
+  postName?: string;
+  postCode?: string;
+  orgId?: number;
+  postCategory?: string;
+  status?: number;
+}
+
+/** 岗位表单数据（新增/编辑） */
+export interface PostForm {
+  id?: number;
+  postCode?: string;
+  postName?: string;
+  orgId?: number;
+  postCategory?: string;
+  postLevel?: string;
+  sort?: number;
+  status?: number;
+  remark?: string;
+}
+
+/** 岗位 VO */
+export interface PostVO {
+  id: number;
+  postCode: string;
+  postName: string;
+  orgId: number;
+  orgName: string;
+  postCategory: string;
+  postLevel: string;
+  sort: number;
+  status: number;
+  remark: string;
+  createTime: string;
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -243,3 +359,51 @@ export const updateDept = (data: DeptForm) =>
 /** 删除部门 */
 export const deleteDept = (deptId: number) =>
   request.delete(`/system/dept/${deptId}`);
+
+/* ═══════════════════════════════════════════════════════════
+   机构管理 API
+   ═══════════════════════════════════════════════════════════ */
+
+/** 获取机构树列表 */
+export const fetchOrgList = (params?: OrgQuery) =>
+  request.get('/system/org/list', { params });
+
+/** 获取机构详情 */
+export const fetchOrgDetail = (orgId: number) =>
+  request.get(`/system/org/${orgId}`);
+
+/** 新增机构 */
+export const createOrg = (data: OrgForm) =>
+  request.post('/system/org', data);
+
+/** 修改机构 */
+export const updateOrg = (data: OrgForm) =>
+  request.put('/system/org', data);
+
+/** 删除机构 */
+export const deleteOrg = (orgId: number) =>
+  request.delete(`/system/org/${orgId}`);
+
+/* ═══════════════════════════════════════════════════════════
+   岗位管理 API
+   ═══════════════════════════════════════════════════════════ */
+
+/** 获取岗位列表 */
+export const fetchPostList = (params?: PostQuery) =>
+  request.get('/system/post/list', { params });
+
+/** 获取岗位详情 */
+export const fetchPostDetail = (postId: number) =>
+  request.get(`/system/post/${postId}`);
+
+/** 新增岗位 */
+export const createPost = (data: PostForm) =>
+  request.post('/system/post', data);
+
+/** 修改岗位 */
+export const updatePost = (data: PostForm) =>
+  request.put('/system/post', data);
+
+/** 删除岗位 */
+export const deletePost = (postId: number) =>
+  request.delete(`/system/post/${postId}`);

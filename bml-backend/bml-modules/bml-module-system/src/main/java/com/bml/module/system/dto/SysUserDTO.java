@@ -8,6 +8,7 @@ import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 import java.io.Serializable;
+import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -55,15 +56,26 @@ public class SysUserDTO implements Serializable {
     @Schema(description = "状态 (1:正常 0:停用)")
     private Integer status;
 
-    @Schema(description = "部门ID")
+    @Schema(description = "所属机构ID")
+    private Long orgId;
+
+    @Schema(description = "所属部门ID")
     private Long deptId;
+
+    @Schema(description = "岗位ID")
+    private Long postId;
+
+    @Schema(description = "工号")
+    @Size(max = 30, message = "工号长度不能超过30个字符")
+    private String employeeNo;
+
+    @Schema(description = "入职日期")
+    private LocalDate entryDate;
 
     @Schema(description = "角色ID列表")
     private List<Long> roleIds;
 
-    @Schema(description = "岗位ID列表")
-    private List<Long> postIds;
-
     @Schema(description = "备注")
+    @Size(max = 500, message = "备注长度不能超过500个字符")
     private String remark;
 }

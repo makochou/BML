@@ -80,25 +80,9 @@
         <!-- 右侧：悬浮控制坞 (Glass Dock) -->
         <div class="header-right">
             <div class="glass-dock">
-                <!-- 搜索 -->
-                <div class="dock-item search-trigger">
-                    <icon-search />
-                </div>
-                
-                <div class="dock-divider"></div>
-
-                <!-- 消息通知 -->
-                <div class="dock-item" @click="notificationStore.openDrawer()">
-                    <a-badge :count="notificationStore.unreadCount" :max-count="99" dot :offset="[4, -4]">
-                        <icon-notification />
-                    </a-badge>
-                </div>
-
-
-
                 <!-- 主题配置 -->
-                <div class="dock-item" @click="appStore.toggleSettings(true)">
-                    <icon-settings />
+                <div class="dock-item" @click="appStore.toggleSettings(true)" title="主题设置">
+                    <icon-palette />
                 </div>
 
                 <!-- 全屏 -->
@@ -117,9 +101,6 @@
                         <icon-down class="user-arrow" />
                     </div>
                      <template #content>
-                        <a-doption><template #icon><icon-user /></template>个人中心</a-doption>
-                        <a-doption><template #icon><icon-settings /></template>系统设置</a-doption>
-                        <a-divider style="margin: 4px 0;" />
                         <a-doption @click="handleLogout" style="color: #f53f3f;">
                             <template #icon><icon-export /></template>退出登录
                         </a-doption>
@@ -145,42 +126,23 @@
       </a-layout-content>
     </a-layout>
     <ThemeSettings />
-
-    <!-- 通知中心右侧抽屉（与 ThemeSettings 同级） -->
-    <a-drawer
-      class="ultra-premium-drawer notify-drawer"
-      :width="860"
-      :visible="notificationStore.drawerVisible"
-      unmount-on-close
-      :footer="false"
-      :header="false"
-      @cancel="notificationStore.closeDrawer()"
-    >
-      <NotificationPanel />
-    </a-drawer>
-
-    <!-- 右下角告警弹窗（Teleport 到 body，不影响布局） -->
-    <AlertToast />
   </a-layout>
 </template>
 
 <script lang="ts" setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { Message } from '@arco-design/web-vue';
 import {
     IconList, IconBug, IconApps, IconExport, IconDashboard,
     IconLeft, IconRight, IconNotification, IconFullscreen, IconFullscreenExit, IconUser, IconDown,
-    IconSettings, IconSearch, IconSafe, IconLayers, IconDesktop, IconIdcard, IconBranch
+    IconSettings, IconPalette, IconSafe, IconLayers, IconDesktop, IconIdcard, IconBranch
 } from '@arco-design/web-vue/es/icon';
 import request from '../utils/request';
 import TagsView from '../components/TagsView.vue';
 import ThemeSettings from '../components/ThemeSettings.vue';
-import NotificationPanel from '../components/NotificationPanel.vue';
-import AlertToast from '../components/AlertToast.vue';
 import { useTagsViewStore } from '../store/tagsView';
 import { useAppStore } from '../store/app';
-import { useNotificationStore } from '../store/notification';
 import { usePermissionStore, type SidebarMenuItem } from '../store/permission';
 import { clearAuthTokens } from '../utils/auth';
 import { resetDynamicRoutes } from '../router';
@@ -192,7 +154,6 @@ const isFullscreen = ref(false);
 
 const tagsViewStore = useTagsViewStore();
 const appStore = useAppStore();
-const notificationStore = useNotificationStore();
 const permissionStore = usePermissionStore();
 const cachedViews = computed(() => tagsViewStore.cachedViews);
 const sidebarMenus = computed(() => permissionStore.sidebarMenus);
@@ -281,7 +242,6 @@ const handleLogout = async () => {
     clearAuthTokens();
     resetDynamicRoutes();
     permissionStore.resetRoutes();
-    notificationStore.stopPolling(); // 退出时停止通知轮询
     tagsViewStore.delAllViews();
     Message.success('已退出登录');
     router.push('/admin/login');
@@ -289,20 +249,12 @@ const handleLogout = async () => {
 };
 
 /**
- * 生命周期：启动通知轮询 + 恢复主题
+ * 生命周期：恢复主题
  */
 onMounted(() => {
-    notificationStore.startPolling();
     appStore.initTheme();
 });
 
-/**
- * 生命周期：停止通知轮询
- * 离开 Layout（如刷新页面）时清理定时器
- */
-onUnmounted(() => {
-    notificationStore.stopPolling();
-});
 </script>
 
 <style scoped>
@@ -656,10 +608,6 @@ onUnmounted(() => {
     transform: scale(1.05); /* Gentle pop */
 }
 
-/* Special Items */
-.search-trigger {
-    color: #4e5969;
-}
 .user-item {
     width: auto; /* Allow expansion */
     padding: 0 4px 0 0;

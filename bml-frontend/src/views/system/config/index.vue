@@ -42,6 +42,51 @@
       </div>
 
       <!-- ════════════════════════════════════════════════
+           空闲超时时长配置
+           ════════════════════════════════════════════════ -->
+      <div class="sc-banner sc-banner--idle">
+        <div class="sc-banner__left">
+          <div class="sc-banner__icon-wrap sc-banner__icon-wrap--blue">
+            <icon-clock-circle :size="22" />
+          </div>
+          <div class="sc-banner__info">
+            <h3 class="sc-banner__title">空闲自动登出</h3>
+            <p class="sc-banner__desc">
+              业务系统用户在指定时间内无任何操作（鼠标移动、键盘输入、点击等）将自动退出登录，设为 0 表示不限制
+            </p>
+          </div>
+        </div>
+        <div class="sc-banner__right sc-banner__right--idle">
+          <div class="idle-time-picker">
+            <a-input-number
+              v-model="idleHours"
+              :min="0"
+              :max="23"
+              :step="1"
+              :style="{ width: '90px' }"
+              placeholder="0"
+            >
+              <template #suffix>时</template>
+            </a-input-number>
+            <span class="idle-time-sep">:</span>
+            <a-input-number
+              v-model="idleMinutes"
+              :min="0"
+              :max="59"
+              :step="5"
+              :style="{ width: '90px' }"
+              placeholder="0"
+            >
+              <template #suffix>分</template>
+            </a-input-number>
+          </div>
+          <a-button type="primary" size="small" :loading="idleTimeoutSaving" @click="saveIdleTimeout">
+            保存
+          </a-button>
+        </div>
+      </div>
+
+      <!-- ════════════════════════════════════════════════
            登录页品牌文案编辑
            ════════════════════════════════════════════════ -->
       <div class="sc-brand-editor">
@@ -273,7 +318,7 @@ import { ref, onMounted } from 'vue';
 import { Message } from '@arco-design/web-vue';
 import {
   IconSafe, IconImage, IconLayers, IconApps,
-  IconUpload, IconDelete, IconSwap, IconEdit, IconCheck
+  IconUpload, IconDelete, IconSwap, IconEdit, IconCheck, IconClockCircle
 } from '@arco-design/web-vue/es/icon';
 import {
   fetchLoginConfig,
@@ -289,6 +334,11 @@ const loading = ref(false);
 // 配置状态（与 sys_config 表字段一一对应）
 // ═══════════════════════════════════════════════════════
 const captchaEnabled = ref(false);
+/** 空闲超时 — 小时部分（UI 显示用） */
+const idleHours = ref(0);
+/** 空闲超时 — 分钟部分（UI 显示用） */
+const idleMinutes = ref(30);
+const idleTimeoutSaving = ref(false);
 const loginBgUrl = ref('');
 const sidebarLogoUrl = ref('');
 const faviconUrl = ref('');
@@ -309,6 +359,10 @@ const loadConfig = async () => {
     const res = await fetchLoginConfig() as any;
     const config = res.data || {};
     captchaEnabled.value = config['sys.login.captchaEnabled'] === 'true';
+    // 将后端存储的总分钟数拆分为 时 + 分 显示
+    const totalMinutes = parseInt(config['sys.login.idleTimeout'] || '30', 10) || 30;
+    idleHours.value = Math.floor(totalMinutes / 60);
+    idleMinutes.value = totalMinutes % 60;
     loginBgUrl.value = config['sys.login.bgImage'] || '';
     sidebarLogoUrl.value = config['sys.sidebar.logo'] || '';
     faviconUrl.value = config['sys.login.favicon'] || '';
@@ -416,6 +470,35 @@ const saveBrandText = async () => {
   }
 };
 
+/**
+ * 保存空闲超时时长
+ * 将 时+分 合并为总分钟数写入 sys_config 表，前台业务系统下次加载时生效
+ */
+const saveIdleTimeout = async () => {
+  const totalMinutes = (idleHours.value || 0) * 60 + (idleMinutes.value || 0);
+  idleTimeoutSaving.value = true;
+  try {
+    await batchUpdateConfig({
+      'sys.login.idleTimeout': String(totalMinutes)
+    });
+    // 构造可读的提示文案
+    if (totalMinutes <= 0) {
+      Message.success('已关闭空闲超时限制');
+    } else {
+      const h = Math.floor(totalMinutes / 60);
+      const m = totalMinutes % 60;
+      const parts: string[] = [];
+      if (h > 0) parts.push(`${h} 小时`);
+      if (m > 0) parts.push(`${m} 分钟`);
+      Message.success(`空闲超时已设为 ${parts.join(' ')}`);
+    }
+  } catch {
+    Message.error('保存失败');
+  } finally {
+    idleTimeoutSaving.value = false;
+  }
+};
+
 onMounted(() => {
   loadConfig();
 });
@@ -480,6 +563,32 @@ onMounted(() => {
   color: var(--bml-text-tertiary, #86909c);
   margin: 0;
   line-height: 1.4;
+}
+
+/* ── 空闲超时 Banner 图标渐变色 ── */
+.sc-banner__icon-wrap--blue {
+  background: linear-gradient(135deg, #165dff 0%, #3c7eff 100%);
+}
+/* ── 空闲超时 Banner 右侧：时分选择 + 保存按钮横向排列 ── */
+.sc-banner__right--idle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+/* ── 时分选择器容器 ── */
+.idle-time-picker {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+/* ── 时分之间的冒号分隔符 ── */
+.idle-time-sep {
+  font-size: 18px;
+  font-weight: 700;
+  color: #86909c;
+  line-height: 1;
+  user-select: none;
 }
 
 /* ══════════════════════════════════════════════════════
