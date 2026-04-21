@@ -7,6 +7,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
@@ -15,7 +16,7 @@ import java.time.LocalDateTime;
  * 对应数据库表 {@code sys_user}，继承 {@link BaseEntity} 获得通用审计字段。
  * </p>
  * <p>
- * <b>状态约定：</b> status 字段值 1 表示正常，0 表示停用。
+ * <b>状态约定：</b> status 字段值 1 表示正常，0 表示停用，2 表示锁定。
  * 参见 {@link com.bml.core.common.constant.GlobalConstants#STATUS_NORMAL}。
  * </p>
  *
@@ -58,14 +59,23 @@ public class SysUser extends BaseEntity {
     @Schema(description = "头像地址")
     private String avatar;
 
-    @Schema(description = "状态 (1:正常 0:停用)")
+    @Schema(description = "状态 (1:正常 0:停用 2:锁定)")
     private Integer status;
 
-    @Schema(description = "组织ID")
+    @Schema(description = "所属机构ID")
     private Long orgId;
 
-    @Schema(description = "部门ID")
+    @Schema(description = "所属部门ID")
     private Long deptId;
+
+    @Schema(description = "岗位ID")
+    private Long postId;
+
+    @Schema(description = "工号")
+    private String employeeNo;
+
+    @Schema(description = "入职日期")
+    private LocalDate entryDate;
 
     @Schema(description = "最后登录IP")
     private String loginIp;

@@ -1,21 +1,36 @@
 <template>
   <div class="page-wrapper">
-    <!-- 搜索栏 -->
-    <div class="search-bar">
-      <a-space wrap>
-        <a-input v-model="queryParams.menuName" placeholder="菜单名称" allow-clear style="width: 180px;" @press-enter="handleSearch" />
-        <a-select v-model="queryParams.status" placeholder="状态" allow-clear style="width: 120px;" @change="handleSearch">
-          <a-option :value="1">正常</a-option>
-          <a-option :value="0">停用</a-option>
-        </a-select>
-        <a-button type="primary" @click="handleSearch"><template #icon><icon-search /></template>搜索</a-button>
-        <a-button @click="handleReset"><template #icon><icon-refresh /></template>重置</a-button>
-      </a-space>
-      <a-button type="primary" status="success" @click="handleAdd()"><template #icon><icon-plus /></template>新增菜单</a-button>
-    </div>
+    <!-- ════════════════════════════════════════════════
+         查询面板（与中台授权治理风格一致）
+         ════════════════════════════════════════════════ -->
+    <GovernanceCompactQueryPanel density="ultra" theme="aurora">
+      <template #footerActions>
+        <a-button @click="handleReset">重置条件</a-button>
+        <a-button type="primary" @click="handleSearch">查询</a-button>
+      </template>
+      <a-form :model="queryParams" layout="inline" class="query-form">
+        <a-form-item field="menuName" label="菜单名称">
+          <a-input v-model="queryParams.menuName" placeholder="请输入菜单名称" allow-clear @press-enter="handleSearch" />
+        </a-form-item>
+        <a-form-item field="status" label="状态">
+          <a-select v-model="queryParams.status" placeholder="全部" allow-clear style="width: 120px;" @change="handleSearch">
+            <a-option :value="1">正常</a-option>
+            <a-option :value="0">停用</a-option>
+          </a-select>
+        </a-form-item>
+      </a-form>
+    </GovernanceCompactQueryPanel>
 
-    <!-- 数据表格（树形） -->
-    <div class="table-card">
+    <!-- ════════════════════════════════════════════════
+         列表舞台（与中台授权治理风格一致）
+         ════════════════════════════════════════════════ -->
+    <GovernanceListStage density="ultra" body-fill>
+      <template #actions>
+        <a-button type="primary" @click="handleAdd()">
+          <template #icon><icon-plus /></template>
+          新增菜单
+        </a-button>
+      </template>
       <a-table
         :data="tableData"
         :loading="loading"
@@ -23,12 +38,16 @@
         :pagination="false"
         row-key="id"
         :default-expand-all-rows="true"
+        size="small"
+        :scroll="{ y: '100%' }"
+        :scrollbar="true"
+        sticky-header
       >
         <template #columns>
           <a-table-column title="菜单名称" data-index="menuName" :width="220" />
           <a-table-column title="图标" data-index="icon" :width="80" align="center">
             <template #cell="{ record }">
-              <span v-if="record.icon" style="color: #4f46e5;">{{ record.icon }}</span>
+              <span v-if="record.icon" class="icon-text">{{ record.icon }}</span>
               <span v-else style="color: #c9cdd4;">-</span>
             </template>
           </a-table-column>
@@ -63,7 +82,7 @@
           </a-table-column>
         </template>
       </a-table>
-    </div>
+    </GovernanceListStage>
 
     <!-- 新增/编辑弹窗（BmlModal：支持拖拽、缩放、全屏） -->
     <BmlModal v-model:visible="dialogVisible" :title="dialogTitle" :width="700" :height="580" :min-width="500" :min-height="380">
@@ -156,9 +175,11 @@
 <script lang="ts" setup>
 import { ref, reactive, computed, onMounted } from 'vue';
 import { Message } from '@arco-design/web-vue';
-import { IconSearch, IconRefresh, IconPlus, IconEdit, IconDelete } from '@arco-design/web-vue/es/icon';
+import { IconPlus, IconEdit, IconDelete } from '@arco-design/web-vue/es/icon';
 import { fetchMenuList, createMenu, updateMenu, deleteMenu, type MenuVO, type MenuForm } from '../../../../api/system';
 import BmlModal from '../../../../components/BmlModal.vue';
+import GovernanceCompactQueryPanel from '../../../../components/governance/GovernanceCompactQueryPanel.vue';
+import GovernanceListStage from '../../../../components/governance/GovernanceListStage.vue';
 
 const loading = ref(false);
 const tableData = ref<MenuVO[]>([]);
@@ -244,7 +265,35 @@ onMounted(() => { loadData(); });
 </script>
 
 <style scoped>
-.page-wrapper { padding: 20px; height: 100%; display: flex; flex-direction: column; gap: 16px; }
-.search-bar { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px; padding: 20px; background: #fff; border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
-.table-card { flex: 1; background: #fff; border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); padding: 16px; overflow: auto; }
+.page-wrapper {
+  padding: 16px 20px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  overflow: hidden;
+}
+.query-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+.query-form :deep(.arco-form-item) {
+  margin-bottom: 4px;
+}
+.query-form :deep(.arco-form-item-label-col > label) {
+  font-size: 12px;
+  font-weight: 700;
+  color: #1e293b;
+}
+.page-wrapper :deep(.governance-list-stage) {
+  flex: 1;
+  min-height: 0;
+  margin-top: 10px;
+}
+/* 菜单图标字段使用主题色 */
+.icon-text {
+  color: var(--bml-primary, #165dff);
+  font-weight: 600;
+}
 </style>

@@ -34,11 +34,13 @@
       >
         <a-sub-menu key="system">
           <template #icon><icon-settings /></template>
-          <template #title>系统管理</template>
-          <a-menu-item key="SystemUser"><template #icon><icon-user /></template>用户管理</a-menu-item>
-          <a-menu-item key="SystemRole"><template #icon><icon-safe /></template>角色管理</a-menu-item>
-          <a-menu-item key="SystemMenu"><template #icon><icon-menu /></template>菜单管理</a-menu-item>
+          <template #title>组织与权限</template>
+          <a-menu-item key="SystemOrg"><template #icon><icon-apps /></template>机构管理</a-menu-item>
           <a-menu-item key="SystemDept"><template #icon><icon-branch /></template>部门管理</a-menu-item>
+          <a-menu-item key="SystemPost"><template #icon><icon-idcard /></template>岗位管理</a-menu-item>
+          <a-menu-item key="SystemUser"><template #icon><icon-user /></template>用户管理</a-menu-item>
+          <a-menu-item key="SystemRole"><template #icon><icon-safe /></template>角色与权限</a-menu-item>
+          <a-menu-item key="SystemMenu"><template #icon><icon-menu /></template>菜单管理</a-menu-item>
         </a-sub-menu>
       </a-menu>
 
@@ -46,9 +48,9 @@
       <div v-else class="mini-menu">
         <div
           class="mini-item"
-          :class="{ active: selectedKeys.some(k => ['SystemUser','SystemRole','SystemMenu','SystemDept'].includes(k)) }"
-          @click="onMenuClick('SystemUser')"
-          title="系统管理"
+          :class="{ active: selectedKeys.some(k => ['SystemOrg','SystemDept','SystemPost','SystemUser','SystemRole','SystemMenu'].includes(k)) }"
+          @click="onMenuClick('SystemOrg')"
+          title="组织与权限"
         >
           <icon-settings />
         </div>
@@ -82,6 +84,11 @@
         <!-- 右侧：悬浮控制坞 (Glass Dock) -->
         <div class="header-right">
           <div class="glass-dock">
+            <!-- 主题配置 -->
+            <div class="dock-item" @click="appStore.toggleSettings(true)" title="主题设置">
+              <icon-palette />
+            </div>
+
             <!-- 全屏 -->
             <div class="dock-item" @click="toggleFullscreen" title="全屏切换">
               <component :is="isFullscreen ? IconFullscreenExit : IconFullscreen" />
@@ -124,6 +131,8 @@
         </div>
       </a-layout-content>
     </a-layout>
+    <!-- 主题设置抽屉（与中台管理共用同一组件） -->
+    <ThemeSettings />
   </a-layout>
 </template>
 
@@ -139,23 +148,28 @@
  *   - TagsView 标签页导航 + keep-alive 页面缓存
  * </p>
  */
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { Message } from '@arco-design/web-vue';
 import {
   IconSettings, IconUser, IconSafe, IconMenu, IconBranch,
   IconLeft, IconRight, IconDown, IconExport,
-  IconFullscreen, IconFullscreenExit
+  IconFullscreen, IconFullscreenExit, IconPalette,
+  IconApps, IconIdcard
 } from '@arco-design/web-vue/es/icon';
 import request from '../utils/request';
 import { clearAuthTokens, getAccessToken } from '../utils/auth';
 import { fetchLoginConfig } from '../api/auth';
 import TagsView from '../components/TagsView.vue';
+import ThemeSettings from '../components/ThemeSettings.vue';
 import { useTagsViewStore } from '../store/tagsView';
+import { useAppStore } from '../store/app';
+import { useIdleTimeout } from '../composables/useIdleTimeout';
 
 const router = useRouter();
 const route = useRoute();
 const tagsViewStore = useTagsViewStore();
+const appStore = useAppStore();
 
 /** keep-alive 缓存的视图列表 */
 const cachedViews = computed(() => tagsViewStore.cachedViews);
@@ -231,9 +245,46 @@ const loadSidebarLogo = async () => {
   } catch { /* ignore */ }
 };
 
+// ═══════════════════════════════════════════════════════
+// 空闲超时自动登出
+// 从后端配置读取空闲时长，超时后自动执行登出操作
+// ═══════════════════════════════════════════════════════
+
+/** 空闲超时时长（分钟），默认 30 分钟，由 loadIdleConfig 动态更新 */
+const idleTimeoutMinutes = ref(30);
+
+/** 初始化空闲检测实例（回调为登出操作） */
+const { start: startIdleWatch, stop: stopIdleWatch } = useIdleTimeout({
+  get timeoutMinutes() { return idleTimeoutMinutes.value; },
+  onIdle: () => {
+    Message.warning('您已长时间未操作，系统已自动退出登录');
+    handleLogout();
+  }
+});
+
+/** 加载空闲超时配置并启动检测 */
+const loadIdleConfig = async () => {
+  try {
+    const res = await fetchLoginConfig() as any;
+    const config = res.data || {};
+    const minutes = parseInt(config['sys.login.idleTimeout'] || '30', 10);
+    idleTimeoutMinutes.value = isNaN(minutes) ? 30 : minutes;
+  } catch {
+    idleTimeoutMinutes.value = 30;
+  }
+  // 启动空闲检测（内部会判断 timeoutMinutes <= 0 时不启动）
+  startIdleWatch();
+};
+
 onMounted(() => {
+  appStore.initTheme();
   loadUserInfo();
   loadSidebarLogo();
+  loadIdleConfig();
+});
+
+onUnmounted(() => {
+  stopIdleWatch();
 });
 </script>
 
@@ -292,7 +343,7 @@ onMounted(() => {
   font-size: 22px;
   font-weight: 900;
   letter-spacing: 2px;
-  background: linear-gradient(135deg, #165dff 0%, #722ed1 100%);
+  background: var(--bml-gradient-alt, linear-gradient(135deg, #165dff 0%, #722ed1 100%));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -319,7 +370,7 @@ onMounted(() => {
   font-size: 22px;
   font-weight: 900;
   letter-spacing: 2px;
-  background: linear-gradient(135deg, #165dff 0%, #722ed1 100%);
+  background: var(--bml-gradient-alt, linear-gradient(135deg, #165dff 0%, #722ed1 100%));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -340,7 +391,7 @@ onMounted(() => {
   content: 'B';
   font-size: 24px;
   font-weight: 900;
-  color: #165dff;
+  color: var(--bml-primary, #165dff);
   display: block;
   position: absolute !important;
   left: 50% !important;
@@ -381,15 +432,15 @@ onMounted(() => {
   transform: translateX(4px);
 }
 .biz-layout :deep(.arco-menu-item.arco-menu-selected) {
-  background: linear-gradient(135deg, #165dff 0%, #3c7eff 100%);
+  background: var(--bml-gradient, linear-gradient(135deg, #165dff 0%, #3c7eff 100%));
   color: #fff;
-  box-shadow: 0 4px 12px rgba(22, 93, 255, 0.3);
+  box-shadow: 0 4px 12px var(--bml-shadow, rgba(22, 93, 255, 0.3));
   font-weight: 600;
   transform: translateX(0);
 }
 .biz-layout :deep(.arco-menu-item.arco-menu-selected:hover) {
-  background: linear-gradient(135deg, #165dff 0%, #3c7eff 100%);
-  box-shadow: 0 6px 16px rgba(22, 93, 255, 0.4);
+  background: var(--bml-gradient, linear-gradient(135deg, #165dff 0%, #3c7eff 100%));
+  box-shadow: 0 6px 16px var(--bml-shadow, rgba(22, 93, 255, 0.4));
   transform: translateY(-1px);
 }
 .biz-layout :deep(.arco-menu-item .arco-icon) {
@@ -417,11 +468,11 @@ onMounted(() => {
   padding: 0 12px !important;
 }
 .biz-layout :deep(.arco-menu-inline-header.arco-menu-selected) {
-  background-color: rgba(22, 93, 255, 0.08) !important;
-  color: #165dff !important;
+  background-color: var(--bml-primary-lighter, rgba(22, 93, 255, 0.08)) !important;
+  color: var(--bml-primary, #165dff) !important;
   font-weight: 700 !important;
-  border: 1px solid rgba(22, 93, 255, 0.1) !important;
-  box-shadow: 0 4px 10px rgba(22, 93, 255, 0.05);
+  border: 1px solid rgba(var(--bml-primary-rgb, 22, 93, 255), 0.1) !important;
+  box-shadow: 0 4px 10px rgba(var(--bml-primary-rgb, 22, 93, 255), 0.05);
 }
 .biz-layout :deep(.arco-menu-inline-header.arco-menu-selected)::before {
   content: '';
@@ -431,16 +482,16 @@ onMounted(() => {
   transform: translateY(-50%);
   width: 3px;
   height: 16px;
-  background: #165dff;
+  background: var(--bml-primary, #165dff);
   border-radius: 2px;
 }
 .biz-layout :deep(.arco-menu-inline-header.arco-menu-selected .arco-icon) {
-  color: #165dff !important;
-  fill: #165dff !important;
+  color: var(--bml-primary, #165dff) !important;
+  fill: var(--bml-primary, #165dff) !important;
   transform: scale(1.1);
 }
 .biz-layout :deep(.arco-menu-inline-header.arco-menu-selected .arco-menu-icon-suffix) {
-  color: #165dff !important;
+  color: var(--bml-primary, #165dff) !important;
 }
 .biz-layout :deep(.arco-menu-inline-header:hover) {
   background-color: rgba(255, 255, 255, 0.6);
@@ -489,8 +540,8 @@ onMounted(() => {
   width: 48px;
   height: 48px;
   background: #fff;
-  color: #165dff;
-  box-shadow: 0 12px 32px rgba(22, 93, 255, 0.25);
+  color: var(--bml-primary, #165dff);
+  box-shadow: 0 12px 32px var(--bml-shadow, rgba(22, 93, 255, 0.25));
 }
 
 /* ═══════════════════════════════════════════════════
@@ -522,9 +573,9 @@ onMounted(() => {
   transform: scale(1.1);
 }
 .mini-item.active {
-  background: linear-gradient(135deg, #165dff 0%, #3c7eff 100%);
+  background: var(--bml-gradient, linear-gradient(135deg, #165dff 0%, #3c7eff 100%));
   color: #fff;
-  box-shadow: 0 4px 12px rgba(22, 93, 255, 0.3);
+  box-shadow: 0 4px 12px var(--bml-shadow, rgba(22, 93, 255, 0.3));
 }
 
 /* ═══════════════════════════════════════════════════
@@ -556,9 +607,9 @@ onMounted(() => {
   transform: translateY(-50%);
   width: 4px;
   height: 18px;
-  background: #165dff;
+  background: var(--bml-primary, #165dff);
   border-radius: 4px;
-  box-shadow: 0 2px 8px rgba(22, 93, 255, 0.4);
+  box-shadow: 0 2px 8px var(--bml-shadow, rgba(22, 93, 255, 0.4));
 }
 .modern-breadcrumb .breadcrumb-root {
   font-size: 14px;
@@ -645,7 +696,7 @@ onMounted(() => {
 .user-avatar {
   margin-right: 0;
   transition: transform 0.3s;
-  background-color: #165dff !important;
+  background-color: var(--bml-primary, #165dff) !important;
 }
 .user-item:hover .user-avatar {
   transform: rotate(10deg);
