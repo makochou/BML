@@ -115,12 +115,15 @@
           <TagsView />
         </div>
         <div class="page-container">
-          <router-view v-slot="{ Component }">
-            <transition name="fade-transform" mode="out-in">
-              <keep-alive :include="cachedViews">
-                <component :is="Component" :key="route.fullPath" />
-              </keep-alive>
-            </transition>
+          <router-view v-slot="{ Component, route: currentRoute }">
+            <!--
+              keep-alive 不限制 include，缓存所有打开过的页面组件。
+              通过 :max 限制最大缓存数量，防止内存占用过多。
+              :key 使用路由 name，确保同一路由复用同一组件实例。
+            -->
+            <keep-alive :max="20">
+              <component :is="Component" :key="String(currentRoute.name)" />
+            </keep-alive>
           </router-view>
         </div>
       </a-layout-content>
@@ -130,7 +133,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { Message } from '@arco-design/web-vue';
 import {
@@ -159,6 +162,16 @@ const cachedViews = computed(() => tagsViewStore.cachedViews);
 const sidebarMenus = computed(() => permissionStore.sidebarMenus);
 
 const currentRouteName = computed(() => (route.name as string) || '');
+
+// 调试：监听路由变化和缓存列表，帮助排查 keep-alive 问题
+watch(
+  () => route.name,
+  (newName) => {
+    console.debug('[Layout] 路由切换 →', newName);
+    console.debug('[Layout] cachedViews:', JSON.stringify(cachedViews.value));
+  },
+  { immediate: true }
+);
 
 const menuIconMap: Record<string, any> = {
   // 通用
@@ -643,8 +656,8 @@ onMounted(() => {
 .layout-demo :deep(.arco-layout-content) {
   background: transparent;
   padding: 0;
-  height: calc(100vh - 48px); /* Correct calculation for taller header */
-  overflow: hidden; /* Hide outer scrollbar to allow inner content to manage it */
+  height: calc(100vh - 48px);
+  overflow: hidden;
   display: flex;
   flex-direction: column;
 }
@@ -653,18 +666,16 @@ onMounted(() => {
 .tags-view-wrapper {
   flex-shrink: 0;
   height: 44px;
-  margin-top: -6px; /* Pull it up aggressively to close the gap */
+  margin-top: -6px;
   z-index: 98;
 }
 
-/* 主内容区域 - 精确占据剩余空间，禁止外层滚动 */
+/* 主内容区域 - 明确计算高度，避免 flex 子项高度塌陷 */
 .page-container {
-  flex: 1;
-  overflow: hidden;
+  /* 总高度 = 内容区高度 - 标签栏实际占用高度(44px - 6px偏移 = 38px) */
+  height: calc(100vh - 48px - 38px);
+  overflow: auto;
   position: relative;
-  display: flex;
-  flex-direction: column;
-  padding: 0;
 }
 
 /* Transition */

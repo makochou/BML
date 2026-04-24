@@ -28,6 +28,17 @@
 </template>
 
 <script lang="ts" setup>
+/**
+ * 业务系统工作台页面
+ *
+ * 重要说明：
+ *   defineOptions({ name: 'BusinessDashboard' }) 是 keep-alive 缓存的关键。
+ *   组件 name 必须与路由配置中的 name 字段保持一致，
+ *   否则 <keep-alive :include="cachedViews"> 无法匹配到该组件，
+ *   导致切换标签页后页面内容被销毁、重新加载。
+ */
+defineOptions({ name: 'BusinessDashboard' });
+
 import { IconApps, IconUser, IconSafe, IconMenu, IconBranch, IconRight } from '@arco-design/web-vue/es/icon';
 
 const statItems = [

@@ -40,7 +40,13 @@
     <!-- 两栏：左侧接口目录树（模块 → 业务分组 → 接口）| 右侧调试面板 -->
     <div class="api-list-body">
       <a-spin :loading="loading" class="api-list-spin">
-        <div class="hierarchy-layout" v-if="catalogTree.length">
+        <!-- loading 时显示骨架屏，避免空白 -->
+        <div v-if="loading && !catalogTree.length" class="api-list-loading-placeholder">
+          <a-skeleton :animation="true">
+            <a-skeleton-line :rows="8" />
+          </a-skeleton>
+        </div>
+        <div class="hierarchy-layout" v-else-if="catalogTree.length">
           <!-- 左栏：接口目录（三级树，模块 → 业务分组 → 接口，整合原中间栏） -->
           <div class="hierarchy-col hierarchy-col-catalog">
             <div class="col-title">
@@ -146,6 +152,17 @@
 </template>
 
 <script lang="ts" setup>
+/**
+ * 资产目录页面
+ *
+ * 重要说明：
+ *   defineOptions({ name: 'ApiList' }) 是 keep-alive 缓存的关键。
+ *   组件 name 必须与路由配置中的 name 字段保持一致，
+ *   否则 <keep-alive :include="cachedViews"> 无法匹配到该组件，
+ *   导致切换标签页后页面内容被销毁、重新加载。
+ */
+defineOptions({ name: 'ApiList' });
+
 import { ref, computed, onMounted } from 'vue';
 import { Message } from '@arco-design/web-vue';
 import { IconRefresh, IconRight, IconExpand, IconShrink, IconSend, IconLeft, IconSync } from '@arco-design/web-vue/es/icon';
@@ -572,7 +589,8 @@ onMounted(() => {
 .api-list-page {
   display: flex;
   flex-direction: column;
-  flex: 1 1 0;
+  flex: 1;
+  height: 100%;
   min-height: 0;
   padding: 0 24px 24px;
   background: linear-gradient(180deg, #f2f5fa 0%, #e8eef5 100%);
@@ -960,5 +978,13 @@ onMounted(() => {
 
 .empty-block {
   padding: 60px 0;
+}
+
+/* loading 骨架屏占位 */
+.api-list-loading-placeholder {
+  flex: 1;
+  padding: 24px;
+  background: #fff;
+  border-radius: 12px;
 }
 </style>

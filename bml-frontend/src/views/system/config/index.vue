@@ -313,7 +313,15 @@
  *   4. 每个图片区域显示推荐尺寸和格式提示
  * 所有配置项实时保存到后端 sys_config 表。
  * </p>
+ *
+ * 重要说明：
+ *   defineOptions({ name: 'SystemConfig' }) 是 keep-alive 缓存的关键。
+ *   组件 name 必须与路由配置中的 name 字段保持一致，
+ *   否则 <keep-alive :include="cachedViews"> 无法匹配到该组件，
+ *   导致切换标签页后页面内容被销毁、重新加载。
  */
+defineOptions({ name: 'SystemConfig' });
+
 import { ref, onMounted } from 'vue';
 import { Message } from '@arco-design/web-vue';
 import {

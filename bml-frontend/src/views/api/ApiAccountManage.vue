@@ -464,6 +464,17 @@
 </template>
 
 <script lang="ts" setup>
+/**
+ * 授权治理页面（API 账号管理）
+ *
+ * 重要说明：
+ *   defineOptions({ name: 'ApiAccountManage' }) 是 keep-alive 缓存的关键。
+ *   组件 name 必须与路由配置中的 name 字段保持一致，
+ *   否则 <keep-alive :include="cachedViews"> 无法匹配到该组件，
+ *   导致切换标签页后页面内容被销毁、重新加载。
+ */
+defineOptions({ name: 'ApiAccountManage' });
+
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch, h } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { Message, Modal } from '@arco-design/web-vue';
@@ -2040,7 +2051,7 @@ onBeforeUnmount(() => {
   /* 查询卡片与列表卡片间距变量：统一收口为可配置项，便于后续页面直接复用同一套垂直节奏。 */
   --api-account-query-offset-y: -8px;
   --api-account-stage-gap-y: 8px;
-  height: 100vh;
+  height: 100%;
   display: flex;
   flex-direction: column;
   padding: 24px;

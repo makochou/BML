@@ -23,7 +23,10 @@ const resolveCacheViewName = (view: TagView): string | null => {
     return null;
   }
 
-  return String(view.name);
+  const name = String(view.name);
+  // 调试：打印缓存名称，帮助排查 keep-alive 不生效的问题
+  console.debug('[TagsView] resolveCacheViewName:', name, '| noCache:', view.meta?.noCache);
+  return name;
 };
 
 const buildStateSnapshot = (state: TagsViewState): TagsViewState => {

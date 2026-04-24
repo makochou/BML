@@ -243,6 +243,17 @@
 </template>
 
 <script setup lang="ts">
+/**
+ * 告警中心页面
+ *
+ * 重要说明：
+ *   defineOptions({ name: 'AlertCenter' }) 是 keep-alive 缓存的关键。
+ *   组件 name 必须与路由配置中的 name 字段保持一致，
+ *   否则 <keep-alive :include="cachedViews"> 无法匹配到该组件，
+ *   导致切换标签页后页面内容被销毁、重新加载。
+ */
+defineOptions({ name: 'AlertCenter' });
+
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { Message } from '@arco-design/web-vue';
 import {
@@ -500,7 +511,7 @@ onUnmounted(() => {
    ══════════════════════════════════════════════════════════ */
 
 .alert-shell {
-  height: 100vh;
+  height: 100%;
   padding: 14px 18px;
   background: var(--color-bg-1);
   display: flex;

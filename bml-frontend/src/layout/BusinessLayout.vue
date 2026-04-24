@@ -121,12 +121,10 @@
           <TagsView />
         </div>
         <div class="page-container">
-          <router-view v-slot="{ Component }">
-            <transition name="fade-transform" mode="out-in">
-              <keep-alive :include="cachedViews">
-                <component :is="Component" :key="route.fullPath" />
-              </keep-alive>
-            </transition>
+          <router-view v-slot="{ Component, route: currentRoute }">
+            <keep-alive :max="20">
+              <component :is="Component" :key="String(currentRoute.name)" />
+            </keep-alive>
           </router-view>
         </div>
       </a-layout-content>
@@ -745,13 +743,10 @@ onUnmounted(() => {
 }
 
 .page-container {
-  flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
+  /* 总高度 = 内容区高度 - 标签栏实际占用高度(44px - 6px偏移 = 38px) */
+  height: calc(100vh - 48px - 38px);
+  overflow: auto;
   position: relative;
-  display: flex;
-  flex-direction: column;
-  padding: 0;
 }
 
 /* ═══════════════════════════════════════════════════

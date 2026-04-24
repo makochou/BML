@@ -277,12 +277,23 @@ public class SysMenuServiceImpl extends BaseServiceImpl<SysMenuMapper, SysMenu> 
     private String buildRouteName(SysMenu menu) {
         if (StrUtil.isNotBlank(menu.getComponent())) {
             String component = menu.getComponent();
+            // ── 特殊组件路径：显式映射为语义化路由名称 ──
+            // 规则：组件 name 必须与前端 defineOptions({ name: '...' }) 保持一致，
+            //       否则 <keep-alive :include="cachedViews"> 无法正确缓存页面。
             if ("dashboard/Workplace".equals(component)) {
                 return "Dashboard";
             }
             if ("api/ApiAccountManage".equals(component)) {
                 return "ApiAccountManage";
             }
+            if ("monitor/server/index".equals(component)) {
+                return "ServerMonitor";
+            }
+            if ("monitor/alert/index".equals(component)) {
+                return "AlertCenter";
+            }
+            // ── 通用规则：将路径分隔符转换为下划线 ──
+            // 例如：system/config/index → system_config_index
             return component.replace("/", "_").replace("-", "_");
         }
         return "menu_" + menu.getId();

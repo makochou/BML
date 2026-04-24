@@ -276,9 +276,11 @@ const closeSelectedTag = (tag: TagView) => {
 };
 
 watch(
-  () => route.path,
-  () => {
-    addTags();
+  () => route.name,
+  (newName) => {
+    if (newName) {
+      addTags();
+    }
   }
 );
 
