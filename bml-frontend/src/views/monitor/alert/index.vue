@@ -71,6 +71,7 @@
         <div class="alert-main">
           <!-- 筛选工具栏 -->
           <div class="filter-bar">
+            <!-- 左：级别 Tab 筛选 -->
             <div class="filter-tabs">
               <button
                 v-for="tab in levelTabs"
@@ -84,10 +85,30 @@
                 <span class="tab-count">{{ tab.value === 'all' ? alertList.length : countByLevel(tab.value) }}</span>
               </button>
             </div>
+
+            <!-- 中：日期范围选择器 -->
+            <div class="filter-date">
+              <a-range-picker
+                v-model="dateRange"
+                size="small"
+                class="date-picker"
+                :placeholder="['开始日期', '结束日期']"
+                :allow-clear="true"
+                format="MM-DD"
+                value-format="YYYY-MM-DD"
+                :shortcuts="dateShortcuts"
+              >
+                <template #prefix>
+                  <icon-calendar class="date-picker-icon" />
+                </template>
+              </a-range-picker>
+            </div>
+
+            <!-- 右：关键字搜索 -->
             <div class="filter-right">
               <a-input-search
                 v-model="searchKeyword"
-                placeholder="搜索告警标题..."
+                placeholder="搜索标题 / 内容 / 类型..."
                 size="small"
                 class="search-input"
                 allow-clear
@@ -255,11 +276,12 @@
 defineOptions({ name: 'AlertCenter' });
 
 import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { Message } from '@arco-design/web-vue';
+import { Message, Notification } from '@arco-design/web-vue';
 import {
   IconExclamationCircleFill, IconCheckCircle, IconCheckSquare,
   IconDelete, IconHistory, IconApps, IconBarChart,
-  IconThunderbolt, IconStorage, IconDesktop, IconCode
+  IconThunderbolt, IconStorage, IconDesktop, IconCode,
+  IconCalendar
 } from '@arco-design/web-vue/es/icon';
 /**
  * 使用项目统一的 request 实例（已内置 Authorization Token 注入 + 401 自动刷新）。
@@ -287,6 +309,11 @@ const alertList    = ref<SysAlertVO[]>([]);
 const unreadCount  = ref(0);
 const activeLevel  = ref('all');
 const searchKeyword = ref('');
+/**
+ * 日期范围筛选：[开始日期, 结束日期]，格式 'YYYY-MM-DD'。
+ * 空数组或 null 表示不限制日期范围。
+ */
+const dateRange = ref<string[]>([]);
 const markAllLoading = ref(false);
 const readingId    = ref<number | null>(null);
 const deletingId   = ref<number | null>(null);
@@ -294,6 +321,61 @@ const deletingId   = ref<number | null>(null);
 const lastKnownId  = ref<number | null>(null);
 /** 轮询定时器句柄 */
 const pollTimer    = ref<ReturnType<typeof setInterval> | null>(null);
+
+// ─────────────────────────────────────────────
+// 日期快捷选项
+// ─────────────────────────────────────────────
+/**
+ * 日期范围选择器的快捷选项配置。
+ * 使用 Arco Design RangePicker 的 shortcuts 格式：
+ *   label: 显示文字
+ *   value: () => [Date, Date] 返回日期范围
+ */
+const dateShortcuts = [
+  {
+    label: '今天',
+    value: () => {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const end = new Date();
+      end.setHours(23, 59, 59, 999);
+      return [today, end];
+    }
+  },
+  {
+    label: '近 3 天',
+    value: () => {
+      const start = new Date();
+      start.setDate(start.getDate() - 2);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date();
+      end.setHours(23, 59, 59, 999);
+      return [start, end];
+    }
+  },
+  {
+    label: '近 7 天',
+    value: () => {
+      const start = new Date();
+      start.setDate(start.getDate() - 6);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date();
+      end.setHours(23, 59, 59, 999);
+      return [start, end];
+    }
+  },
+  {
+    label: '近 30 天',
+    value: () => {
+      const start = new Date();
+      start.setDate(start.getDate() - 29);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date();
+      end.setHours(23, 59, 59, 999);
+      return [start, end];
+    }
+  }
+];
 
 // ─────────────────────────────────────────────
 // 筛选 Tab 配置
@@ -308,19 +390,47 @@ const levelTabs = [
 // ─────────────────────────────────────────────
 // 计算属性
 // ─────────────────────────────────────────────
-/** 按级别 + 关键词过滤后的列表 */
+/** 按级别 + 日期范围 + 关键词过滤后的列表 */
 const filteredList = computed(() => {
   let list = alertList.value;
+
+  // ── 1. 按告警级别过滤 ──
   if (activeLevel.value !== 'all') {
     list = list.filter(a => a.alertLevel === activeLevel.value);
   }
+
+  // ── 2. 按日期范围过滤 ──
+  // dateRange 格式为 ['YYYY-MM-DD', 'YYYY-MM-DD']，空数组时不过滤
+  if (dateRange.value && dateRange.value.length === 2 && dateRange.value[0] && dateRange.value[1]) {
+    // 开始日期：当天 00:00:00
+    const startDate = new Date(dateRange.value[0] + 'T00:00:00');
+    // 结束日期：当天 23:59:59（包含当天全天）
+    const endDate = new Date(dateRange.value[1] + 'T23:59:59');
+    list = list.filter(a => {
+      if (!a.createTime) return false;
+      const t = new Date(a.createTime);
+      return t >= startDate && t <= endDate;
+    });
+  }
+
+  // ── 3. 按关键字过滤（标题 + 内容 + 告警类型中文标签） ──
+  // 同时搜索标题、详情内容和类型标签，让用户可以直接输入"CPU"、"磁盘"等关键词
   if (searchKeyword.value.trim()) {
     const kw = searchKeyword.value.trim().toLowerCase();
-    list = list.filter(a =>
-      a.alertTitle?.toLowerCase().includes(kw) ||
-      a.alertContent?.toLowerCase().includes(kw)
-    );
+    list = list.filter(a => {
+      // 搜索告警标题
+      if (a.alertTitle?.toLowerCase().includes(kw)) return true;
+      // 搜索告警详情内容
+      if (a.alertContent?.toLowerCase().includes(kw)) return true;
+      // 搜索告警类型中文标签（如"CPU"、"内存"、"磁盘"、"JVM"）
+      const typeLabel = getTypeLabel(a.alertType).toLowerCase();
+      if (typeLabel.includes(kw)) return true;
+      // 搜索告警类型原始值（如"CPU_HIGH"）
+      if (a.alertType?.toLowerCase().includes(kw)) return true;
+      return false;
+    });
   }
+
   return list;
 });
 
@@ -427,10 +537,53 @@ const pollNewAlerts = async () => {
       unreadCount.value += newAlerts.filter(a => a.readStatus === 0).length;
       // 更新最大 ID
       lastKnownId.value = Math.max(...newAlerts.map(a => a.id));
-      // 有新告警时弹出提示
-      Message.warning({
-        content: `收到 ${newAlerts.length} 条新告警`,
-        duration: 3000,
+      // 有新告警时在右下角弹出通知，展示最新一条的详情
+      const latest = newAlerts[0];
+
+      /**
+       * 告警级别 → 通知样式映射。
+       * Arco Design Notification 支持 info / success / warning / error 四种类型，
+       * 此处将业务级别映射到最接近的视觉语义：
+       *   critical → error（红色，最高优先级）
+       *   warning  → warning（橙色）
+       *   info     → info（蓝色）
+       */
+      const levelTypeMap: Record<string, 'info' | 'warning' | 'error'> = {
+        critical: 'error',
+        warning: 'warning',
+        info: 'info',
+      };
+      const notifyType = levelTypeMap[latest.alertLevel] ?? 'warning';
+
+      /**
+       * 告警类型中文标签（与页面内 getTypeLabel 保持一致）。
+       * 此处单独定义是因为该函数在 pollNewAlerts 执行时
+       * 可能早于 getTypeLabel 的声明（函数提升不适用于 const 箭头函数），
+       * 为避免潜在的 TDZ 问题，在此处内联映射。
+       */
+      const typeTextMap: Record<string, string> = {
+        CPU_HIGH: 'CPU', MEMORY_HIGH: '内存', DISK_FULL: '磁盘', JVM_HIGH: 'JVM'
+      };
+      const typeText = typeTextMap[latest.alertType] ?? latest.alertType;
+
+      /**
+       * 使用 Arco Design Notification 在右下角弹出告警通知。
+       * position: 'bottomRight' — 固定右下角，不遮挡主内容区域。
+       * duration: 6000 — 6 秒后自动关闭，给用户足够时间阅读详情。
+       * closable: true — 允许用户手动关闭。
+       */
+      Notification[notifyType]({
+        title: `🔔 收到 ${newAlerts.length} 条新告警`,
+        content: `【${typeText}】${latest.alertTitle}\n${latest.alertContent}`,
+        position: 'bottomRight',
+        duration: 6000,
+        closable: true,
+        /**
+         * class 选项：注入命名空间类名，供全局样式 .bml-alert-notify 精准命中。
+         * Arco Design Notification 挂载在 body 下，scoped 样式无法覆盖，
+         * 必须通过此 class 配合非 scoped 的 <style> 块来美化。
+         */
+        class: 'bml-alert-notify',
       });
     }
   } catch (err) {
@@ -585,7 +738,13 @@ onUnmounted(() => {
 .alert-grid {
   flex: 1;
   display: grid;
-  grid-template-columns: 1fr 280px;
+  /*
+   * 布局说明：
+   *   左侧告警列表区域：1fr（弹性占满剩余空间，随窗口自适应）
+   *   右侧统计面板区域：340px（从原 280px 扩宽至 340px，与红线位置对齐）
+   * 如需进一步调整，修改此处 340px 即可，无需改动其他样式。
+   */
+  grid-template-columns: 1fr 340px;
   gap: 12px;
   min-height: 0;
 }
@@ -595,12 +754,18 @@ onUnmounted(() => {
 
 /* 筛选工具栏 */
 .filter-bar {
-  display: flex; justify-content: space-between; align-items: center;
-  background: #fff; padding: 8px 14px; border-radius: 12px;
-  border: 1px solid rgba(226,232,240,0.85); box-shadow: 0 2px 8px rgba(15,23,42,0.04);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #fff;
+  padding: 8px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(226,232,240,0.85);
+  box-shadow: 0 2px 8px rgba(15,23,42,0.04);
   flex-shrink: 0;
+  gap: 10px;
 }
-.filter-tabs { display: flex; gap: 4px; }
+.filter-tabs { display: flex; gap: 4px; flex-shrink: 0; }
 .filter-tab {
   display: flex; align-items: center; gap: 6px;
   padding: 5px 12px; border-radius: 8px; border: none; cursor: pointer;
@@ -621,8 +786,26 @@ onUnmounted(() => {
   background: rgba(15,23,42,0.06); color: #475569; min-width: 18px; text-align: center;
 }
 .filter-tab.active .tab-count { background: rgba(22,93,255,0.12); color: #165dff; }
-.filter-right { display: flex; align-items: center; }
-.search-input { width: 180px; }
+.filter-right { display: flex; align-items: center; flex-shrink: 0; }
+.search-input { width: 200px; }
+
+/* 日期范围选择器 */
+.filter-date {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+}
+.date-picker {
+  width: 100%;
+  max-width: 260px;
+}
+/* 日历图标颜色 */
+.date-picker-icon {
+  color: #94a3b8;
+  font-size: 13px;
+}
 
 /* 告警卡片列表 */
 .list-scroll {
@@ -701,6 +884,10 @@ onUnmounted(() => {
 .card-content {
   display: block;
   margin: 0; font-size: 12px; color: #64748b; line-height: 1.6;
+  /* 内容超长时截断为单行省略号，防止撑破卡片布局 */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* 空状态 */
@@ -806,4 +993,98 @@ onUnmounted(() => {
 .entrance-anim-1 { animation: fadeInUp 0.4s backwards; }
 .entrance-anim-2 { animation: fadeInUp 0.4s 0.07s backwards; }
 .entrance-anim-3 { animation: fadeInUp 0.4s 0.14s backwards; }
+</style>
+
+<!--
+  ══════════════════════════════════════════════════════════════════════
+  全局样式：美化右下角告警通知弹窗
+  ──────────────────────────────────────────────────────────────────────
+  说明：
+    Arco Design 的 Notification 组件挂载在 document.body 下，
+    不在当前组件的 DOM 树内，因此 <style scoped> 无法命中它。
+    必须使用不带 scoped 的 <style> 块才能覆盖其样式。
+
+    为避免污染全局，所有选择器都以 .bml-alert-notify 为命名空间前缀，
+    该类名通过 Notification 的 class 选项注入（见 pollNewAlerts 函数）。
+
+  使用方式：
+    在调用 Notification 时传入 class: 'bml-alert-notify'，
+    即可自动应用以下所有增强样式。
+  ══════════════════════════════════════════════════════════════════════
+-->
+<style>
+/* ── 通知容器整体 ── */
+.bml-alert-notify.arco-notification {
+  /* 最小宽度保证内容不被压缩 */
+  min-width: 320px;
+  max-width: 400px;
+  /* 圆角、阴影与页面卡片风格统一 */
+  border-radius: 16px !important;
+  box-shadow:
+    0 8px 32px rgba(15, 23, 42, 0.14),
+    0 2px 8px rgba(15, 23, 42, 0.08) !important;
+  border: 1px solid rgba(226, 232, 240, 0.9) !important;
+  overflow: hidden;
+  /* 入场动画：从右下角滑入 */
+  animation: bmlNotifySlideIn 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* ── error 类型（critical 告警）：左侧红色竖条 ── */
+.bml-alert-notify.arco-notification-error {
+  border-left: 4px solid #f53f3f !important;
+}
+
+/* ── warning 类型：左侧橙色竖条 ── */
+.bml-alert-notify.arco-notification-warning {
+  border-left: 4px solid #ff7d00 !important;
+}
+
+/* ── info 类型：左侧蓝色竖条 ── */
+.bml-alert-notify.arco-notification-info {
+  border-left: 4px solid #165dff !important;
+}
+
+/* ── 通知标题 ── */
+.bml-alert-notify .arco-notification-title {
+  font-size: 14px !important;
+  font-weight: 800 !important;
+  color: #0f172a !important;
+  line-height: 1.4;
+}
+
+/* ── 通知正文：保留换行符，展示多行详情 ── */
+.bml-alert-notify .arco-notification-content {
+  font-size: 12px !important;
+  color: #475569 !important;
+  line-height: 1.7 !important;
+  /* 保留 \n 换行，让标题行和内容行分开显示 */
+  white-space: pre-line;
+  margin-top: 6px !important;
+  /* 超长内容最多显示 4 行，超出省略 */
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ── 关闭按钮 ── */
+.bml-alert-notify .arco-notification-close-btn {
+  color: #94a3b8 !important;
+  transition: color 0.15s;
+}
+.bml-alert-notify .arco-notification-close-btn:hover {
+  color: #334155 !important;
+}
+
+/* ── 入场动画：从右下角向上滑入 ── */
+@keyframes bmlNotifySlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
 </style>

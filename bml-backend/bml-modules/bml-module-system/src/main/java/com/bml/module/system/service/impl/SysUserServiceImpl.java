@@ -2,25 +2,26 @@ package com.bml.module.system.service.impl;
 
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.bml.core.base.service.impl.BaseServiceImpl;
 import com.bml.core.common.constant.GlobalConstants;
 import com.bml.core.framework.license.LicenseQuotaChecker;
 import com.bml.core.framework.security.utils.SecurityUtils;
 import com.bml.module.system.converter.UserConverter;
 import com.bml.module.system.dto.SysUserDTO;
-import com.bml.module.system.entity.SysUser;
-import com.bml.module.system.entity.SysUserRole;
+import com.bml.module.system.entity.*;
 import com.bml.module.system.datascope.DataScope;
 import com.bml.module.system.datascope.DataScopeContext;
-import com.bml.module.system.mapper.SysUserMapper;
-import com.bml.module.system.mapper.SysUserRoleMapper;
+import com.bml.module.system.mapper.*;
 import com.bml.module.system.service.SysUserService;
+import com.bml.module.system.vo.SysUserVO;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class SysUserServiceImpl extends BaseServiceImpl<SysUserMapper, SysUser> implements SysUserService {
@@ -29,11 +30,23 @@ public class SysUserServiceImpl extends BaseServiceImpl<SysUserMapper, SysUser> 
     private SysUserRoleMapper userRoleMapper;
 
     @Resource
+    private SysRoleMapper roleMapper;
+
+    @Resource
+    private SysOrgMapper orgMapper;
+
+    @Resource
+    private SysDeptMapper deptMapper;
+
+    @Resource
+    private SysPostMapper postMapper;
+
+    @Resource
     private LicenseQuotaChecker licenseQuotaChecker;
 
     @Override
     @DataScope(deptColumn = "dept_id", orgColumn = "org_id", userColumn = "id", creatorColumn = "create_by")
-    public List<SysUser> selectUserList(SysUserDTO user) {
+    public List<SysUserVO> selectUserList(SysUserDTO user) {
         if (user == null) {
             user = new SysUserDTO();
         }
@@ -54,7 +67,76 @@ public class SysUserServiceImpl extends BaseServiceImpl<SysUserMapper, SysUser> 
         if (StrUtil.isNotBlank(dataScopeSql)) {
             queryWrapper.apply(dataScopeSql);
         }
-        return baseMapper.selectList(queryWrapper);
+        List<SysUser> users = baseMapper.selectList(queryWrapper);
+        return enrichUserVOList(users);
+    }
+
+    /**
+     * 将用户列表转换为 VO 并通过批量查询填充关联名称字段（orgName/deptName/postName/roleIds/roleNames）
+     */
+    private List<SysUserVO> enrichUserVOList(List<SysUser> users) {
+        if (users == null || users.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        // 1. 收集所有 ID 集合（过滤 null）
+        Set<Long> orgIds = users.stream().map(SysUser::getOrgId).filter(Objects::nonNull).collect(Collectors.toSet());
+        Set<Long> deptIds = users.stream().map(SysUser::getDeptId).filter(Objects::nonNull).collect(Collectors.toSet());
+        Set<Long> postIds = users.stream().map(SysUser::getPostId).filter(Objects::nonNull).collect(Collectors.toSet());
+        Set<Long> userIds = users.stream().map(SysUser::getId).filter(Objects::nonNull).collect(Collectors.toSet());
+
+        // 2. 批量查询机构名称
+        Map<Long, String> orgNameMap = new HashMap<>();
+        if (!orgIds.isEmpty()) {
+            orgMapper.selectBatchIds(orgIds).forEach(o -> orgNameMap.put(o.getId(), o.getOrgName()));
+        }
+
+        // 3. 批量查询部门名称
+        Map<Long, String> deptNameMap = new HashMap<>();
+        if (!deptIds.isEmpty()) {
+            deptMapper.selectBatchIds(deptIds).forEach(d -> deptNameMap.put(d.getId(), d.getDeptName()));
+        }
+
+        // 4. 批量查询岗位名称
+        Map<Long, String> postNameMap = new HashMap<>();
+        if (!postIds.isEmpty()) {
+            postMapper.selectBatchIds(postIds).forEach(p -> postNameMap.put(p.getId(), p.getPostName()));
+        }
+
+        // 5. 批量查询用户角色关联
+        Map<Long, List<Long>> userRoleIdsMap = new HashMap<>();
+        Map<Long, List<String>> userRoleNamesMap = new HashMap<>();
+        if (!userIds.isEmpty()) {
+            List<SysUserRole> userRoles = userRoleMapper.selectList(
+                    new LambdaQueryWrapper<SysUserRole>().in(SysUserRole::getUserId, userIds));
+
+            Set<Long> roleIds = userRoles.stream().map(SysUserRole::getRoleId).collect(Collectors.toSet());
+            Map<Long, String> roleNameMap = new HashMap<>();
+            if (!roleIds.isEmpty()) {
+                roleMapper.selectBatchIds(roleIds).forEach(r -> roleNameMap.put(r.getId(), r.getRoleName()));
+            }
+
+            for (SysUserRole ur : userRoles) {
+                userRoleIdsMap.computeIfAbsent(ur.getUserId(), k -> new ArrayList<>()).add(ur.getRoleId());
+                String roleName = roleNameMap.get(ur.getRoleId());
+                if (roleName != null) {
+                    userRoleNamesMap.computeIfAbsent(ur.getUserId(), k -> new ArrayList<>()).add(roleName);
+                }
+            }
+        }
+
+        // 6. 组装 VO
+        List<SysUserVO> result = new ArrayList<>(users.size());
+        for (SysUser u : users) {
+            SysUserVO vo = UserConverter.INSTANCE.toVO(u);
+            vo.setOrgName(orgNameMap.get(u.getOrgId()));
+            vo.setDeptName(deptNameMap.get(u.getDeptId()));
+            vo.setPostName(postNameMap.get(u.getPostId()));
+            vo.setRoleIds(userRoleIdsMap.getOrDefault(u.getId(), Collections.emptyList()));
+            vo.setRoleNames(userRoleNamesMap.getOrDefault(u.getId(), Collections.emptyList()));
+            result.add(vo);
+        }
+        return result;
     }
 
     @Override
@@ -143,5 +225,23 @@ public class SysUserServiceImpl extends BaseServiceImpl<SysUserMapper, SysUser> 
                 userRoleMapper.insert(ur);
             }
         }
+    }
+
+    @Override
+    public SysUserVO selectUserById(Long userId) {
+        SysUser user = baseMapper.selectById(userId);
+        if (user == null) {
+            return null;
+        }
+        List<SysUserVO> vos = enrichUserVOList(Collections.singletonList(user));
+        return vos.isEmpty() ? null : vos.get(0);
+    }
+
+    @Override
+    public void resetUserPassword(Long userId, String newPassword) {
+        String encrypted = SecurityUtils.encryptPassword(newPassword);
+        baseMapper.update(null, new LambdaUpdateWrapper<SysUser>()
+                .eq(SysUser::getId, userId)
+                .set(SysUser::getPassword, encrypted));
     }
 }

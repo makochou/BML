@@ -21,13 +21,45 @@ public interface GlobalConstants {
     // ======================== 系统用户 ========================
 
     /**
-     * 超级管理员用户ID
+     * 前台业务超级管理员用户ID（bml 用户）
      * <p>
-     * 数据库中超级管理员的固定 ID，用于判断是否拥有全部权限。
-     * 与 {@code SysUserServiceImpl.checkUserAllowed()} 中的保护逻辑保持一致。
+     * 数据库中前台业务超级管理员（bml）的固定 ID。
+     * V1.2.0 迁移脚本将原 ID=1 的中台管理员从 sys_user 表中移除，
+     * 改为配置文件管理，并创建了 ID=2 的前台业务管理员 bml。
+     * 此常量用于：
+     * <ul>
+     *   <li>菜单查询时判断是否显示全部菜单（{@code SysMenuServiceImpl}）</li>
+     *   <li>数据权限切面中跳过超级管理员的数据范围限制（{@code DataScopeAspect}）</li>
+     *   <li>许可证配额保护，防止超级管理员被冻结（{@code LicenseQuotaEnforcer}）</li>
+     * </ul>
+     * </p>
+     *
+     * <p><b>注意：</b>若后续通过 Flyway 迁移脚本修改了超级管理员的 ID，
+     * 请同步更新此常量，或改用角色编码（{@link #SUPER_ADMIN_ROLE_CODE}）进行判断。</p>
+     */
+    Long SYSTEM_USER_ID = 2L;
+
+    /**
+     * 中台配置管理员的虚拟用户ID
+     * <p>
+     * 中台管理平台的管理员不存储在 sys_user 表中，而是配置在 application.yml。
+     * 登录时使用此虚拟 ID 构建 {@link com.bml.core.framework.security.model.LoginUser}，
+     * 用于在 {@code AuthController.getInfo()} 中区分配置管理员和数据库用户。
+     * </p>
+     *
+     * <p><b>注意：</b>此 ID 不对应任何数据库记录，仅作为标识符使用。</p>
+     */
+    Long ADMIN_USER_ID = -1L;
+
+    /**
+     * 超级管理员角色编码
+     * <p>
+     * 数据库 sys_role 表中超级管理员角色的 role_key 字段值。
+     * 拥有此角色的用户在登录时会被赋予 {@code *:*:*} 全量权限标识，
+     * 从而绕过所有 {@code @PreAuthorize} 权限校验。
      * </p>
      */
-    Long SYSTEM_USER_ID = 1L;
+    String SUPER_ADMIN_ROLE_CODE = "admin";
 
     // ======================== 树形结构 ========================
 

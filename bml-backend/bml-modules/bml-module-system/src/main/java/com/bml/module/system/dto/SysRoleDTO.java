@@ -46,4 +46,7 @@ public class SysRoleDTO implements Serializable {
 
     @Schema(description = "菜单组")
     private List<Long> menuIds;
+
+    @Schema(description = "自定义数据权限时的机构 ID 列表")
+    private List<Long> customOrgIds;
 }

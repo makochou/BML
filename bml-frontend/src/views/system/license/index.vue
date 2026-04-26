@@ -1290,7 +1290,18 @@ const handleReplaceFile = async (items: FileItem[]) => {
 
 /**
  * 确认更新许可证。
+ * <p>
  * 后端会先备份旧许可证，再原子替换并刷新运行时状态。
+ * 更新成功后，根据新旧许可证的全量对比结果，在右上角弹出通知并写入告警中心。
+ * </p>
+ *
+ * 通知维度（所有变更均会提示，不只是降级）：
+ *   1. 配额降级 + 资源被自动冻结（业务用户 / API 账号 / API 来源用户）
+ *   2. 配额升级（业务用户上限 / API 账号上限 / API 来源用户上限提升）
+ *   3. 到期日变更（延期或缩短）
+ *   4. 功能模块新增
+ *   5. 功能模块移除
+ *   6. 许可证已过期
  */
 const confirmUpdate = async () => {
   if (!pendingFile.value) {
@@ -1302,43 +1313,90 @@ const confirmUpdate = async () => {
     const response = await updateLicense(pendingFile.value);
     licenseData.value = response.data;
     resetLicenseCache();
-    resetCompareSelection();
 
     /**
-     * 许可证降级时后端会自动冻结超额资源，
-     * 检查所有配额维度的降级执行结果，统一展示警告。
+     * 全量变更通知构建。
+     * 利用更新前已计算好的 compareBasicRows / compareQuotaRows /
+     * addedFeatures / removedFeatures 计算属性，枚举所有变更维度。
+     *
+     * 注意：resetCompareSelection() 会清空 previewData，
+     * 因此必须在读取计算属性之后再调用。
      */
     const data = response.data;
-    const warnings: string[] = [];
 
-    // 1. 业务用户被冻结
+    // ── 收集所有变更条目 ──
+    const changeLines: string[] = [];
+
+    // 1. 配额降级 + 资源被自动冻结（后端执行结果，优先展示）
     if (data?.frozenUserCount && data.frozenUserCount > 0) {
-      warnings.push(`• 业务用户上限降级：已自动停用 ${data.frozenUserCount} 个最近创建的用户`);
+      changeLines.push(`⚠ 业务用户上限降级：已自动停用 ${data.frozenUserCount} 个最近创建的用户`);
     }
-    // 2. API 账号被冻结
     if (data?.frozenApiAccountCount && data.frozenApiAccountCount > 0) {
-      warnings.push(`• API 账号上限降级：已自动停用 ${data.frozenApiAccountCount} 个最近创建的 API 账号`);
+      changeLines.push(`⚠ API 账号上限降级：已自动停用 ${data.frozenApiAccountCount} 个最近创建的 API 账号`);
     }
-    // 3. API 来源用户被冻结
     if (data?.frozenApiUserCount && data.frozenApiUserCount > 0) {
-      warnings.push(`• API来源新增用户上限降级：已自动停用 ${data.frozenApiUserCount} 个最近由 API 创建的业务用户`);
-    }
-    // 4. 许可证已过期
-    if (data?.expired) {
-      warnings.push('• 注意：新许可证已过期，系统功能将受限');
+      changeLines.push(`⚠ API 来源用户上限降级：已自动停用 ${data.frozenApiUserCount} 个最近由 API 创建的用户`);
     }
 
-    if (warnings.length > 0) {
-      // 配额降级提示：使用右下角 Notification 替代顶部 Message，属于「提示类」通知
-      Notification.info({
-        id: 'license-quota-downgrade',
-        title: '系统提示',
-        content: warnings.join('\n'),
-        position: 'bottomRight',
-        duration: 8000,
+    // 2. 配额变更（升级 / 降级，基于对比面板数据）
+    compareQuotaRows.value.forEach(row => {
+      if (row.changed) {
+        const arrow = row.direction === 'up' ? '↑' : row.direction === 'down' ? '↓' : '→';
+        const tag = row.direction === 'up' ? '升级' : row.direction === 'down' ? '降级' : '变更';
+        changeLines.push(`${arrow} ${row.label}${tag}：${row.current} → ${row.next}`);
+      }
+    });
+
+    // 3. 到期日变更
+    const expireRow = compareBasicRows.value.find(r => r.key === 'expireDate');
+    if (expireRow?.changed) {
+      changeLines.push(`📅 有效期变更：${expireRow.current} → ${expireRow.next}`);
+    }
+
+    // 4. 功能模块新增
+    if (addedFeatures.value.length > 0) {
+      changeLines.push(`✚ 新增授权模块：${addedFeatures.value.map(formatFeatureLabel).join('、')}`);
+    }
+
+    // 5. 功能模块移除
+    if (removedFeatures.value.length > 0) {
+      changeLines.push(`✖ 移除授权模块：${removedFeatures.value.map(formatFeatureLabel).join('、')}`);
+    }
+
+    // 6. 许可证已过期
+    if (data?.expired) {
+      changeLines.push('⛔ 注意：新许可证已过期，系统功能将受限');
+    }
+
+    // ── 弹出右上角通知 ──
+    if (changeLines.length > 0) {
+      /**
+       * 有任何变更时，在右上角弹出通知。
+       * 包含降级时用 warning 类型（橙色），纯升级时用 info 类型（蓝色）。
+       * 判断依据：是否有资源被冻结或模块被移除。
+       */
+      const hasDowngrade =
+        (data?.frozenUserCount ?? 0) > 0 ||
+        (data?.frozenApiAccountCount ?? 0) > 0 ||
+        (data?.frozenApiUserCount ?? 0) > 0 ||
+        removedFeatures.value.length > 0 ||
+        data?.expired;
+
+      const notifyType = hasDowngrade ? 'warning' : 'info';
+
+      Notification[notifyType]({
+        id: 'license-change-notify',
+        title: `🔔 许可证已更新（${changeLines.length} 项变更）`,
+        content: changeLines.join('\n'),
+        position: 'topRight',
+        duration: 10000,
         closable: true,
+        class: 'bml-license-notify',
       });
     }
+
+    // 清空对比面板数据（必须在读取计算属性之后）
+    resetCompareSelection();
 
     Message.success('许可证更新成功，旧许可证已自动备份');
   } catch (error) {
@@ -2919,6 +2977,90 @@ onMounted(() => {
   }
   50% {
     transform: scale(1.05);
+  }
+}
+</style>
+
+<!--
+  ══════════════════════════════════════════════════════════════════════
+  全局样式：美化右上角授权系统提示通知弹窗
+  ──────────────────────────────────────────────────────────────────────
+  说明：
+    Arco Design 的 Notification 组件挂载在 document.body 下，
+    不在当前组件的 DOM 树内，因此 <style scoped> 无法命中它。
+    必须使用不带 scoped 的 <style> 块才能覆盖其样式。
+
+    为避免污染全局，所有选择器都以 .bml-license-notify 为命名空间前缀，
+    该类名通过 Notification 的 class 选项注入（见 confirmUpdate 函数）。
+
+  使用方式：
+    在调用 Notification 时传入 class: 'bml-license-notify'，
+    即可自动应用以下所有增强样式。
+  ══════════════════════════════════════════════════════════════════════
+-->
+<style>
+/* ── 通知容器整体 ── */
+.bml-license-notify.arco-notification {
+  /* 最小宽度保证多条降级信息不被压缩 */
+  min-width: 340px;
+  max-width: 420px;
+  /* 圆角、阴影与授权页卡片风格统一 */
+  border-radius: 16px !important;
+  box-shadow:
+    0 8px 32px rgba(15, 23, 42, 0.14),
+    0 2px 8px rgba(15, 23, 42, 0.08) !important;
+  border: 1px solid rgba(226, 232, 240, 0.9) !important;
+  overflow: hidden;
+  /* 入场动画：从右上角向下滑入 */
+  animation: bmlLicenseNotifySlideIn 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* ── warning 类型（配额降级）：左侧橙色竖条 ── */
+.bml-license-notify.arco-notification-warning {
+  border-left: 4px solid #ff7d00 !important;
+}
+
+/* ── 通知标题 ── */
+.bml-license-notify .arco-notification-title {
+  font-size: 14px !important;
+  font-weight: 800 !important;
+  color: #0f172a !important;
+  line-height: 1.4;
+}
+
+/* ── 通知正文：保留换行符，展示多条降级详情 ── */
+.bml-license-notify .arco-notification-content {
+  font-size: 12px !important;
+  color: #475569 !important;
+  line-height: 1.8 !important;
+  /* 保留 \n 换行，让每条降级信息独占一行 */
+  white-space: pre-line;
+  margin-top: 6px !important;
+  /* 超长内容最多显示 10 行，超出省略（全量变更可能有多条） */
+  display: -webkit-box;
+  -webkit-line-clamp: 10;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ── 关闭按钮 ── */
+.bml-license-notify .arco-notification-close-btn {
+  color: #94a3b8 !important;
+  transition: color 0.15s;
+}
+.bml-license-notify .arco-notification-close-btn:hover {
+  color: #334155 !important;
+}
+
+/* ── 入场动画：从右上角向下滑入 ── */
+@keyframes bmlLicenseNotifySlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-16px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }
 </style>

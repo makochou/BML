@@ -4,9 +4,7 @@ import { clearAuthTokens, getAccessToken, getRefreshToken, redirectToLogin, setA
 
 /**
  * 后端统一响应结构。
- * <p>
  * 前端请求层只认这一套协议，避免不同接口返回不同字段名称。
- * </p>
  */
 type ApiResponse<T = unknown> = {
     code: number;
@@ -20,6 +18,8 @@ type RetryableRequestConfig = InternalAxiosRequestConfig & {
     _retry?: boolean;
     _skipAuthRefresh?: boolean;
     _skipErrorMessage?: boolean;
+    /** 是否已尝试过权限刷新（防止 403 无限重试） */
+    _permissionRefreshed?: boolean;
 };
 
 /**
@@ -34,6 +34,11 @@ const service = axios.create({
 });
 
 let refreshTokenPromise: Promise<string | null> | null = null;
+
+/**
+ * 权限刷新 Promise，防止并发请求时多次调用刷新接口。
+ */
+let refreshPermissionsPromise: Promise<void> | null = null;
 
 /**
  * 在控制台打印后端返回的 traceId，便于联调和日志排查。
@@ -84,6 +89,33 @@ const refreshAccessToken = async (): Promise<string | null> => {
     return refreshTokenPromise;
 };
 
+/**
+ * 刷新当前用户的权限缓存。
+ *
+ * 当后端返回 403（无权访问）时，可能是因为 Redis 中缓存的权限集合是旧数据。
+ * 调用此方法通知后端重新从数据库加载权限并更新 Redis 缓存，然后重试原请求。
+ * 仅重试一次，防止无限循环。
+ */
+const refreshPermissions = async (): Promise<void> => {
+    if (!refreshPermissionsPromise) {
+        refreshPermissionsPromise = axios.post(
+            `${apiBaseURL}/auth/refresh-permissions`,
+            {},
+            {
+                timeout: 5000,
+                headers: { Authorization: `Bearer ${getAccessToken()}` }
+            }
+        ).then(() => {
+            console.info('[权限刷新] 权限缓存已更新');
+        }).catch(err => {
+            console.warn('[权限刷新] 权限刷新失败，可能需要重新登录', err);
+        }).finally(() => {
+            refreshPermissionsPromise = null;
+        });
+    }
+    return refreshPermissionsPromise;
+};
+
 const replayWithFreshToken = async (config?: RetryableRequestConfig) => {
     if (!config || config._retry || config._skipAuthRefresh) {
         throw new Error('Unauthorized');
@@ -96,6 +128,18 @@ const replayWithFreshToken = async (config?: RetryableRequestConfig) => {
     }
     config.headers = config.headers || {};
     config.headers.Authorization = `Bearer ${newAccessToken}`;
+    return service(config);
+};
+
+/**
+ * 遇到 403（无权访问）时，自动刷新权限缓存并重试原请求（仅重试一次）。
+ */
+const replayAfterPermissionRefresh = async (config?: RetryableRequestConfig) => {
+    if (!config || config._permissionRefreshed) {
+        throw new Error('无权访问');
+    }
+    config._permissionRefreshed = true;
+    await refreshPermissions();
     return service(config);
 };
 
@@ -122,6 +166,19 @@ service.interceptors.request.use(
             return replayWithFreshToken(config);
         }
 
+        // 403（无权访问）：自动刷新权限缓存并重试一次
+        // 场景：后端代码更新后，Redis 中缓存的旧权限集合未更新，导致误报 403
+        if (payload.code === 403) {
+            try {
+                return await replayAfterPermissionRefresh(config);
+            } catch {
+                if (!config?._skipErrorMessage) {
+                    Message.error(payload.message || '无权访问');
+                }
+                return Promise.reject(new Error(payload.message || '无权访问'));
+            }
+        }
+
         // 许可证核心错误码（2200-2203：未激活/无效/过期/解析失败）→ 跳转许可证激活页面
         if (payload.code >= 2200 && payload.code <= 2203) {
             const currentPath = window.location.pathname;
@@ -132,7 +189,6 @@ service.interceptors.request.use(
         }
 
         // 许可证功能模块未授权（2212）→ 静默处理，不弹出错误提示
-        // 未购买的模块本身就不在授权范围内，无需反复提醒用户
         if (payload.code === 2212) {
             return Promise.reject(new Error(payload.message || '许可证未授权该功能模块'));
         }
@@ -151,6 +207,19 @@ service.interceptors.request.use(
                 return await replayWithFreshToken(config);
             } catch (refreshError) {
                 return Promise.reject(refreshError);
+            }
+        }
+
+        // HTTP 403（Spring Security 直接拦截，未经过业务层）
+        if (error.response?.status === 403) {
+            try {
+                return await replayAfterPermissionRefresh(config);
+            } catch {
+                const message = error.response?.data?.message || '无权访问';
+                if (!config?._skipErrorMessage) {
+                    Message.error(message);
+                }
+                return Promise.reject(error);
             }
         }
 

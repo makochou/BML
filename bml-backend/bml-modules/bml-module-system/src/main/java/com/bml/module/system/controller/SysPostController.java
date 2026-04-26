@@ -1,6 +1,7 @@
 package com.bml.module.system.controller;
 
 import com.bml.core.base.controller.BaseController;
+import com.bml.core.common.result.PageResult;
 import com.bml.core.common.result.Result;
 import com.bml.module.system.converter.PostConverter;
 import com.bml.module.system.dto.SysPostDTO;
@@ -48,8 +49,10 @@ public class SysPostController extends BaseController {
     @Operation(summary = "获取岗位列表")
     @PreAuthorize("@ss.hasPermi('system:post:list')")
     @GetMapping("/list")
-    public Result<List<SysPostVO>> list(SysPostDTO dto) {
-        return Result.ok(PostConverter.INSTANCE.toVOList(postService.selectPostList(dto)));
+    public Result<PageResult<SysPostVO>> list(SysPostDTO dto,
+            @RequestParam(defaultValue = "1") int pageNum,
+            @RequestParam(defaultValue = "20") int pageSize) {
+        return Result.ok(postService.selectPostPage(dto, pageNum, pageSize));
     }
 
     /**

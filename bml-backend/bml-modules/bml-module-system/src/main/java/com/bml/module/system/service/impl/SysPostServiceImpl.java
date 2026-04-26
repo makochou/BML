@@ -2,12 +2,15 @@ package com.bml.module.system.service.impl;
 
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.bml.core.base.service.impl.BaseServiceImpl;
+import com.bml.core.common.result.PageResult;
 import com.bml.module.system.converter.PostConverter;
 import com.bml.module.system.dto.SysPostDTO;
 import com.bml.module.system.entity.SysPost;
 import com.bml.module.system.mapper.SysPostMapper;
 import com.bml.module.system.service.SysPostService;
+import com.bml.module.system.vo.SysPostVO;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -66,5 +69,25 @@ public class SysPostServiceImpl extends BaseServiceImpl<SysPostMapper, SysPost> 
     @Override
     public boolean updatePost(SysPostDTO postDto) {
         return this.updateById(PostConverter.INSTANCE.toEntity(postDto));
+    }
+
+    /**
+     * 分页查询岗位列表
+     */
+    @Override
+    public PageResult<SysPostVO> selectPostPage(SysPostDTO dto, int pageNum, int pageSize) {
+        Page<SysPost> pageObj = new Page<>(pageNum, pageSize);
+        LambdaQueryWrapper<SysPost> lqw = new LambdaQueryWrapper<>();
+        if (dto != null) {
+            lqw.like(StrUtil.isNotBlank(dto.getPostName()), SysPost::getPostName, dto.getPostName());
+            lqw.like(StrUtil.isNotBlank(dto.getPostCode()), SysPost::getPostCode, dto.getPostCode());
+            lqw.eq(dto.getOrgId() != null, SysPost::getOrgId, dto.getOrgId());
+            lqw.eq(StrUtil.isNotBlank(dto.getPostCategory()), SysPost::getPostCategory, dto.getPostCategory());
+            lqw.eq(dto.getStatus() != null, SysPost::getStatus, dto.getStatus());
+        }
+        lqw.orderByAsc(SysPost::getSort);
+        Page<SysPost> result = this.page(pageObj, lqw);
+        List<SysPostVO> records = PostConverter.INSTANCE.toVOList(result.getRecords());
+        return PageResult.of(records, result.getTotal(), pageNum, pageSize);
     }
 }

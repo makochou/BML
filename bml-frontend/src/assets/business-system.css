@@ -1,0 +1,801 @@
+/* =============================================================================
+   BML 前台业务系统 �?统一视觉规范样式
+   =============================================================================
+   说明�?
+     本文件统一定义前台业务系统（组织与权限模块）所有页面的视觉规范�?
+     与中台授权治理（ApiAccountManage.vue）保持完全一致的设计语言�?
+
+   覆盖范围�?
+     1. 页面容器布局�?page-wrapper�?
+     2. 表格单元格样式（.table-field-cell�?
+     3. 表格行操作按钮（.table-row-actions / .table-action-btn�?
+     4. 弹窗�?Tab 样式
+     5. 弹窗内表单样�?
+     6. 分页组件样式
+     7. 查询面板内表单布局
+
+   使用方式�?
+     �?main.ts 中全局引入本文件，所有业务页面自动生效，
+     无需在每�?.vue 文件中单独引入�?
+
+   设计参考：
+     bml-frontend/src/views/api/ApiAccountManage.vue（授权治理页面）
+   ============================================================================= */
+
+/* ─────────────────────────────────────────────────────────────
+   1. 页面容器布局
+   ─────────────────────────────────────────────────────────────
+   与授权治理页面的 .page.api-account-page 保持一致：
+   - 纵向弹性布局，充满父容器高度
+   - 内边�?16px，组件间�?10px
+   - 隐藏溢出，防止出现双滚动�?
+   ───────────────────────────────────────────────────────────── */
+.page-wrapper {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 16px;
+    gap: 10px;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   2. 业务系统查询面板表单布局
+   ─────────────────────────────────────────────────────────────
+   目标效果：与中台授权治理查询区域完全一致
+   - 多个字段横向并排（flex 横向布局）
+   - 每个字段：标签在左（灰色小字），输入框在右
+   - 标签和输入框水平对齐，间距 8px
+   - 字段之间间距 20px
+   ───────────────────────────────────────────────────────────── */
+
+/* 查询表单容器：横向排列，自动换行，垂直居中 */
+.biz-query-form {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    gap: 8px 20px !important;
+}
+
+/* 每个表单项：水平布局（标签在左，输入框在右） */
+.biz-query-form .arco-form-item {
+    display: inline-flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    margin-bottom: 0 !important;
+    flex: 0 0 auto !important;
+    width: auto !important;
+    gap: 8px !important;
+}
+
+/* 标签列：固定宽度，灰色小字，右对齐 */
+.biz-query-form .arco-form-item-label-col {
+    width: auto !important;
+    flex: none !important;
+    padding-bottom: 0 !important;
+    padding-right: 0 !important;
+    min-width: 0 !important;
+    margin-bottom: 0 !important;
+}
+
+/* 标签文字样式：黑色字体，与截图一致 */
+.biz-query-form .arco-form-item-label-col>label {
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    color: #1e293b !important;
+    letter-spacing: 0 !important;
+    line-height: 1 !important;
+    white-space: nowrap !important;
+    padding-bottom: 0 !important;
+}
+
+/* 输入框列：自适应宽度 */
+.biz-query-form .arco-form-item-wrapper-col {
+    width: auto !important;
+    flex: none !important;
+    min-width: 0 !important;
+}
+
+/* 查询面板内所有输入框统一高度 32px，与中台一致 */
+.biz-query-form .arco-input-wrapper,
+.biz-query-form .arco-select-view,
+.biz-query-form .arco-tree-select-view {
+    height: 32px !important;
+    min-height: 32px !important;
+    line-height: 30px !important;
+    border-radius: 6px !important;
+}
+
+/* 文本输入框默认宽度 */
+.biz-query-form .arco-input-wrapper {
+    min-width: 160px !important;
+}
+
+/* 下拉选择框默认宽度 */
+.biz-query-form .arco-select-view {
+    min-width: 110px !important;
+}
+
+/* 树形选择框默认宽度 */
+.biz-query-form .arco-tree-select-view {
+    min-width: 160px !important;
+}
+
+/* 输入框内文字大小 */
+.biz-query-form .arco-input,
+.biz-query-form .arco-select-view-value,
+.biz-query-form .arco-select-view-placeholder {
+    font-size: 13px !important;
+}
+
+/* 输入框 placeholder 颜色 */
+.biz-query-form .arco-input::placeholder {
+    color: #94a3b8 !important;
+    font-size: 13px !important;
+}
+
+/* 模糊/精确查找切换按钮 */
+.query-panel-mode-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.query-panel-mode-btn.arco-btn {
+    height: 30px;
+    padding: 0 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    transition: all 0.2s ease;
+}
+
+/* 激活状态：蓝绿渐变 */
+.query-panel-mode-btn.is-active.arco-btn-primary {
+    border: 0;
+    background: linear-gradient(135deg, #1769ff, #12b8a6);
+    box-shadow: 0 4px 12px rgba(23, 105, 255, 0.28);
+}
+
+/* 非激活状态：灰色边框 */
+.query-panel-mode-btn.is-inactive.arco-btn-primary {
+    border: 1px solid rgba(203, 213, 225, 0.9);
+    background: rgba(255, 255, 255, 0.9);
+    color: #64748b;
+    box-shadow: none;
+}
+
+.query-panel-mode-btn.is-inactive.arco-btn-primary:hover {
+    border-color: rgba(23, 105, 255, 0.4);
+    color: #1769ff;
+    background: rgba(23, 105, 255, 0.04);
+}
+
+
+/* ─────────────────────────────────────────────────────────────
+   3. 表格单元格样�?
+   ─────────────────────────────────────────────────────────────
+   与授权治理表格的 .table-field-cell 保持一致：
+   - 单行截断，超出显示省略号
+   - 最大宽�?100%，防止撑破列�?
+   ───────────────────────────────────────────────────────────── */
+.table-field-cell {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    max-width: 100%;
+    gap: 4px;
+}
+
+.table-field-cell .arco-tag {
+    flex-shrink: 0;
+}
+
+/* 主要文本（账号名称等重要字段�?*/
+.table-field-cell--primary {
+    font-weight: 600;
+    color: #0f172a;
+}
+
+/* 时间字段：等宽字体，便于对齐 */
+.table-field-cell--time .table-field-cell__mono,
+.table-field-cell__mono {
+    font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+    font-size: 12px;
+    color: #475569;
+}
+
+/* 序号�?*/
+.table-field-cell--index {
+    justify-content: center;
+    color: #94a3b8;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   4. 表格行操作按�?
+   ─────────────────────────────────────────────────────────────
+   与授权治理表格的 .table-row-actions 保持一致：
+   - 横向排列，间�?4px
+   - 主操作按钮：蓝色渐变
+   - 更多按钮：灰色边�?
+   - 危险操作：红色文�?
+   ───────────────────────────────────────────────────────────── */
+.table-row-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: nowrap;
+}
+
+/* 通用操作按钮基础样式 */
+.table-action-btn.arco-btn {
+    height: 26px;
+    padding: 0 10px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    transition: all 0.18s ease;
+}
+
+/* 主操作按钮（编辑、查看等�?*/
+.table-action-btn--primary.arco-btn-primary {
+    border: 0;
+    background: linear-gradient(135deg, #1769ff, #12b8a6);
+    box-shadow: 0 4px 10px rgba(23, 105, 255, 0.22);
+}
+
+.table-action-btn--primary.arco-btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 14px rgba(23, 105, 255, 0.3);
+}
+
+/* 更多操作按钮（下拉菜单触发器�?*/
+.table-action-btn--more.arco-btn {
+    width: 26px;
+    padding: 0;
+    border-color: rgba(203, 213, 225, 0.9);
+    background: rgba(255, 255, 255, 0.9);
+    color: #64748b;
+}
+
+.table-action-btn--more.arco-btn:hover {
+    border-color: rgba(23, 105, 255, 0.4);
+    color: #1769ff;
+    background: rgba(23, 105, 255, 0.04);
+}
+
+/* 危险操作（删除等�?*/
+.table-row-actions__danger {
+    color: #ef4444 !important;
+}
+
+.table-row-actions__danger:hover {
+    background: rgba(239, 68, 68, 0.06) !important;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   5. 表格整体样式增强
+   ─────────────────────────────────────────────────────────────
+   统一业务系统表格的视觉风格：
+   - 表头背景：浅蓝灰渐变
+   - 行高：紧凑模�?40px
+   - 悬停行：浅蓝高亮
+   - 选中行：蓝色左边框标�?
+   ───────────────────────────────────────────────────────────── */
+
+/* 表头样式 */
+.governance-list-stage .arco-table-th {
+    background: linear-gradient(180deg, rgba(241, 246, 255, 0.98), rgba(235, 243, 255, 0.96)) !important;
+    border-bottom: 1px solid rgba(210, 224, 240, 0.9) !important;
+}
+
+.governance-list-stage .arco-table-th .arco-table-cell {
+    font-size: 12px;
+    font-weight: 700;
+    color: #334155;
+    letter-spacing: 0.02em;
+}
+
+/* 表格行悬停效�?*/
+.governance-list-stage .arco-table-tr:hover .arco-table-td {
+    background: rgba(23, 105, 255, 0.03) !important;
+}
+
+/* 选中行高�?*/
+.governance-list-stage .arco-table-tr.is-row-active .arco-table-td {
+    background: rgba(23, 105, 255, 0.05) !important;
+}
+
+.governance-list-stage .arco-table-tr.is-row-active .arco-table-td:first-child {
+    box-shadow: inset 3px 0 0 #1769ff;
+}
+
+/* 表格单元格内边距 */
+.governance-list-stage .arco-table-td .arco-table-cell {
+    padding: 6px 12px;
+}
+
+/* 斑马纹（stripe 模式�?*/
+.governance-list-stage .arco-table-stripe .arco-table-tr:nth-child(even) .arco-table-td {
+    background: rgba(248, 251, 255, 0.8);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   6. 弹窗�?Tab 样式
+   ─────────────────────────────────────────────────────────────
+   统一 BmlModal �?a-tabs 的视觉风格：
+   - Tab 标签：圆角胶囊形
+   - 激�?Tab：蓝色渐变背�?
+   - Tab 内容区：无内边距（由表单自身控制�?
+   ───────────────────────────────────────────────────────────── */
+
+/* Tab 导航�?*/
+.bml-modal__body .arco-tabs-nav {
+    margin-bottom: 16px;
+    border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+    padding-bottom: 0;
+}
+
+/* Tab 标签按钮 */
+.bml-modal__body .arco-tabs-tab {
+    padding: 6px 16px;
+    border-radius: 8px 8px 0 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: #64748b;
+    transition: all 0.2s ease;
+}
+
+.bml-modal__body .arco-tabs-tab:hover {
+    color: #1769ff;
+    background: rgba(23, 105, 255, 0.04);
+}
+
+/* 激活的 Tab 标签 */
+.bml-modal__body .arco-tabs-tab.arco-tabs-tab-active {
+    color: #1769ff;
+    background: rgba(23, 105, 255, 0.06);
+}
+
+/* Tab 激活指示线 */
+.bml-modal__body .arco-tabs-nav-ink {
+    background: linear-gradient(90deg, #1769ff, #12b8a6);
+    height: 2px;
+    border-radius: 999px;
+}
+
+/* Tab 内容�?*/
+.bml-modal__body .arco-tabs-content {
+    padding-top: 4px;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   7. 弹窗内表单样�?
+   ─────────────────────────────────────────────────────────────
+   统一 BmlModal �?a-form 的视觉风格：
+   - 标签：加粗，深色
+   - 输入框：圆角 8px，悬�?聚焦有蓝色边�?
+   - 必填星号：红�?
+   ───────────────────────────────────────────────────────────── */
+
+/* 表单标签 */
+.bml-modal__body .arco-form-item-label-col>label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #334155;
+}
+
+/* 必填星号 */
+.bml-modal__body .arco-form-item-label-required-symbol {
+    color: #ef4444;
+}
+
+/* 输入框、选择框、文本域统一圆角 */
+.bml-modal__body .arco-input-wrapper,
+.bml-modal__body .arco-select-view,
+.bml-modal__body .arco-textarea-wrapper,
+.bml-modal__body .arco-picker,
+.bml-modal__body .arco-input-number,
+.bml-modal__body .arco-tree-select-view {
+    border-radius: 8px !important;
+    border-color: rgba(203, 213, 225, 0.9) !important;
+    background: rgba(255, 255, 255, 0.95) !important;
+    transition: all 0.2s ease !important;
+}
+
+.bml-modal__body .arco-input-wrapper:hover,
+.bml-modal__body .arco-select-view:hover,
+.bml-modal__body .arco-textarea-wrapper:hover,
+.bml-modal__body .arco-picker:hover,
+.bml-modal__body .arco-input-number:hover,
+.bml-modal__body .arco-tree-select-view:hover {
+    border-color: rgba(23, 105, 255, 0.4) !important;
+}
+
+.bml-modal__body .arco-input-wrapper.arco-input-focus,
+.bml-modal__body .arco-select-view.arco-select-view-focus,
+.bml-modal__body .arco-textarea-wrapper.arco-textarea-focus,
+.bml-modal__body .arco-picker.arco-picker-focused,
+.bml-modal__body .arco-input-number.arco-input-number-focused,
+.bml-modal__body .arco-tree-select-view.arco-tree-select-view-focus {
+    border-color: rgba(23, 105, 255, 0.7) !important;
+    box-shadow: 0 0 0 3px rgba(23, 105, 255, 0.1) !important;
+}
+
+/* 表单项间�?*/
+.bml-modal__body .arco-form-item {
+    margin-bottom: 16px;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   8. 分页组件样式
+   ─────────────────────────────────────────────────────────────
+   统一分页组件的视觉风格：
+   - 右对�?
+   - 激活页码：蓝色渐变背景
+   ───────────────────────────────────────────────────────────── */
+
+/* 分页容器 */
+.governance-list-stage .arco-pagination {
+    display: flex;
+    justify-content: flex-end;
+    padding: 8px 4px 2px;
+}
+
+/* 激活页�?*/
+.governance-list-stage .arco-pagination-item-active {
+    background: linear-gradient(135deg, #1769ff, #12b8a6) !important;
+    border-color: transparent !important;
+    color: #ffffff !important;
+    font-weight: 700;
+}
+
+/* 页码按钮悬停 */
+.governance-list-stage .arco-pagination-item:not(.arco-pagination-item-active):hover {
+    border-color: rgba(23, 105, 255, 0.4) !important;
+    color: #1769ff !important;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   9. 弹窗标题栏顶部装饰线
+   ─────────────────────────────────────────────────────────────
+   �?BmlModal 标题栏顶部添加蓝绿渐变装饰线�?
+   与授权治理弹窗的视觉风格保持一致�?
+   ───────────────────────────────────────────────────────────── */
+.bml-modal::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 14px;
+    right: 14px;
+    height: 2px;
+    border-radius: 0 0 999px 999px;
+    background: linear-gradient(90deg, #1769ff, #12b8a6);
+    opacity: 0.9;
+    z-index: 10;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   10. 弹窗底部按钮样式增强
+   ─────────────────────────────────────────────────────────────
+   统一弹窗底部操作按钮的视觉风格：
+   - 确定按钮：蓝绿渐�?
+   - 取消按钮：白色边�?
+   - 危险按钮（重置密码等）：橙色
+   ───────────────────────────────────────────────────────────── */
+
+/* 确定/提交按钮 */
+.bml-modal__footer .arco-btn-primary:not(.arco-btn-status-warning):not(.arco-btn-status-danger) {
+    background: linear-gradient(135deg, #1769ff 0%, #1f8bff 46%, #12b8a6 100%) !important;
+    border: 0 !important;
+    box-shadow: 0 8px 20px rgba(23, 105, 255, 0.24) !important;
+    font-weight: 700;
+    min-width: 96px;
+    border-radius: 10px !important;
+}
+
+.bml-modal__footer .arco-btn-primary:not(.arco-btn-status-warning):not(.arco-btn-status-danger):hover {
+    transform: translateY(-1px);
+    box-shadow: 0 10px 24px rgba(23, 105, 255, 0.32) !important;
+}
+
+/* 取消按钮 */
+.bml-modal__footer .arco-btn:not(.arco-btn-primary):not(.arco-btn-status-warning):not(.arco-btn-status-danger) {
+    border-color: rgba(203, 213, 225, 0.9) !important;
+    background: linear-gradient(180deg, #ffffff, #f8fafc) !important;
+    color: #475569 !important;
+    font-weight: 600;
+    min-width: 80px;
+    border-radius: 10px !important;
+}
+
+.bml-modal__footer .arco-btn:not(.arco-btn-primary):not(.arco-btn-status-warning):not(.arco-btn-status-danger):hover {
+    border-color: rgba(23, 105, 255, 0.4) !important;
+    color: #1769ff !important;
+}
+
+/* 警告按钮（重置密码等�?*/
+.bml-modal__footer .arco-btn-status-warning {
+    background: linear-gradient(135deg, #f97316, #fb923c) !important;
+    border: 0 !important;
+    color: #ffffff !important;
+    font-weight: 700;
+    border-radius: 10px !important;
+    box-shadow: 0 6px 16px rgba(249, 115, 22, 0.24) !important;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   11. 树形表格展开图标样式
+   ─────────────────────────────────────────────────────────────
+   统一树形表格（机构管理、部门管理、菜单管理）的展开图标样式�?
+   ───────────────────────────────────────────────────────────── */
+.governance-list-stage .arco-table-expand-btn {
+    color: #64748b;
+    transition: color 0.2s ease;
+}
+
+.governance-list-stage .arco-table-expand-btn:hover {
+    color: #1769ff;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   12. 空数据状态样�?
+   ─────────────────────────────────────────────────────────────
+   统一表格空数据时的提示样式�?
+   ───────────────────────────────────────────────────────────── */
+.governance-list-stage .arco-table-empty-row td {
+    padding: 40px 0 !important;
+}
+
+.governance-list-stage .arco-empty-description {
+    color: #94a3b8;
+    font-size: 13px;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   13. 加载状态样�?
+   ─────────────────────────────────────────────────────────────
+   统一表格加载中的遮罩样式�?
+   ───────────────────────────────────────────────────────────── */
+.governance-list-stage .arco-spin-mask {
+    background: rgba(255, 255, 255, 0.7) !important;
+    backdrop-filter: blur(2px);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   14. 弹出确认框（Popconfirm）样�?
+   ─────────────────────────────────────────────────────────────
+   统一删除确认弹出框的视觉风格�?
+   ───────────────────────────────────────────────────────────── */
+.arco-popconfirm-popup-content {
+    border-radius: 12px !important;
+    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12) !important;
+    border: 1px solid rgba(226, 232, 240, 0.8) !important;
+}
+
+.arco-popconfirm-popup-content .arco-btn-primary {
+    background: linear-gradient(135deg, #ef4444, #f97316) !important;
+    border: 0 !important;
+    border-radius: 8px !important;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   15. 树形选择器（TreeSelect）弹出层样式
+   ─────────────────────────────────────────────────────────────
+   统一机构/部门树形选择器的下拉面板样式�?
+   ───────────────────────────────────────────────────────────── */
+.arco-tree-select-dropdown {
+    border-radius: 12px !important;
+    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.1) !important;
+    border: 1px solid rgba(226, 232, 240, 0.8) !important;
+}
+
+.arco-tree-node-selected>.arco-tree-node-title {
+    background: rgba(23, 105, 255, 0.08) !important;
+    color: #1769ff !important;
+    font-weight: 600;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   16. 下拉选择器（Select）弹出层样式
+   ─────────────────────────────────────────────────────────────
+   统一所有下拉选择器的弹出面板样式�?
+   ───────────────────────────────────────────────────────────── */
+.arco-select-dropdown {
+    border-radius: 12px !important;
+    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.1) !important;
+    border: 1px solid rgba(226, 232, 240, 0.8) !important;
+}
+
+.arco-select-option-selected {
+    background: rgba(23, 105, 255, 0.06) !important;
+    color: #1769ff !important;
+    font-weight: 600;
+}
+
+.arco-select-option:hover {
+    background: rgba(23, 105, 255, 0.04) !important;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   17. 日期选择器（DatePicker）弹出层样式
+   ─────────────────────────────────────────────────────────────
+   统一日期选择器的弹出面板样式�?
+   ───────────────────────────────────────────────────────────── */
+.arco-picker-container {
+    border-radius: 12px !important;
+    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.1) !important;
+    border: 1px solid rgba(226, 232, 240, 0.8) !important;
+}
+
+.arco-picker-date-value.arco-picker-cell-selected .arco-picker-date-value {
+    background: linear-gradient(135deg, #1769ff, #12b8a6) !important;
+    border-radius: 50% !important;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   18. 标签（Tag）样式增�?
+   ─────────────────────────────────────────────────────────────
+   统一表格中状态标签的视觉风格，增加圆角和内边距�?
+   ───────────────────────────────────────────────────────────── */
+.governance-list-stage .arco-tag {
+    border-radius: 6px !important;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    padding: 1px 8px !important;
+    letter-spacing: 0.02em;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   19. 响应式适配
+   ─────────────────────────────────────────────────────────────
+   在小屏幕下调整布局，确保移动端可用性�?
+   ───────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+    .page-wrapper {
+        padding: 10px;
+        gap: 8px;
+    }
+
+    .table-row-actions {
+        flex-wrap: wrap;
+    }
+
+    .bml-modal__footer {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .bml-modal__footer .arco-btn {
+        flex: 1;
+        min-width: 0 !important;
+    }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   20. 列设置触发按钮样�?
+   ─────────────────────────────────────────────────────────────
+   与中台授权治理的列设置按钮保持一致�?
+   ───────────────────────────────────────────────────────────── */
+.table-column-setting-btn.arco-btn {
+    border-color: rgba(203, 213, 225, 0.9);
+    background: rgba(255, 255, 255, 0.9);
+    color: #475569;
+    font-weight: 600;
+}
+
+.table-column-setting-btn.arco-btn:hover {
+    border-color: rgba(23, 105, 255, 0.4);
+    color: #1769ff;
+    background: rgba(23, 105, 255, 0.04);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   21. 表格铺满容器
+   ─────────────────────────────────────────────────────────────
+   让表格在 GovernanceListStage body-fill 模式下铺满整个区域，
+   而不是只占数据行的高度�?
+   ───────────────────────────────────────────────────────────── */
+
+/* 表格容器铺满 */
+.governance-list-stage--body-fill .governance-list-stage__body .arco-table-container {
+    height: 100%;
+}
+
+.governance-list-stage--body-fill .governance-list-stage__body .arco-table {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.governance-list-stage--body-fill .governance-list-stage__body .arco-table-content {
+    flex: 1;
+    min-height: 0;
+}
+
+/* 表格内容区铺满（包含空状态时也铺满） */
+.governance-list-stage--body-fill .governance-list-stage__body .arco-table-body {
+    height: 100%;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   22. 下拉菜单（Dropdown）样�?
+   ─────────────────────────────────────────────────────────────
+   统一操作�?更多"下拉菜单的视觉风格�?
+   ───────────────────────────────────────────────────────────── */
+.arco-dropdown-list {
+    border-radius: 10px !important;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.1) !important;
+    border: 1px solid rgba(226, 232, 240, 0.8) !important;
+    padding: 4px !important;
+    min-width: 100px !important;
+}
+
+.arco-dropdown-option {
+    border-radius: 6px !important;
+    font-size: 12px !important;
+    font-weight: 500 !important;
+    padding: 6px 12px !important;
+    color: #334155 !important;
+    transition: all 0.15s ease !important;
+}
+
+.arco-dropdown-option:hover {
+    background: rgba(23, 105, 255, 0.06) !important;
+    color: #1769ff !important;
+}
+
+/* 危险操作选项（删除等�?*/
+.arco-dropdown-option.is-danger {
+    color: #ef4444 !important;
+}
+
+.arco-dropdown-option.is-danger:hover {
+    background: rgba(239, 68, 68, 0.06) !important;
+    color: #ef4444 !important;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   23. 查询面板"更多条件"折叠区样式
+   ─────────────────────────────────────────────────────────────
+   次要查询字段的展开/收起动画和布局。
+   ───────────────────────────────────────────────────────────── */
+
+/* 次要字段容器：与主要字段同行排列 */
+.biz-query-form-extra {
+    display: contents;
+}
+
+/* 展开/收起过渡动画 */
+.query-expand-enter-active,
+.query-expand-leave-active {
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.query-expand-enter-from,
+.query-expand-leave-to {
+    opacity: 0;
+    transform: translateY(-4px);
+}
+
+/* "更多条件"切换按钮样式 */
+.query-panel-toggle-btn.arco-btn {
+    height: 28px;
+    padding: 0 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #1769ff;
+    border-color: rgba(23, 105, 255, 0.3);
+    background: rgba(23, 105, 255, 0.04);
+    transition: all 0.2s ease;
+}
+
+.query-panel-toggle-btn.arco-btn:hover {
+    background: rgba(23, 105, 255, 0.08);
+    border-color: rgba(23, 105, 255, 0.5);
+}

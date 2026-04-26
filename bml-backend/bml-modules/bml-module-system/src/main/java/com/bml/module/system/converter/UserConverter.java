@@ -52,7 +52,11 @@ public final class UserConverter {
         vo.setGender(entity.getGender());
         vo.setAvatar(entity.getAvatar());
         vo.setStatus(entity.getStatus());
+        vo.setOrgId(entity.getOrgId());
         vo.setDeptId(entity.getDeptId());
+        vo.setPostId(entity.getPostId());
+        vo.setEmployeeNo(entity.getEmployeeNo());
+        vo.setEntryDate(entity.getEntryDate());
         vo.setCreateTime(entity.getCreateTime());
         vo.setLoginIp(entity.getLoginIp());
         vo.setLoginDate(entity.getLoginDate());

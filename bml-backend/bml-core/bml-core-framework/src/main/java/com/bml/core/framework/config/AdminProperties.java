@@ -31,7 +31,8 @@ import org.springframework.stereotype.Component;
  * <ul>
  *   <li>中台管理平台仅供内部运维使用，不需要多用户体系</li>
  *   <li>管理员始终拥有超级管理员权限（{@code *:*:*}），可访问所有功能</li>
- *   <li>管理员的 userId 固定为 {@code 1L}，与 {@code GlobalConstants.SYSTEM_USER_ID} 一致</li>
+ *   <li>管理员使用虚拟 userId（{@link com.bml.core.common.constant.GlobalConstants#ADMIN_USER_ID} = -1L），
+ *       不与 sys_user 数据库表中的任何用户冲突</li>
  *   <li>密码以明文配置，登录时通过 BCrypt 编码比对验证</li>
  * </ul>
  *

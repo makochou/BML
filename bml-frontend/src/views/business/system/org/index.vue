@@ -1,29 +1,34 @@
 <template>
   <div class="page-wrapper">
     <!-- ════════════════════════════════════════════════
-         查询面板（与中台授权治理风格一致）
+         查询面板
          ════════════════════════════════════════════════ -->
     <GovernanceCompactQueryPanel density="ultra" theme="aurora">
-      <template #footerActions>
-        <a-button @click="handleReset">重置条件</a-button>
-        <a-button type="primary" @click="handleSearch">查询</a-button>
+      <template #note>
+        <a-button class="query-panel-toggle-btn" @click="queryExpanded = !queryExpanded">
+          <template #icon>
+            <component :is="queryExpanded ? IconUp : IconDown" />
+          </template>
+          {{ queryExpanded ? '收起条件' : '更多条件' }}
+        </a-button>
       </template>
-      <a-form :model="queryParams" layout="inline" class="query-form">
+      <template #footerActions>
+        <div class="query-panel-mode-actions">
+          <a-button type="primary" class="query-panel-mode-btn"
+            :class="{ 'is-active': textMatchMode === 'fuzzy', 'is-inactive': textMatchMode !== 'fuzzy' }"
+            @click="textMatchMode = 'fuzzy'; handleSearch()">模糊查找</a-button>
+          <a-button type="primary" class="query-panel-mode-btn"
+            :class="{ 'is-active': textMatchMode === 'exact', 'is-inactive': textMatchMode !== 'exact' }"
+            @click="textMatchMode = 'exact'; handleSearch()">精确查找</a-button>
+        </div>
+        <a-button @click="handleReset">重置条件</a-button>
+      </template>
+      <a-form :model="queryParams" layout="inline" class="biz-query-form">
         <a-form-item field="orgName" label="机构名称">
           <a-input v-model="queryParams.orgName" placeholder="请输入机构名称" allow-clear @press-enter="handleSearch" />
         </a-form-item>
         <a-form-item field="orgCode" label="机构编码">
           <a-input v-model="queryParams.orgCode" placeholder="请输入机构编码" allow-clear @press-enter="handleSearch" />
-        </a-form-item>
-        <a-form-item field="orgType" label="机构类型">
-          <a-select v-model="queryParams.orgType" placeholder="全部" allow-clear style="width: 120px;" @change="handleSearch">
-            <a-option :value="1">集团</a-option>
-            <a-option :value="2">公司</a-option>
-            <a-option :value="3">分公司</a-option>
-            <a-option :value="4">子公司</a-option>
-            <a-option :value="5">办事处</a-option>
-            <a-option :value="6">事业部</a-option>
-          </a-select>
         </a-form-item>
         <a-form-item field="status" label="状态">
           <a-select v-model="queryParams.status" placeholder="全部" allow-clear style="width: 120px;" @change="handleSearch">
@@ -31,11 +36,22 @@
             <a-option :value="0">停用</a-option>
           </a-select>
         </a-form-item>
+
+        <!-- 次要字段（展开时显示） -->
+        <transition name="query-expand">
+          <div v-if="queryExpanded" class="biz-query-form-extra">
+            <a-form-item field="orgType" label="机构类型">
+              <a-select v-model="queryParams.orgType" placeholder="全部" allow-clear style="width: 120px;" @change="handleSearch">
+                <a-option v-for="opt in ORG_TYPE_OPTIONS" :key="opt.value" :value="opt.value">{{ opt.label }}</a-option>
+              </a-select>
+            </a-form-item>
+          </div>
+        </transition>
       </a-form>
     </GovernanceCompactQueryPanel>
 
     <!-- ════════════════════════════════════════════════
-         列表舞台（与中台授权治理风格一致）
+         列表舞台
          ════════════════════════════════════════════════ -->
     <GovernanceListStage density="ultra" body-fill>
       <template #actions>
@@ -43,7 +59,28 @@
           <template #icon><icon-plus /></template>
           新增机构
         </a-button>
+        <a-popover trigger="click" position="br" :content-style="{ padding: 0 }">
+          <a-button class="table-column-setting-btn">
+            <template #icon><icon-settings /></template>
+            列设置
+          </a-button>
+          <template #content>
+            <BusinessTableColumnSetting
+              :items="columnSettingItems"
+              :drag-state="dragState"
+              @toggle-visible="toggleColumnVisible"
+              @move="moveColumn"
+              @toggle-fixed="toggleColumnFixed"
+              @drag-start="handleDragStart"
+              @drag-over="handleDragOver"
+              @drop="handleDrop"
+              @drag-end="handleDragEnd"
+              @reset="resetColumns"
+            />
+          </template>
+        </a-popover>
       </template>
+
       <a-table
         :data="tableData"
         :loading="loading"
@@ -52,118 +89,113 @@
         row-key="id"
         :default-expand-all-rows="true"
         size="small"
+        :columns="visibleColumns"
         :scroll="{ y: '100%' }"
         :scrollbar="true"
         sticky-header
+        column-resizable
+        @column-resize="handleColumnResize"
       >
-        <template #columns>
-          <a-table-column title="机构名称" data-index="orgName" :width="220" />
-          <a-table-column title="机构编码" data-index="orgCode" :width="130" />
-          <a-table-column title="机构类型" data-index="orgType" :width="100" align="center">
-            <template #cell="{ record }">
-              <a-tag size="small" :color="orgTypeColor(record.orgType)">{{ orgTypeLabel(record.orgType) }}</a-tag>
-            </template>
-          </a-table-column>
-          <a-table-column title="负责人" data-index="leader" :width="100" />
-          <a-table-column title="联系电话" data-index="phone" :width="130" />
-          <a-table-column title="数据隔离" data-index="dataIsolation" :width="110" align="center">
-            <template #cell="{ record }">
-              <a-tag size="small" :color="isolationColor(record.dataIsolation)">{{ isolationLabel(record.dataIsolation) }}</a-tag>
-            </template>
-          </a-table-column>
-          <a-table-column title="排序" data-index="sort" :width="70" align="center" />
-          <a-table-column title="状态" data-index="status" :width="80" align="center">
-            <template #cell="{ record }">
-              <a-tag :color="record.status === 1 ? 'green' : 'red'" size="small">{{ record.status === 1 ? '正常' : '停用' }}</a-tag>
-            </template>
-          </a-table-column>
-          <a-table-column title="创建时间" data-index="createTime" :width="170" />
-          <a-table-column title="操作" :width="240" align="center" fixed="right">
-            <template #cell="{ record }">
-              <a-space>
-                <a-button type="text" size="small" @click="handleAdd(record.id)">
-                  <template #icon><icon-plus /></template>新增
-                </a-button>
-                <a-button type="text" size="small" @click="handleEdit(record)"><template #icon><icon-edit /></template>编辑</a-button>
-                <a-popconfirm content="确认删除该机构吗？" @ok="handleDelete(record.id)">
-                  <a-button type="text" size="small" status="danger"><template #icon><icon-delete /></template>删除</a-button>
-                </a-popconfirm>
-              </a-space>
-            </template>
-          </a-table-column>
+        <template #orgType="{ record }">
+          <a-tag size="small" :color="orgTypeColor(record.orgType)">{{ orgTypeLabel(record.orgType) }}</a-tag>
+        </template>
+        <template #dataIsolation="{ record }">
+          <a-tag size="small" :color="isolationColor(record.dataIsolation)">{{ isolationLabel(record.dataIsolation) }}</a-tag>
+        </template>
+        <template #status="{ record }">
+          <a-tag :color="record.status === 1 ? 'green' : 'red'" size="small">{{ record.status === 1 ? '正常' : '停用' }}</a-tag>
+        </template>
+        <template #actions="{ record }">
+          <div class="table-row-actions" @click.stop @dblclick.stop>
+            <a-button type="primary" size="mini" class="table-action-btn table-action-btn--primary"
+              @click="handleEdit(record)">
+              <template #icon><icon-edit /></template>
+              编辑
+            </a-button>
+            <a-dropdown trigger="click" position="br">
+              <a-button size="mini" class="table-action-btn table-action-btn--more">
+                <template #icon><icon-more /></template>
+              </a-button>
+              <template #content>
+                <a-doption @click="handleAdd(record.id)">
+                  <template #icon><icon-plus /></template>
+                  新增子机构
+                </a-doption>
+                <a-doption class="is-danger" @click="confirmDelete(record)">
+                  <template #icon><icon-delete /></template>
+                  删除机构
+                </a-doption>
+              </template>
+            </a-dropdown>
+          </div>
         </template>
       </a-table>
     </GovernanceListStage>
 
-    <!-- 新增/编辑弹窗（BmlModal：支持拖拽、缩放、全屏） -->
-    <BmlModal v-model:visible="dialogVisible" :title="dialogTitle" :width="780" :height="620" :min-width="600" :min-height="480">
+    <!-- 新增/编辑弹窗 -->
+    <BmlModal v-model:visible="dialogVisible" :title="dialogTitle" :width="820" :height="640" :min-width="640" :min-height="480">
       <a-form :model="formData" ref="formRef" :rules="formRules" layout="vertical">
         <a-tabs default-active-key="basic" size="small" class="form-tabs">
-          <!-- ── 基本信息 ── -->
           <a-tab-pane key="basic" title="基本信息">
             <a-row :gutter="16">
               <a-col :span="12">
                 <a-form-item field="parentId" label="上级机构">
-                  <a-tree-select
-                    v-model="formData.parentId"
-                    :data="orgTreeOptions"
+                  <a-tree-select v-model="formData.parentId" :data="orgTreeOptions"
                     :field-names="{ key: 'id', title: 'orgName', children: 'children' }"
-                    placeholder="请选择上级机构"
-                    allow-clear
-                  />
+                    placeholder="请选择上级机构" allow-clear />
                 </a-form-item>
               </a-col>
               <a-col :span="12">
-                <a-form-item field="orgName" label="机构名称">
+                <a-form-item field="orgName" label="机构名称" required>
                   <a-input v-model="formData.orgName" placeholder="请输入机构名称" />
                 </a-form-item>
               </a-col>
             </a-row>
             <a-row :gutter="16">
               <a-col :span="12">
-                <a-form-item field="orgCode" label="机构编码">
+                <a-form-item field="orgCode" label="机构编码" required>
                   <a-input v-model="formData.orgCode" placeholder="请输入机构编码" />
                 </a-form-item>
               </a-col>
               <a-col :span="12">
-                <a-form-item field="orgType" label="机构类型">
+                <a-form-item field="orgType" label="机构类型" required>
                   <a-select v-model="formData.orgType" placeholder="请选择机构类型">
-                    <a-option :value="1">集团</a-option>
-                    <a-option :value="2">公司</a-option>
-                    <a-option :value="3">分公司</a-option>
-                    <a-option :value="4">子公司</a-option>
-                    <a-option :value="5">办事处</a-option>
-                    <a-option :value="6">事业部</a-option>
+                    <a-option v-for="opt in ORG_TYPE_OPTIONS" :key="opt.value" :value="opt.value">{{ opt.label }}</a-option>
+                  </a-select>
+                </a-form-item>
+              </a-col>
+            </a-row>
+            <a-row :gutter="16">
+              <a-col :span="24">
+                <a-form-item field="dataIsolation" label="数据隔离模式" required>
+                  <a-select v-model="formData.dataIsolation" placeholder="请选择">
+                    <a-option v-for="iso in ISOLATION_OPTIONS" :key="iso.value" :value="iso.value">
+                      <span style="font-weight: 500;">{{ iso.label }}</span>
+                      <span style="color: var(--color-text-3); font-size: 12px; margin-left: 6px;">{{ iso.desc }}</span>
+                    </a-option>
                   </a-select>
                 </a-form-item>
               </a-col>
             </a-row>
             <a-row :gutter="16">
               <a-col :span="12">
-                <a-form-item field="sort" label="显示排序">
-                  <a-input-number v-model="formData.sort" :min="0" placeholder="排序" style="width: 100%;" />
+                <a-form-item field="leader" label="负责人">
+                  <a-input v-model="formData.leader" placeholder="请输入负责人" />
                 </a-form-item>
               </a-col>
               <a-col :span="12">
-                <a-form-item field="status" label="机构状态">
+                <a-form-item field="sort" label="排序">
+                  <a-input-number v-model="formData.sort" :min="0" placeholder="排序" style="width: 100%;" />
+                </a-form-item>
+              </a-col>
+            </a-row>
+            <a-row :gutter="16">
+              <a-col :span="12">
+                <a-form-item field="status" label="状态">
                   <a-select v-model="formData.status" placeholder="请选择">
                     <a-option :value="1">正常</a-option>
                     <a-option :value="0">停用</a-option>
                   </a-select>
-                </a-form-item>
-              </a-col>
-            </a-row>
-            <a-row :gutter="16">
-              <a-col :span="12">
-                <a-form-item field="dataIsolation" label="数据隔离模式">
-                  <a-select v-model="formData.dataIsolation" placeholder="请选择">
-                    <a-option v-for="iso in ISOLATION_OPTIONS" :key="iso.value" :value="iso.value">{{ iso.label }}</a-option>
-                  </a-select>
-                </a-form-item>
-              </a-col>
-              <a-col :span="12">
-                <a-form-item field="leader" label="负责人">
-                  <a-input v-model="formData.leader" placeholder="请输入负责人" />
                 </a-form-item>
               </a-col>
             </a-row>
@@ -176,7 +208,6 @@
             </a-row>
           </a-tab-pane>
 
-          <!-- ── 工商信息 ── -->
           <a-tab-pane key="business" title="工商信息">
             <a-row :gutter="16">
               <a-col :span="12">
@@ -211,7 +242,6 @@
             </a-row>
           </a-tab-pane>
 
-          <!-- ── 联系与地址 ── -->
           <a-tab-pane key="contact" title="联系与地址">
             <a-row :gutter="16">
               <a-col :span="12">
@@ -263,59 +293,71 @@
 <script lang="ts" setup>
 /**
  * 机构管理页面
- *
- * 重要说明：
- *   defineOptions({ name: 'SystemOrg' }) 是 keep-alive 缓存的关键。
- *   组件 name 必须与路由配置中的 name 字段保持一致，
- *   否则 <keep-alive :include="cachedViews"> 无法匹配到该组件，
- *   导致切换标签页后页面内容被销毁、重新加载。
+ * defineOptions({ name: 'SystemOrg' }) 是 keep-alive 缓存的关键。
  */
 defineOptions({ name: 'SystemOrg' });
 
 import { ref, reactive, computed, onMounted } from 'vue';
-import { Message } from '@arco-design/web-vue';
-import { IconPlus, IconEdit, IconDelete } from '@arco-design/web-vue/es/icon';
+import { Message, Modal } from '@arco-design/web-vue';
+import { IconPlus, IconEdit, IconDelete, IconMore, IconSettings, IconUp, IconDown } from '@arco-design/web-vue/es/icon';
 import { fetchOrgList, createOrg, updateOrg, deleteOrg, type OrgVO, type OrgForm, type OrgQuery } from '../../../../api/system';
 import BmlModal from '../../../../components/BmlModal.vue';
 import GovernanceCompactQueryPanel from '../../../../components/governance/GovernanceCompactQueryPanel.vue';
 import GovernanceListStage from '../../../../components/governance/GovernanceListStage.vue';
+import BusinessTableColumnSetting from '../../../../components/business/BusinessTableColumnSetting.vue';
+import { useBusinessTableColumns, type BusinessTableColumn } from '../../../../composables/useBusinessTableColumns';
 
-/* ════════════════════════════════════════════════════════════
-   机构类型映射
-   ════════════════════════════════════════════════════════════ */
-const ORG_TYPE_MAP: Record<number, string> = { 1: '集团', 2: '公司', 3: '分公司', 4: '子公司', 5: '办事处', 6: '事业部' };
-const ORG_TYPE_COLOR: Record<number, string> = { 1: 'purple', 2: 'arcoblue', 3: 'cyan', 4: 'blue', 5: 'orangered', 6: 'green' };
-const orgTypeLabel = (t: number) => ORG_TYPE_MAP[t] || '未知';
-const orgTypeColor = (t: number) => ORG_TYPE_COLOR[t] || 'gray';
-
-/* ════════════════════════════════════════════════════════════
-   数据隔离模式（对应后端 DataIsolationType 枚举）
-   ════════════════════════════════════════════════════════════ */
-const ISOLATION_OPTIONS = [
-  { value: 0, label: '共享 — 上级可查看下级数据', short: '共享' },
-  { value: 1, label: '完全隔离 — 各机构数据独立', short: '完全隔离' },
-  { value: 2, label: '汇总共享 — 上级仅看汇总', short: '汇总共享' },
-  { value: 3, label: '同级互通 — 兄弟机构互查', short: '同级互通' },
-  { value: 4, label: '按模块隔离 — 分模块控制', short: '按模块隔离' }
+const ORG_TYPE_OPTIONS = [
+  { value: 1, label: '集团', color: 'red' },
+  { value: 2, label: '公司', color: 'arcoblue' },
+  { value: 3, label: '分公司', color: 'cyan' },
+  { value: 4, label: '子公司', color: 'purple' },
+  { value: 5, label: '办事处', color: 'green' },
+  { value: 6, label: '事业部', color: 'gold' },
 ];
-const ISOLATION_MAP: Record<number, string> = Object.fromEntries(ISOLATION_OPTIONS.map(i => [i.value, i.short]));
-const ISOLATION_COLOR: Record<number, string> = { 0: 'arcoblue', 1: 'orangered', 2: 'gold', 3: 'green', 4: 'purple' };
-const isolationLabel = (v: number) => ISOLATION_MAP[v] || '未知';
-const isolationColor = (v: number) => ISOLATION_COLOR[v] || 'gray';
+const orgTypeLabel = (t: number) => ORG_TYPE_OPTIONS.find(o => o.value === t)?.label || '未知';
+const orgTypeColor = (t: number) => ORG_TYPE_OPTIONS.find(o => o.value === t)?.color || 'gray';
 
-/* ════════════════════════════════════════════════════════════
-   响应式状态
-   ════════════════════════════════════════════════════════════ */
+const ISOLATION_OPTIONS = [
+  { value: 0, label: '共享', desc: '上级机构可查看所有下级机构数据', color: 'arcoblue' },
+  { value: 1, label: '完全隔离', desc: '各机构数据完全独立，上下级均不可互查', color: 'orangered' },
+  { value: 2, label: '汇总共享', desc: '上级仅可查看下级的汇总统计，不可查看明细', color: 'gold' },
+  { value: 3, label: '同级互通', desc: '同一父机构下的兄弟机构可互查数据', color: 'green' },
+  { value: 4, label: '按模块隔离', desc: '部分业务模块隔离，部分共享（需配合模块配置）', color: 'purple' },
+];
+const isolationLabel = (v: number) => ISOLATION_OPTIONS.find(o => o.value === v)?.label || '未知';
+const isolationColor = (v: number) => ISOLATION_OPTIONS.find(o => o.value === v)?.color || 'gray';
+
+const defaultColumns: BusinessTableColumn[] = [
+  { key: 'orgName', title: '机构名称', dataIndex: 'orgName', width: 220, visible: true },
+  { key: 'orgCode', title: '机构编码', dataIndex: 'orgCode', width: 130, visible: true },
+  { key: 'orgType', title: '机构类型', slotName: 'orgType', width: 100, visible: true, align: 'center' },
+  { key: 'leader', title: '负责人', dataIndex: 'leader', width: 100, visible: true },
+  { key: 'phone', title: '联系电话', dataIndex: 'phone', width: 130, visible: true },
+  { key: 'dataIsolation', title: '数据隔离', slotName: 'dataIsolation', width: 110, visible: true, align: 'center' },
+  { key: 'sort', title: '排序', dataIndex: 'sort', width: 70, visible: true, align: 'center' },
+  { key: 'status', title: '状态', slotName: 'status', width: 80, visible: true, align: 'center' },
+  { key: 'createTime', title: '创建时间', dataIndex: 'createTime', width: 170, visible: true },
+  { key: 'actions', title: '操作', slotName: 'actions', width: 140, visible: true, fixed: 'right', locked: true, align: 'center' },
+];
+
+const {
+  visibleColumns, columnSettingItems, dragState,
+  handleColumnResize, toggleColumnVisible, moveColumn, toggleColumnFixed,
+  handleDragStart, handleDragOver, handleDrop, handleDragEnd, resetColumns,
+} = useBusinessTableColumns('system-org', defaultColumns);
+
+const textMatchMode = ref<'fuzzy' | 'exact'>('fuzzy');
+const queryExpanded = ref(false);
+
 const loading = ref(false);
 const tableData = ref<OrgVO[]>([]);
 const dialogVisible = ref(false);
 const dialogTitle = ref('新增机构');
 const formRef = ref();
 
-/** 查询参数 */
 const queryParams = reactive<OrgQuery>({ orgName: '', orgCode: '', orgType: undefined, status: undefined });
 
-/** 表单默认值 */
 const defaultForm = (): OrgForm => ({
   id: undefined, parentId: 0, orgName: '', orgCode: '', orgType: 2,
   creditCode: '', legalPerson: '', registeredCapital: undefined,
@@ -325,13 +367,13 @@ const defaultForm = (): OrgForm => ({
 });
 const formData = reactive<OrgForm>(defaultForm());
 
-/** 表单校验规则 */
 const formRules = {
   orgName: [{ required: true, message: '请输入机构名称' }],
-  orgType: [{ required: true, message: '请选择机构类型' }]
+  orgCode: [{ required: true, message: '请输入机构编码' }],
+  orgType: [{ required: true, message: '请选择机构类型' }],
+  dataIsolation: [{ required: true, message: '请选择数据隔离模式' }],
 };
 
-/** 机构树选项（用于上级机构下拉） */
 const orgTreeOptions = computed(() => {
   const root = {
     id: 0, parentId: -1, orgName: '顶级机构', orgCode: '', orgType: 0,
@@ -343,11 +385,6 @@ const orgTreeOptions = computed(() => {
   return [root];
 });
 
-/* ════════════════════════════════════════════════════════════
-   数据加载与操作
-   ════════════════════════════════════════════════════════════ */
-
-/** 加载机构树列表 */
 const loadData = async () => {
   loading.value = true;
   try {
@@ -357,10 +394,7 @@ const loadData = async () => {
   finally { loading.value = false; }
 };
 
-/** 查询 */
 const handleSearch = () => { loadData(); };
-
-/** 重置查询条件 */
 const handleReset = () => {
   queryParams.orgName = '';
   queryParams.orgCode = '';
@@ -369,7 +403,6 @@ const handleReset = () => {
   loadData();
 };
 
-/** 新增（可指定父机构ID） */
 const handleAdd = (parentId?: number) => {
   dialogTitle.value = '新增机构';
   Object.assign(formData, defaultForm());
@@ -377,7 +410,6 @@ const handleAdd = (parentId?: number) => {
   dialogVisible.value = true;
 };
 
-/** 编辑 */
 const handleEdit = (row: OrgVO) => {
   dialogTitle.value = '编辑机构';
   Object.assign(formData, {
@@ -392,7 +424,6 @@ const handleEdit = (row: OrgVO) => {
   dialogVisible.value = true;
 };
 
-/** 提交表单 */
 const submitting = ref(false);
 const handleSubmit = async () => {
   try {
@@ -412,45 +443,37 @@ const handleSubmit = async () => {
   finally { submitting.value = false; }
 };
 
-/** 删除 */
+const confirmDelete = (record: OrgVO) => {
+  Modal.confirm({
+    title: '确认删除',
+    content: `确认删除机构「${record.orgName}」吗？`,
+    okButtonProps: { status: 'danger' },
+    onOk: () => handleDelete(record.id),
+  });
+};
+
 const handleDelete = async (id: number) => {
   try {
-    await deleteOrg(id);
+    const res = await deleteOrg(id) as any;
+    const msg: string = res?.message || res?.msg || '';
+    if (msg.includes('存在子机构')) {
+      Message.warning('存在子机构，不允许删除');
+      return;
+    }
     Message.success('删除成功');
     loadData();
-  } catch { /* ignore */ }
+  } catch (err: any) {
+    const msg: string = err?.response?.data?.message || err?.response?.data?.msg || err?.message || '';
+    if (msg.includes('存在子机构')) {
+      Message.warning('存在子机构，不允许删除');
+    }
+  }
 };
 
 onMounted(() => { loadData(); });
 </script>
 
 <style scoped>
-.page-wrapper {
-  padding: 16px 20px;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  overflow: hidden;
-}
-.query-form {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 16px;
-}
-.query-form :deep(.arco-form-item) {
-  margin-bottom: 4px;
-}
-.query-form :deep(.arco-form-item-label-col > label) {
-  font-size: 12px;
-  font-weight: 700;
-  color: #1e293b;
-}
-.page-wrapper :deep(.governance-list-stage) {
-  flex: 1;
-  min-height: 0;
-  margin-top: 10px;
-}
 .form-tabs :deep(.arco-tabs-content) {
   padding-top: 12px;
 }

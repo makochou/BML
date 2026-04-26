@@ -127,6 +127,30 @@ public class SysOrgServiceImpl extends BaseServiceImpl<SysOrgMapper, SysOrg> imp
         return this.updateById(org);
     }
 
+    /**
+     * 校验机构编码是否唯一（全局唯一）
+     *
+     * @return {@code true} 表示编码唯一，{@code false} 表示已存在
+     */
+    @Override
+    public boolean checkOrgCodeUnique(SysOrgDTO dto) {
+        LambdaQueryWrapper<SysOrg> lqw = new LambdaQueryWrapper<SysOrg>()
+                .eq(SysOrg::getOrgCode, dto.getOrgCode())
+                .ne(dto.getId() != null, SysOrg::getId, dto.getId());
+        return this.count(lqw) == 0;
+    }
+
+    /**
+     * 校验机构是否存在子机构
+     *
+     * @return {@code true} 表示存在子机构
+     */
+    @Override
+    public boolean checkOrgHasChild(Long orgId) {
+        return this.count(new LambdaQueryWrapper<SysOrg>()
+                .eq(SysOrg::getParentId, orgId)) > 0;
+    }
+
     // ======================== 私有方法 ========================
 
     /**

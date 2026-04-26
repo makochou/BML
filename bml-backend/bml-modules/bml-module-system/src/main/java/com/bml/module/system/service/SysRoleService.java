@@ -38,4 +38,9 @@ public interface SysRoleService extends BaseService<SysRole> {
      * 修改角色
      */
     boolean updateRole(SysRoleDTO roleDto);
+
+    /**
+     * 根据角色ID查询菜单ID列表
+     */
+    List<Long> selectMenuIdsByRoleId(Long roleId);
 }

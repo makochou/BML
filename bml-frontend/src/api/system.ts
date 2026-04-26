@@ -9,6 +9,18 @@
  */
 import request from '../utils/request';
 
+export interface PageQuery {
+  pageNum?: number;
+  pageSize?: number;
+}
+
+export interface PageResult<T> {
+  records: T[];
+  total: number;
+  current: number;
+  size: number;
+}
+
 /* ═══════════════════════════════════════════════════════════
    类型定义
    ═══════════════════════════════════════════════════════════ */
@@ -18,6 +30,7 @@ export interface UserQuery {
   username?: string;
   phone?: string;
   status?: number;
+  orgId?: number;
 }
 
 /** 用户表单数据（新增/编辑） */
@@ -81,6 +94,7 @@ export interface RoleForm {
   dataScope?: number;
   status?: number;
   menuIds?: number[];
+  customOrgIds?: number[];
   remark?: string;
 }
 
@@ -288,6 +302,10 @@ export const updateUser = (data: UserForm) =>
 export const deleteUser = (userId: number) =>
   request.delete(`/system/user/${userId}`);
 
+/** 重置用户密码 */
+export const resetUserPassword = (userId: number, newPassword: string) =>
+  request.put('/system/user/resetPwd', { userId, password: newPassword });
+
 /* ═══════════════════════════════════════════════════════════
    角色管理 API
    ═══════════════════════════════════════════════════════════ */
@@ -341,7 +359,7 @@ export const deleteMenu = (menuId: number) =>
    ═══════════════════════════════════════════════════════════ */
 
 /** 获取部门树列表 */
-export const fetchDeptList = (params?: { deptName?: string; status?: number }) =>
+export const fetchDeptList = (params?: { deptName?: string; status?: number; orgId?: number }) =>
   request.get('/system/dept/list', { params });
 
 /** 获取部门详情 */
@@ -407,3 +425,19 @@ export const updatePost = (data: PostForm) =>
 /** 删除岗位 */
 export const deletePost = (postId: number) =>
   request.delete(`/system/post/${postId}`);
+
+/* ═══════════════════════════════════════════════════════════
+   分页查询 API
+   ═══════════════════════════════════════════════════════════ */
+
+/** 分页查询岗位 */
+export const fetchPostPage = (params?: PostQuery & PageQuery) =>
+  request.get<PageResult<PostVO>>('/system/post/list', { params });
+
+/** 分页查询用户 */
+export const fetchUserPage = (params?: UserQuery & PageQuery) =>
+  request.get<PageResult<UserVO>>('/system/user/list', { params });
+
+/** 分页查询角色 */
+export const fetchRolePage = (params?: RoleQuery & PageQuery) =>
+  request.get<PageResult<RoleVO>>('/system/role/list', { params });

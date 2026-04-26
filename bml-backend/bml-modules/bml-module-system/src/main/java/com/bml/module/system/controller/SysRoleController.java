@@ -84,7 +84,11 @@ public class SysRoleController extends BaseController {
     @PreAuthorize("@ss.hasPermi('system:role:query')")
     @GetMapping(value = "/{roleId}")
     public Result<SysRoleVO> getInfo(@PathVariable Long roleId) {
-        return Result.ok(RoleConverter.INSTANCE.toVO(roleService.getById(roleId)));
+        SysRoleVO vo = RoleConverter.INSTANCE.toVO(roleService.getById(roleId));
+        if (vo != null) {
+            vo.setMenuIds(roleService.selectMenuIdsByRoleId(roleId));
+        }
+        return Result.ok(vo);
     }
 
     /**

@@ -317,7 +317,8 @@ public class AuthController {
         Set<String> roles;
 
         // 2. 判断是否为配置管理员（中台管理平台使用）
-        if (GlobalConstants.SYSTEM_USER_ID.equals(loginUser.getUserId())
+        //    配置管理员使用专用虚拟 ID（ADMIN_USER_ID = -1L），不与数据库用户冲突
+        if (GlobalConstants.ADMIN_USER_ID.equals(loginUser.getUserId())
                 && adminProperties.getUsername() != null
                 && adminProperties.getUsername().equals(loginUser.getUsername())) {
             // 配置管理员：从 AdminProperties 构建用户信息
@@ -345,9 +346,69 @@ public class AuthController {
     }
 
     /**
+     * 刷新当前用户的权限缓存
+     * <p>
+     * 当管理员修改了角色权限后，已登录用户的 Redis 缓存中的权限集合不会自动更新。
+     * 调用此接口可以重新从数据库加载最新权限并更新 Redis 缓存，无需重新登录。
+     * </p>
+     *
+     * <h3>使用场景：</h3>
+     * <ul>
+     *   <li>管理员修改了角色的菜单权限后，通知相关用户刷新权限</li>
+     *   <li>用户遇到"无权访问"错误时，可尝试刷新权限后重试</li>
+     *   <li>系统升级后，需要更新所有用户的权限缓存</li>
+     * </ul>
+     *
+     * @param request HTTP 请求（用于获取当前用户的 Token）
+     * @return 统一响应
+     */
+    @Operation(summary = "刷新权限缓存", description = "重新从数据库加载当前用户的最新权限，更新 Redis 缓存，无需重新登录")
+    @PostMapping("/refresh-permissions")
+    public Result<Void> refreshPermissions(HttpServletRequest request) {
+        // 1. 从请求中获取当前登录用户
+        LoginUser loginUser = tokenService.getLoginUser(request);
+        if (loginUser == null) {
+            return Result.fail(com.bml.core.common.enums.GlobalErrorCode.UNAUTHORIZED);
+        }
+
+        Long userId = loginUser.getUserId();
+
+        // 2. 中台配置管理员：权限固定为 *:*:*，无需刷新
+        if (GlobalConstants.ADMIN_USER_ID.equals(userId)) {
+            return Result.ok();
+        }
+
+        // 3. 前台业务用户：重新从数据库加载权限
+        Set<String> newPermissions;
+        boolean isSuperAdmin = roleService.selectRolesByUserId(userId)
+                .stream()
+                .anyMatch(role -> GlobalConstants.SUPER_ADMIN_ROLE_CODE.equals(role.getRoleCode()));
+
+        if (isSuperAdmin) {
+            // 超级管理员：赋予全量权限
+            newPermissions = java.util.Collections.singleton("*:*:*");
+        } else {
+            // 普通用户：通过角色-菜单关联查询权限
+            newPermissions = menuService.selectMenuPermsByUserId(userId);
+        }
+
+        // 4. 更新 LoginUser 中的权限集合并写回 Redis
+        loginUser.setPermissions(newPermissions);
+        tokenService.setLoginUser(loginUser);
+
+        return Result.ok();
+    }
+
+    /**
      * 获取路由菜单信息
      * <p>
      * 返回当前用户有权限访问的菜单树，前端据此生成导航路由。
+     * </p>
+     *
+     * <h3>中台管理员处理：</h3>
+     * <p>
+     * 中台配置管理员（userId = {@link GlobalConstants#ADMIN_USER_ID}）拥有 {@code *:*:*} 全量权限，
+     * 直接返回所有正常状态的菜单，不走角色关联查询。
      * </p>
      *
      * @return 菜单树列表
@@ -355,8 +416,25 @@ public class AuthController {
     @Operation(summary = "获取路由菜单", description = "返回当前用户的菜单树，用于前端路由生成")
     @GetMapping("/routers")
     public Result<List<RouterVO>> getRouters() {
-        Long userId = SecurityUtils.getUserId();
-        List<SysMenu> menus = menuService.selectMenuTreeByUserId(userId);
+        LoginUser loginUser = SecurityUtils.getLoginUser();
+        if (loginUser == null) {
+            return Result.ok(Collections.emptyList());
+        }
+
+        Long userId = loginUser.getUserId();
+
+        // 中台配置管理员（ADMIN_USER_ID = -1L）或权限集合含 *:*:* 的超级管理员
+        // 直接返回所有菜单，不走 sys_role_menu 关联查询
+        boolean isSuperAdmin = GlobalConstants.ADMIN_USER_ID.equals(userId)
+                || (loginUser.getPermissions() != null && loginUser.getPermissions().contains("*:*:*"));
+
+        List<SysMenu> menus;
+        if (isSuperAdmin) {
+            // 超级管理员：直接查询所有正常状态的目录和菜单
+            menus = menuService.selectMenuTreeByUserId(GlobalConstants.SYSTEM_USER_ID);
+        } else {
+            menus = menuService.selectMenuTreeByUserId(userId);
+        }
         return Result.ok(menuService.buildMenus(menus));
     }
 }

@@ -44,4 +44,18 @@ public interface SysOrgService extends BaseService<SysOrg> {
      * 修改机构
      */
     boolean updateOrg(SysOrgDTO orgDto);
+
+    /**
+     * 校验机构编码是否唯一（全局唯一）
+     *
+     * @return {@code true} 表示编码唯一，{@code false} 表示已存在
+     */
+    boolean checkOrgCodeUnique(SysOrgDTO dto);
+
+    /**
+     * 校验机构是否存在子机构
+     *
+     * @return {@code true} 表示存在子机构
+     */
+    boolean checkOrgHasChild(Long orgId);
 }

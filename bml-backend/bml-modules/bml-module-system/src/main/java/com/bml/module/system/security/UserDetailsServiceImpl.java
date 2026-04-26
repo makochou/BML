@@ -6,6 +6,7 @@ import com.bml.core.framework.security.context.LoginModeHolder;
 import com.bml.core.framework.security.model.LoginUser;
 import com.bml.module.system.entity.SysUser;
 import com.bml.module.system.service.SysMenuService;
+import com.bml.module.system.service.SysRoleService;
 import com.bml.module.system.service.SysUserService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,15 +55,18 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     private final PasswordEncoder passwordEncoder;
     private final SysUserService userService;
     private final SysMenuService menuService;
+    private final SysRoleService roleService;
 
     public UserDetailsServiceImpl(AdminProperties adminProperties,
                                   PasswordEncoder passwordEncoder,
                                   SysUserService userService,
-                                  SysMenuService menuService) {
+                                  SysMenuService menuService,
+                                  SysRoleService roleService) {
         this.adminProperties = adminProperties;
         this.passwordEncoder = passwordEncoder;
         this.userService = userService;
         this.menuService = menuService;
+        this.roleService = roleService;
     }
 
     /**
@@ -98,7 +102,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         if (adminProperties.getUsername() != null && adminProperties.getUsername().equals(username)) {
             log.debug("加载配置管理员账号：{}", username);
             return new LoginUser(
-                    GlobalConstants.SYSTEM_USER_ID,
+                    GlobalConstants.ADMIN_USER_ID,   // 使用专用的虚拟 ID，不与数据库用户冲突
                     null,
                     adminProperties.getUsername(),
                     passwordEncoder.encode(adminProperties.getPassword()),
@@ -112,9 +116,14 @@ public class UserDetailsServiceImpl implements UserDetailsService {
 
     /**
      * 加载数据库用户（前台业务系统登录）。
+     *
+     * <p>仅查询 sys_user 表，不匹配配置管理员。支持用户停用、删除状态校验。</p>
+     *
+     * <h3>超级管理员权限处理：</h3>
      * <p>
-     * 仅查询 sys_user 表，不匹配配置管理员。
-     * 支持用户停用、删除状态校验。
+     * 若用户拥有 {@code role_key = 'admin'} 的角色，则直接赋予 {@code *:*:*} 全量权限，
+     * 无需查询 sys_role_menu 关联表。这样即使 sys_role_menu 中缺少某些菜单关联，
+     * 超级管理员也能正常访问所有接口。
      * </p>
      *
      * @param username 登录用户名
@@ -122,7 +131,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
      * @throws UsernameNotFoundException 用户不存在或状态异常时抛出
      */
     private UserDetails loadBusinessUser(String username) {
-        // ── 查询数据库用户（前台业务系统使用） ──
+        // ── 1. 查询数据库用户 ──
         SysUser user = userService.selectUserByUserName(username);
         if (user == null) {
             log.info("登录用户：{} 不存在", username);
@@ -137,10 +146,22 @@ public class UserDetailsServiceImpl implements UserDetailsService {
             throw new UsernameNotFoundException("对不起，您的账号已被停用");
         }
 
-        // 查询用户权限标识（通过角色-菜单关联动态获取）
-        Set<String> permissions = menuService.selectMenuPermsByUserId(user.getId());
+        // ── 2. 判断是否为超级管理员（拥有 role_key='admin' 的角色） ──
+        //    超级管理员直接赋予 *:*:* 全量权限，无需查询菜单关联表。
+        //    这样即使 sys_role_menu 数据不完整，超级管理员也能正常使用所有功能。
+        Set<String> permissions;
+        boolean isSuperAdmin = roleService.selectRolesByUserId(user.getId())
+                .stream()
+                .anyMatch(role -> GlobalConstants.SUPER_ADMIN_ROLE_CODE.equals(role.getRoleCode()));
 
-        log.debug("加载数据库用户：{}，权限数量：{}", username, permissions.size());
+        if (isSuperAdmin) {
+            permissions = SUPER_ADMIN_PERMISSIONS;
+            log.debug("加载超级管理员用户：{}，赋予全量权限 *:*:*", username);
+        } else {
+            // 普通用户：通过角色-菜单关联动态查询权限标识
+            permissions = menuService.selectMenuPermsByUserId(user.getId());
+            log.debug("加载数据库用户：{}，权限数量：{}", username, permissions.size());
+        }
 
         return new LoginUser(
                 user.getId(),

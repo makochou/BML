@@ -275,10 +275,15 @@ public class SysLicenseController {
                     "许可证保存失败: " + ex.getMessage());
         }
 
-        // 5. 重新加载
+        // 5. reload() 前先快照旧许可证，用于后续全量变更对比
+        //    reload() 会覆盖 licenseHolder 内部的 currentLicense，
+        //    因此必须在此之前保存旧值，否则无法得知"更新前"的状态。
+        BmlLicense oldLicense = licenseHolder.getCurrentLicense();
+
+        // 6. 重新加载（将磁盘上的新许可证读入内存）
         licenseHolder.reload();
 
-        // 6. 配额降级时自动冻结超额资源（用户 + API 账号）
+        // 7. 配额降级时自动冻结超额资源（用户 + API 账号）
         LicenseQuotaEnforcer.EnforceResult enforceResult =
                 licenseQuotaEnforcer.enforceAll(licenseHolder.getCurrentLicense());
         if (enforceResult.hasEnforcement()) {
@@ -286,8 +291,10 @@ public class SysLicenseController {
                     enforceResult.getFrozenUserCount(), enforceResult.getFrozenApiAccountCount());
         }
 
-        // 配额降级记录写入告警中心（由前端轮询自动弹窗展示）
-        createQuotaDowngradeAlerts(enforceResult);
+        // 8. 全量变更告警：对比旧/新许可证所有维度，写入告警中心（提示级别）
+        //    包含：配额升降级、到期日变更、功能模块增减、客户信息变更等
+        BmlLicense newLicense = licenseHolder.getCurrentLicense();
+        createLicenseChangeAlerts(oldLicense, newLicense, enforceResult);
 
         LicenseStatusVO vo = LicenseStatusVO.from(
                 licenseHolder.getCurrentLicense(),
@@ -335,60 +342,182 @@ public class SysLicenseController {
     // ======================== 私有方法 ========================
 
     /**
-     * 许可证配额降级后，将降级详情写入 sys_alert 告警表。
+     * 许可证全量变更告警。
      * <p>
-     * 写入的告警会被前端 30 秒轮询自动捕获，并通过 AlertToast 弹窗 + 告警中心统一展示。
-     * 每种被降级的资源维度生成一条独立告警，便于运维逐条确认处理。
+     * 对比旧许可证与新许可证的所有维度，将每一项变更写入 sys_alert 告警表（提示级别），
+     * 由前端告警中心统一展示，同时前端 confirmUpdate 函数也会通过右上角 Notification 即时提示。
      * </p>
      *
-     * @param result 配额强制执行结果
+     * <h3>检测维度：</h3>
+     * <ol>
+     *   <li>配额降级（业务用户 / API 账号 / API 来源用户被自动冻结）</li>
+     *   <li>配额升级（业务用户上限 / API 账号上限 / API 来源用户上限提升）</li>
+     *   <li>到期日变更（延期或缩短）</li>
+     *   <li>功能模块新增</li>
+     *   <li>功能模块移除</li>
+     *   <li>许可证已过期</li>
+     * </ol>
+     *
+     * <h3>告警级别说明：</h3>
+     * <ul>
+     *   <li>所有许可证变更告警统一使用 {@code info}（提示）级别</li>
+     *   <li>在告警中心归类到「提示」Tab，不与 CPU/磁盘等真实异常混淆</li>
+     * </ul>
+     *
+     * @param oldLicense    更新前的旧许可证（可能为 null，表示首次激活）
+     * @param newLicense    更新后的新许可证（可能为 null，表示加载失败）
+     * @param enforceResult 配额强制执行结果（包含被冻结的资源数量）
      */
-    private void createQuotaDowngradeAlerts(LicenseQuotaEnforcer.EnforceResult result) {
-        if (result == null || !result.hasEnforcement()) {
+    private void createLicenseChangeAlerts(
+            BmlLicense oldLicense,
+            BmlLicense newLicense,
+            LicenseQuotaEnforcer.EnforceResult enforceResult) {
+
+        // 新许可证为空（加载失败）时不写告警，避免产生误导性记录
+        if (newLicense == null) {
             return;
         }
 
-        // 业务用户被冻结
-        if (result.getFrozenUserCount() > 0) {
-            SysAlert alert = new SysAlert();
-            alert.setAlertType("LICENSE_QUOTA_DOWNGRADE");
-            alert.setAlertLevel("warning");
-            alert.setAlertTitle("业务用户上限降级");
-            alert.setAlertContent(String.format(
-                    "许可证配额调整：已自动停用 %d 个最近创建的业务用户，请前往用户管理页面确认被停用的资源。",
-                    result.getFrozenUserCount()));
-            alert.setReadStatus(0);
-            sysAlertService.save(alert);
+        // ── 1. 配额降级：被自动冻结的资源（最高优先级，必须告知运维） ──
+        if (enforceResult != null) {
+            if (enforceResult.getFrozenUserCount() > 0) {
+                saveAlert("LICENSE_CHANGE", "info", "业务用户上限降级",
+                        String.format("许可证配额调整：已自动停用 %d 个最近创建的业务用户，请前往用户管理页面确认被停用的资源。",
+                                enforceResult.getFrozenUserCount()));
+            }
+            if (enforceResult.getFrozenApiAccountCount() > 0) {
+                saveAlert("LICENSE_CHANGE", "info", "API 账号上限降级",
+                        String.format("许可证配额调整：已自动停用 %d 个最近创建的 API 账号，请前往授权管理页面确认被停用的资源。",
+                                enforceResult.getFrozenApiAccountCount()));
+            }
+            if (enforceResult.getFrozenApiUserCount() > 0) {
+                saveAlert("LICENSE_CHANGE", "info", "API 来源用户上限降级",
+                        String.format("许可证配额调整：已自动停用 %d 个最近由 API 创建的业务用户，请前往用户管理页面确认被停用的资源。",
+                                enforceResult.getFrozenApiUserCount()));
+            }
         }
 
-        // API 账号被冻结
-        if (result.getFrozenApiAccountCount() > 0) {
-            SysAlert alert = new SysAlert();
-            alert.setAlertType("LICENSE_QUOTA_DOWNGRADE");
-            alert.setAlertLevel("warning");
-            alert.setAlertTitle("API 账号上限降级");
-            alert.setAlertContent(String.format(
-                    "许可证配额调整：已自动停用 %d 个最近创建的 API 账号，请前往授权管理页面确认被停用的资源。",
-                    result.getFrozenApiAccountCount()));
-            alert.setReadStatus(0);
-            sysAlertService.save(alert);
+        // 旧许可证为空（首次激活）时，后续对比无意义，直接返回
+        if (oldLicense == null) {
+            return;
         }
 
-        // API 来源用户被冻结
-        if (result.getFrozenApiUserCount() > 0) {
-            SysAlert alert = new SysAlert();
-            alert.setAlertType("LICENSE_QUOTA_DOWNGRADE");
-            alert.setAlertLevel("warning");
-            alert.setAlertTitle("API 来源用户上限降级");
-            alert.setAlertContent(String.format(
-                    "许可证配额调整：已自动停用 %d 个最近由 API 创建的业务用户，请前往用户管理页面确认被停用的资源。",
-                    result.getFrozenApiUserCount()));
-            alert.setReadStatus(0);
-            sysAlertService.save(alert);
+        // ── 2. 业务用户上限变更（升级 / 降级） ──
+        int oldMaxUsers = oldLicense.getMaxTotalUsers();
+        int newMaxUsers = newLicense.getMaxTotalUsers();
+        if (oldMaxUsers != newMaxUsers) {
+            String oldDisplay = oldMaxUsers == 0 ? "不限" : String.valueOf(oldMaxUsers);
+            String newDisplay = newMaxUsers == 0 ? "不限" : String.valueOf(newMaxUsers);
+            String direction = newMaxUsers > oldMaxUsers || newMaxUsers == 0 ? "升级" : "降级";
+            saveAlert("LICENSE_CHANGE", "info",
+                    "业务用户上限" + direction,
+                    String.format("许可证更新：业务用户上限从 %s 变更为 %s。", oldDisplay, newDisplay));
         }
 
-        log.info("[License] 配额降级告警已写入告警中心：冻结用户={}, 冻结API账号={}, 冻结API用户={}",
-                result.getFrozenUserCount(), result.getFrozenApiAccountCount(), result.getFrozenApiUserCount());
+        // ── 3. API 账号上限变更（升级 / 降级） ──
+        int oldMaxApi = oldLicense.getMaxApiAccounts();
+        int newMaxApi = newLicense.getMaxApiAccounts();
+        if (oldMaxApi != newMaxApi) {
+            String oldDisplay = oldMaxApi == 0 ? "不限" : String.valueOf(oldMaxApi);
+            String newDisplay = newMaxApi == 0 ? "不限" : String.valueOf(newMaxApi);
+            String direction = newMaxApi > oldMaxApi || newMaxApi == 0 ? "升级" : "降级";
+            saveAlert("LICENSE_CHANGE", "info",
+                    "API 账号上限" + direction,
+                    String.format("许可证更新：最大 API 账号数从 %s 变更为 %s。", oldDisplay, newDisplay));
+        }
+
+        // ── 4. API 来源用户上限变更（升级 / 降级） ──
+        int oldMaxApiUser = oldLicense.getMaxUsersPerAccount();
+        int newMaxApiUser = newLicense.getMaxUsersPerAccount();
+        if (oldMaxApiUser != newMaxApiUser) {
+            String oldDisplay = oldMaxApiUser == 0 ? "不限" : String.valueOf(oldMaxApiUser);
+            String newDisplay = newMaxApiUser == 0 ? "不限" : String.valueOf(newMaxApiUser);
+            String direction = newMaxApiUser > oldMaxApiUser || newMaxApiUser == 0 ? "升级" : "降级";
+            saveAlert("LICENSE_CHANGE", "info",
+                    "API 来源用户上限" + direction,
+                    String.format("许可证更新：允许 API 账号调用新增的用户数从 %s 变更为 %s。", oldDisplay, newDisplay));
+        }
+
+        // ── 5. 到期日变更（延期 / 缩短） ──
+        java.time.LocalDateTime oldExpire = oldLicense.getExpireDate();
+        java.time.LocalDateTime newExpire = newLicense.getExpireDate();
+        if (oldExpire != null && newExpire != null && !oldExpire.equals(newExpire)) {
+            String direction = newExpire.isAfter(oldExpire) ? "延期" : "缩短";
+            saveAlert("LICENSE_CHANGE", "info",
+                    "许可证有效期" + direction,
+                    String.format("许可证更新：到期日从 %s 变更为 %s。",
+                            oldExpire.toLocalDate(), newExpire.toLocalDate()));
+        }
+
+        // ── 6. 功能模块新增 ──
+        java.util.List<String> oldFeatures = oldLicense.getFeatures() != null
+                ? oldLicense.getFeatures() : java.util.Collections.emptyList();
+        java.util.List<String> newFeatures = newLicense.getFeatures() != null
+                ? newLicense.getFeatures() : java.util.Collections.emptyList();
+        java.util.Set<String> oldFeatureSet = new java.util.HashSet<>(oldFeatures);
+        java.util.Set<String> newFeatureSet = new java.util.HashSet<>(newFeatures);
+
+        java.util.List<String> added = newFeatures.stream()
+                .filter(f -> !oldFeatureSet.contains(f))
+                .collect(java.util.stream.Collectors.toList());
+        if (!added.isEmpty()) {
+            saveAlert("LICENSE_CHANGE", "info",
+                    "授权功能模块新增",
+                    String.format("许可证更新：新增授权功能模块：%s。", String.join("、", added)));
+        }
+
+        // ── 7. 功能模块移除 ──
+        java.util.List<String> removed = oldFeatures.stream()
+                .filter(f -> !newFeatureSet.contains(f))
+                .collect(java.util.stream.Collectors.toList());
+        if (!removed.isEmpty()) {
+            saveAlert("LICENSE_CHANGE", "info",
+                    "授权功能模块移除",
+                    String.format("许可证更新：以下功能模块授权已移除：%s，相关功能将受限。",
+                            String.join("、", removed)));
+        }
+
+        // ── 8. 许可证已过期 ──
+        if (newLicense.isExpired()) {
+            saveAlert("LICENSE_CHANGE", "info",
+                    "新许可证已过期",
+                    "注意：本次更新的许可证已超过到期日，系统功能将受限，请尽快联系供应商获取有效许可证。");
+        }
+
+        log.info("[License] 全量变更告警已写入告警中心，变更维度：用户上限={}->{}, API账号上限={}->{}, 到期日={}->{}, 新增模块={}, 移除模块={}",
+                oldMaxUsers, newMaxUsers, oldMaxApi, newMaxApi,
+                oldExpire, newExpire, added, removed);
+    }
+
+    /**
+     * 通用告警保存工具方法。
+     * <p>
+     * 统一封装 SysAlert 对象的构建与持久化，避免在 createLicenseChangeAlerts 中重复样板代码。
+     * 所有许可证变更告警均通过此方法写入，便于后续统一调整字段默认值。
+     * </p>
+     *
+     * @param alertType    告警类型标识（如 LICENSE_CHANGE）
+     * @param alertLevel   告警级别（info / warning / critical）
+     * @param alertTitle   告警标题（简短描述变更内容）
+     * @param alertContent 告警详情（完整描述变更前后的值）
+     */
+    private void saveAlert(String alertType, String alertLevel, String alertTitle, String alertContent) {
+        SysAlert alert = new SysAlert();
+        alert.setAlertType(alertType);
+        alert.setAlertLevel(alertLevel);
+        alert.setAlertTitle(alertTitle);
+        alert.setAlertContent(alertContent);
+        alert.setReadStatus(0);
+        sysAlertService.save(alert);
+    }
+
+    /**
+     * @deprecated 已被 {@link #createLicenseChangeAlerts} 替代，保留此方法仅供参考，勿再调用。
+     */
+    @Deprecated
+    @SuppressWarnings("unused")
+    private void createQuotaDowngradeAlerts(LicenseQuotaEnforcer.EnforceResult result) {
+        // 已迁移到 createLicenseChangeAlerts，此方法不再使用
     }
 
     /**

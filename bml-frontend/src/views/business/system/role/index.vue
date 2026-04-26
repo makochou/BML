@@ -1,14 +1,18 @@
 <template>
   <div class="page-wrapper">
-    <!-- ════════════════════════════════════════════════
-         查询面板
-         ════════════════════════════════════════════════ -->
     <GovernanceCompactQueryPanel density="ultra" theme="aurora">
       <template #footerActions>
+        <div class="query-panel-mode-actions">
+          <a-button type="primary" class="query-panel-mode-btn"
+            :class="{ 'is-active': textMatchMode === 'fuzzy', 'is-inactive': textMatchMode !== 'fuzzy' }"
+            @click="textMatchMode = 'fuzzy'; handleSearch()">模糊查找</a-button>
+          <a-button type="primary" class="query-panel-mode-btn"
+            :class="{ 'is-active': textMatchMode === 'exact', 'is-inactive': textMatchMode !== 'exact' }"
+            @click="textMatchMode = 'exact'; handleSearch()">精确查找</a-button>
+        </div>
         <a-button @click="handleReset">重置条件</a-button>
-        <a-button type="primary" @click="handleSearch">查询</a-button>
       </template>
-      <a-form :model="queryParams" layout="inline" class="query-form">
+      <a-form :model="queryParams" layout="inline" class="biz-query-form">
         <a-form-item field="roleName" label="角色名称">
           <a-input v-model="queryParams.roleName" placeholder="请输入角色名称" allow-clear @press-enter="handleSearch" />
         </a-form-item>
@@ -24,52 +28,54 @@
       </a-form>
     </GovernanceCompactQueryPanel>
 
-    <!-- ════════════════════════════════════════════════
-         列表舞台
-         ════════════════════════════════════════════════ -->
     <GovernanceListStage density="ultra" body-fill>
       <template #actions>
         <a-button type="primary" @click="handleAdd">
           <template #icon><icon-plus /></template>
           新增角色
         </a-button>
+        <a-popover trigger="click" position="br" :content-style="{ padding: 0 }">
+          <a-button class="table-column-setting-btn">
+            <template #icon><icon-settings /></template>
+            列设置
+          </a-button>
+          <template #content>
+            <BusinessTableColumnSetting :items="columnSettingItems" :drag-state="dragState" @toggle-visible="toggleColumnVisible" @move="moveColumn" @toggle-fixed="toggleColumnFixed" @drag-start="handleDragStart" @drag-over="handleDragOver" @drop="handleDrop" @drag-end="handleDragEnd" @reset="resetColumns" />
+          </template>
+        </a-popover>
       </template>
-      <a-table :data="tableData" :loading="loading" :bordered="false" :pagination="false" row-key="id" stripe size="small" :scroll="{ y: '100%' }" :scrollbar="true" sticky-header>
-        <template #columns>
-          <a-table-column title="角色名称" data-index="roleName" :width="140" />
-          <a-table-column title="角色编码" data-index="roleCode" :width="140" />
-          <a-table-column title="数据权限" data-index="dataScope" :width="140" align="center">
-            <template #cell="{ record }">
-              <a-tag size="small" :color="dataScopeColor(record.dataScope)">{{ dataScopeLabel(record.dataScope) }}</a-tag>
-            </template>
-          </a-table-column>
-          <a-table-column title="排序" data-index="sort" :width="70" align="center" />
-          <a-table-column title="状态" data-index="status" :width="80" align="center">
-            <template #cell="{ record }">
-              <a-tag :color="record.status === 1 ? 'green' : 'red'" size="small">{{ record.status === 1 ? '正常' : '停用' }}</a-tag>
-            </template>
-          </a-table-column>
-          <a-table-column title="创建时间" data-index="createTime" :width="170" />
-          <a-table-column title="备注" data-index="remark" ellipsis />
-          <a-table-column title="操作" :width="200" align="center" fixed="right">
-            <template #cell="{ record }">
-              <a-space>
-                <a-button type="text" size="small" @click="handleEdit(record)"><template #icon><icon-edit /></template>编辑</a-button>
-                <a-popconfirm content="确认删除该角色吗？" @ok="handleDelete(record.id)">
-                  <a-button type="text" size="small" status="danger"><template #icon><icon-delete /></template>删除</a-button>
-                </a-popconfirm>
-              </a-space>
-            </template>
-          </a-table-column>
+      <a-table :data="tableData" :loading="loading" :bordered="false" :pagination="false" row-key="id" stripe size="small" :scroll="{ y: '100%' }" :scrollbar="true" sticky-header :columns="visibleColumns" column-resizable @column-resize="handleColumnResize">
+        <template #dataScope="{ record }">
+          <a-tag size="small" :color="dataScopeColor(record.dataScope)">{{ dataScopeLabel(record.dataScope) }}</a-tag>
+        </template>
+        <template #status="{ record }">
+          <a-tag :color="record.status === 1 ? 'green' : 'red'" size="small">{{ record.status === 1 ? '正常' : '停用' }}</a-tag>
+        </template>
+        <template #actions="{ record }">
+          <div class="table-row-actions" @click.stop @dblclick.stop>
+            <a-button type="primary" size="mini" class="table-action-btn table-action-btn--primary" @click="handleEdit(record)">
+              <template #icon><icon-edit /></template>
+              编辑
+            </a-button>
+            <a-dropdown trigger="click">
+              <a-button size="mini" class="table-action-btn table-action-btn--more">
+                <template #icon><icon-more /></template>
+              </a-button>
+              <template #content>
+                <a-doption class="is-danger" @click="confirmDelete(record.id)">删除角色</a-doption>
+              </template>
+            </a-dropdown>
+          </div>
         </template>
       </a-table>
+      <div style="display: flex; justify-content: flex-end; padding: 12px 0 4px;">
+        <a-pagination v-model:current="pagination.current" v-model:page-size="pagination.pageSize" :total="pagination.total" show-total show-page-size @change="loadData" @page-size-change="() => { pagination.current = 1; loadData(); }" />
+      </div>
     </GovernanceListStage>
 
-    <!-- 新增/编辑弹窗 -->
     <BmlModal v-model:visible="dialogVisible" :title="dialogTitle" :width="700" :height="620" :min-width="540" :min-height="440">
       <a-form :model="formData" ref="formRef" :rules="formRules" layout="vertical">
         <a-tabs default-active-key="basic" size="small" class="form-tabs">
-          <!-- ── 基本信息 ── -->
           <a-tab-pane key="basic" title="基本信息">
             <a-row :gutter="16">
               <a-col :span="12">
@@ -102,30 +108,19 @@
               <a-textarea v-model="formData.remark" placeholder="请输入备注" :auto-size="{ minRows: 2, maxRows: 4 }" />
             </a-form-item>
           </a-tab-pane>
-
-          <!-- ── 菜单权限 ── -->
           <a-tab-pane key="menu" title="菜单权限">
             <a-form-item field="menuIds" label="分配菜单">
-              <a-tree-select
-                v-model="formData.menuIds"
-                :data="menuTreeData"
-                :field-names="{ key: 'id', title: 'menuName', children: 'children' }"
-                placeholder="请选择菜单权限"
-                multiple
-                allow-clear
-                :max-tag-count="3"
-                tree-checkable
-                tree-check-strictly
-              />
+              <a-tree-select v-model="formData.menuIds" :data="menuTreeData" :field-names="{ key: 'id', title: 'menuName', children: 'children' }" placeholder="请选择菜单权限" multiple allow-clear :max-tag-count="3" tree-checkable tree-check-strictly />
             </a-form-item>
           </a-tab-pane>
-
-          <!-- ── 数据权限 ── -->
           <a-tab-pane key="dataScope" title="数据权限">
             <a-form-item field="dataScope" label="数据范围">
               <a-select v-model="formData.dataScope" placeholder="请选择数据范围">
                 <a-option v-for="ds in DATA_SCOPE_OPTIONS" :key="ds.value" :value="ds.value">{{ ds.label }}</a-option>
               </a-select>
+            </a-form-item>
+            <a-form-item v-if="formData.dataScope === 7" label="自定义机构范围">
+              <a-tree-select v-model="formData.customOrgIds" :data="orgTreeData" :field-names="{ key: 'id', title: 'orgName', children: 'children' }" multiple tree-checkable placeholder="请选择可访问的机构范围" />
             </a-form-item>
             <a-alert type="info" class="scope-hint">
               <template #title>数据权限说明</template>
@@ -148,28 +143,18 @@
 </template>
 
 <script lang="ts" setup>
-/**
- * 角色与权限页面
- *
- * 重要说明：
- *   defineOptions({ name: 'SystemRole' }) 是 keep-alive 缓存的关键。
- *   组件 name 必须与路由配置中的 name 字段保持一致，
- *   否则 <keep-alive :include="cachedViews"> 无法匹配到该组件，
- *   导致切换标签页后页面内容被销毁、重新加载。
- */
 defineOptions({ name: 'SystemRole' });
 
 import { ref, reactive, onMounted } from 'vue';
-import { Message } from '@arco-design/web-vue';
-import { IconPlus, IconEdit, IconDelete } from '@arco-design/web-vue/es/icon';
-import { fetchRoleList, createRole, updateRole, deleteRole, fetchMenuList, type RoleVO, type RoleForm, type MenuVO } from '../../../../api/system';
+import { Message, Modal } from '@arco-design/web-vue';
+import { IconPlus, IconEdit, IconMore, IconSettings } from '@arco-design/web-vue/es/icon';
+import { fetchRolePage, fetchRoleDetail, createRole, updateRole, deleteRole, fetchMenuList, fetchOrgList, type RoleVO, type RoleForm, type MenuVO, type OrgVO } from '../../../../api/system';
 import BmlModal from '../../../../components/BmlModal.vue';
 import GovernanceCompactQueryPanel from '../../../../components/governance/GovernanceCompactQueryPanel.vue';
 import GovernanceListStage from '../../../../components/governance/GovernanceListStage.vue';
+import BusinessTableColumnSetting from '../../../../components/business/BusinessTableColumnSetting.vue';
+import { useBusinessTableColumns, type BusinessTableColumn } from '../../../../composables/useBusinessTableColumns';
 
-/* ════════════════════════════════════════════════════════════
-   数据权限范围常量（对应后端 DataScopeType 枚举）
-   ════════════════════════════════════════════════════════════ */
 const DATA_SCOPE_OPTIONS = [
   { value: 1, label: '全部数据', desc: '不受任何限制，可查看系统所有数据' },
   { value: 2, label: '所在机构及下级', desc: '可查看本机构及下级数据（受机构数据隔离模式影响，完全隔离的下级不可见）' },
@@ -184,19 +169,33 @@ const DS_COLOR: Record<number, string> = { 1: 'red', 2: 'purple', 3: 'arcoblue',
 const dataScopeLabel = (v: number) => DS_MAP[v] || '未设置';
 const dataScopeColor = (v: number) => DS_COLOR[v] || 'gray';
 
-/* ════════════════════════════════════════════════════════════
-   响应式状态
-   ════════════════════════════════════════════════════════════ */
+const textMatchMode = ref<'fuzzy' | 'exact'>('fuzzy');
+
+const defaultColumns: BusinessTableColumn[] = [
+  { key: 'roleName', title: '角色名称', dataIndex: 'roleName', width: 140, visible: true },
+  { key: 'roleCode', title: '角色编码', dataIndex: 'roleCode', width: 140, visible: true },
+  { key: 'dataScope', title: '数据权限', slotName: 'dataScope', width: 140, visible: true, align: 'center' },
+  { key: 'sort', title: '排序', dataIndex: 'sort', width: 70, visible: true, align: 'center' },
+  { key: 'status', title: '状态', slotName: 'status', width: 80, visible: true, align: 'center' },
+  { key: 'createTime', title: '创建时间', dataIndex: 'createTime', width: 170, visible: true },
+  { key: 'remark', title: '备注', dataIndex: 'remark', width: 150, visible: true, ellipsis: true },
+  { key: 'actions', title: '操作', slotName: 'actions', width: 140, visible: true, fixed: 'right', locked: true, align: 'center' },
+];
+
+const { visibleColumns, columnSettingItems, dragState, handleColumnResize, toggleColumnVisible, moveColumn, toggleColumnFixed, handleDragStart, handleDragOver, handleDrop, handleDragEnd, resetColumns } = useBusinessTableColumns('system-role', defaultColumns);
+
 const loading = ref(false);
 const tableData = ref<RoleVO[]>([]);
 const menuTreeData = ref<MenuVO[]>([]);
+const orgTreeData = ref<OrgVO[]>([]);
 const dialogVisible = ref(false);
 const dialogTitle = ref('新增角色');
 const formRef = ref();
 
 const queryParams = reactive({ roleName: '', roleCode: '', status: undefined as number | undefined });
+const pagination = reactive({ current: 1, pageSize: 20, total: 0 });
 
-const defaultForm = (): RoleForm => ({ id: undefined, roleName: '', roleCode: '', sort: 0, dataScope: 6, status: 1, menuIds: [], remark: '' });
+const defaultForm = (): RoleForm => ({ id: undefined, roleName: '', roleCode: '', sort: 0, dataScope: 6, status: 1, menuIds: [], customOrgIds: [], remark: '' });
 const formData = reactive<RoleForm>(defaultForm());
 
 const formRules = {
@@ -204,27 +203,29 @@ const formRules = {
   roleCode: [{ required: true, message: '请输入角色编码' }]
 };
 
-/* ════════════════════════════════════════════════════════════
-   数据加载与操作
-   ════════════════════════════════════════════════════════════ */
 const loadData = async () => {
   loading.value = true;
   try {
-    const res = await fetchRoleList(queryParams) as any;
-    tableData.value = res.data || [];
+    const res = await fetchRolePage({ ...queryParams, pageNum: pagination.current, pageSize: pagination.pageSize }) as any;
+    const data = res.data || {};
+    pagination.total = data.total || 0;
+    tableData.value = data.records || [];
   } catch { tableData.value = []; }
   finally { loading.value = false; }
 };
 
 const loadMenuTree = async () => {
-  try {
-    const res = await fetchMenuList() as any;
-    menuTreeData.value = res.data || [];
-  } catch { menuTreeData.value = []; }
+  try { const res = await fetchMenuList() as any; menuTreeData.value = res.data || []; }
+  catch { menuTreeData.value = []; }
 };
 
-const handleSearch = () => { loadData(); };
-const handleReset = () => { queryParams.roleName = ''; queryParams.roleCode = ''; queryParams.status = undefined; loadData(); };
+const loadOrgTree = async () => {
+  try { const res = await fetchOrgList() as any; orgTreeData.value = res.data || []; }
+  catch { orgTreeData.value = []; }
+};
+
+const handleSearch = () => { pagination.current = 1; loadData(); };
+const handleReset = () => { queryParams.roleName = ''; queryParams.roleCode = ''; queryParams.status = undefined; pagination.current = 1; loadData(); };
 
 const handleAdd = () => {
   dialogTitle.value = '新增角色';
@@ -232,13 +233,19 @@ const handleAdd = () => {
   dialogVisible.value = true;
 };
 
-const handleEdit = (row: RoleVO) => {
+const handleEdit = async (row: RoleVO) => {
   dialogTitle.value = '编辑角色';
   Object.assign(formData, {
     id: row.id, roleName: row.roleName, roleCode: row.roleCode,
     sort: row.sort, dataScope: row.dataScope || 6,
-    status: row.status, menuIds: [], remark: row.remark
+    status: row.status, menuIds: [], customOrgIds: [], remark: row.remark
   });
+  try {
+    const res = await fetchRoleDetail(row.id) as any;
+    const detail = res.data || {};
+    formData.menuIds = detail.menuIds || [];
+    formData.customOrgIds = detail.customOrgIds || [];
+  } catch { /* keep defaults */ }
   dialogVisible.value = true;
 };
 
@@ -248,13 +255,8 @@ const handleSubmit = async () => {
     const errors = await formRef.value?.validate();
     if (errors) return;
     submitting.value = true;
-    if (formData.id) {
-      await updateRole(formData);
-      Message.success('修改成功');
-    } else {
-      await createRole(formData);
-      Message.success('新增成功');
-    }
+    if (formData.id) { await updateRole(formData); Message.success('修改成功'); }
+    else { await createRole(formData); Message.success('新增成功'); }
     dialogVisible.value = false;
     loadData();
   } catch { /* 保持弹窗打开 */ }
@@ -262,43 +264,22 @@ const handleSubmit = async () => {
 };
 
 const handleDelete = async (id: number) => {
-  try {
-    await deleteRole(id);
-    Message.success('删除成功');
-    loadData();
-  } catch { /* ignore */ }
+  try { await deleteRole(id); Message.success('删除成功'); loadData(); }
+  catch { /* ignore */ }
 };
 
-onMounted(() => { loadData(); loadMenuTree(); });
+const confirmDelete = (id: number) => {
+  Modal.confirm({
+    title: '确认删除',
+    content: '确认删除该角色吗？',
+    onOk: () => handleDelete(id),
+  });
+};
+
+onMounted(() => { loadData(); loadMenuTree(); loadOrgTree(); });
 </script>
 
 <style scoped>
-.page-wrapper {
-  padding: 16px 20px;
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  overflow: hidden;
-}
-.query-form {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 16px;
-}
-.query-form :deep(.arco-form-item) {
-  margin-bottom: 4px;
-}
-.query-form :deep(.arco-form-item-label-col > label) {
-  font-size: 12px;
-  font-weight: 700;
-  color: #1e293b;
-}
-.page-wrapper :deep(.governance-list-stage) {
-  flex: 1;
-  min-height: 0;
-  margin-top: 10px;
-}
 .form-tabs :deep(.arco-tabs-content) {
   padding-top: 12px;
 }

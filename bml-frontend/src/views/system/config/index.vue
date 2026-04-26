@@ -577,18 +577,29 @@ onMounted(() => {
 .sc-banner__icon-wrap--blue {
   background: linear-gradient(135deg, #165dff 0%, #3c7eff 100%);
 }
-/* ── 空闲超时 Banner 右侧：时分选择 + 保存按钮横向排列 ── */
+/* ── 空闲超时 Banner 右侧：时分选择 + 保存按钮横向排列，整体靠右对齐 ── */
 .sc-banner__right--idle {
   display: flex;
   align-items: center;
   gap: 12px;
   flex-shrink: 0;
+  /* 靠右对齐：配合父容器 justify-content: space-between 自动推到最右侧 */
+  margin-left: auto;
 }
 /* ── 时分选择器容器 ── */
 .idle-time-picker {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+/*
+ * 时分输入框内数字靠右对齐。
+ * Arco Design InputNumber 的实际输入元素为 .arco-input-number-input，
+ * 通过深度选择器穿透 scoped 样式覆盖其 text-align。
+ */
+.idle-time-picker :deep(.arco-input-number-input) {
+  text-align: right;
 }
 /* ── 时分之间的冒号分隔符 ── */
 .idle-time-sep {

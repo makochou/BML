@@ -4,13 +4,17 @@ import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
 import com.bml.core.base.service.impl.BaseServiceImpl;
 import com.bml.core.common.constant.GlobalConstants;
+import com.bml.core.framework.security.model.LoginUser;
+import com.bml.core.framework.security.utils.SecurityUtils;
 import com.bml.module.system.converter.MenuConverter;
 import com.bml.module.system.dto.SysMenuDTO;
 import com.bml.module.system.entity.SysMenu;
 import com.bml.module.system.mapper.SysMenuMapper;
+import com.bml.module.system.mapper.SysRoleMapper;
 import com.bml.module.system.service.SysMenuService;
 import com.bml.module.system.vo.RouterMetaVO;
 import com.bml.module.system.vo.RouterVO;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -20,14 +24,75 @@ import java.util.stream.Collectors;
  * 菜单管理 服务实现
  * <p>
  * 提供菜单的查询、新增、修改、删除以及菜单树构建等功能。
- * 超级管理员（{@link GlobalConstants#SYSTEM_USER_ID}）可查看所有菜单，
- * 普通用户仅能查看自身角色关联的菜单。
+ * </p>
+ *
+ * <h3>超级管理员处理策略：</h3>
+ * <p>
+ * 超级管理员（拥有 {@code role_key='admin'} 角色的用户）可查看所有菜单，
+ * 通过 {@link #isSuperAdmin(Long)} 方法判断，不再依赖硬编码的用户 ID。
+ * </p>
+ *
+ * <h3>依赖说明：</h3>
+ * <p>
+ * 此处直接注入 {@link SysRoleMapper} 而非 {@link com.bml.module.system.service.SysRoleService}，
+ * 原因是 SysRoleServiceImpl 内部依赖了其他 Bean，若注入 SysRoleService 会产生循环依赖。
+ * Mapper 层不存在此问题，且查询逻辑简单，直接使用 Mapper 更合适。
  * </p>
  *
  * @author BML Team
  */
 @Service
 public class SysMenuServiceImpl extends BaseServiceImpl<SysMenuMapper, SysMenu> implements SysMenuService {
+
+    /**
+     * 直接注入 SysRoleMapper，避免与 SysRoleServiceImpl 产生循环依赖。
+     * 使用 @Resource 字段注入（而非构造函数注入），进一步规避 Spring 循环依赖检测。
+     */
+    @Resource
+    private SysRoleMapper roleMapper;
+
+    /**
+     * 判断指定用户是否为超级管理员。
+     *
+     * <p>判断依据（满足任一即为超级管理员）：</p>
+     * <ol>
+     *   <li>userId 等于 {@link GlobalConstants#SYSTEM_USER_ID}（bml 用户，ID=2）</li>
+     *   <li>userId 等于 {@link GlobalConstants#ADMIN_USER_ID}（中台配置管理员，虚拟 ID=-1）</li>
+     *   <li>当前登录用户的权限集合中包含 {@code *:*:*} 通配符（最通用的判断方式）</li>
+     *   <li>用户拥有 {@code role_key='admin'} 的角色（数据库角色判断）</li>
+     * </ol>
+     *
+     * <p><b>优先级说明：</b>前三种判断不需要查询数据库，性能更好；
+     * 第四种需要查询 sys_user_role 和 sys_role 表，作为兜底判断。</p>
+     *
+     * @param userId 用户ID
+     * @return {@code true} 表示是超级管理员
+     */
+    private boolean isSuperAdmin(Long userId) {
+        if (userId == null) {
+            return false;
+        }
+        // 判断1：SYSTEM_USER_ID（当前为 2L，即 bml 用户）
+        if (GlobalConstants.SYSTEM_USER_ID.equals(userId)) {
+            return true;
+        }
+        // 判断2：ADMIN_USER_ID（中台配置管理员虚拟 ID = -1L）
+        if (GlobalConstants.ADMIN_USER_ID.equals(userId)) {
+            return true;
+        }
+        // 判断3：当前登录用户权限集合中含 *:*:* 通配符（无需查库，性能最优）
+        LoginUser loginUser = SecurityUtils.getLoginUser();
+        if (loginUser != null
+                && loginUser.getPermissions() != null
+                && loginUser.getPermissions().contains("*:*:*")) {
+            return true;
+        }
+        // 判断4：检查用户是否拥有 role_key='admin' 的角色（兜底，需查库）
+        // 直接查 Mapper，避免注入 SysRoleService 导致循环依赖
+        return roleMapper.selectRolesByUserId(userId)
+                .stream()
+                .anyMatch(role -> GlobalConstants.SUPER_ADMIN_ROLE_CODE.equals(role.getRoleCode()));
+    }
 
     /**
      * 根据条件查询菜单列表（管理端使用）
@@ -45,7 +110,7 @@ public class SysMenuServiceImpl extends BaseServiceImpl<SysMenuMapper, SysMenu> 
     public List<SysMenu> selectMenuList(SysMenuDTO menu, Long userId) {
         List<SysMenu> menuList;
         // 超级管理员显示所有菜单信息
-        if (GlobalConstants.SYSTEM_USER_ID.equals(userId)) {
+        if (isSuperAdmin(userId)) {
             menuList = this.lambdaQuery()
                     .like(StrUtil.isNotEmpty(menu.getMenuName()), SysMenu::getMenuName, menu.getMenuName())
                     .eq(StrUtil.isNotEmpty(menu.getMenuType()), SysMenu::getMenuType, menu.getMenuType())
@@ -97,7 +162,7 @@ public class SysMenuServiceImpl extends BaseServiceImpl<SysMenuMapper, SysMenu> 
     @Override
     public List<SysMenu> selectMenuTreeByUserId(Long userId) {
         List<SysMenu> menus;
-        if (GlobalConstants.SYSTEM_USER_ID.equals(userId)) {
+        if (isSuperAdmin(userId)) {
             // 超级管理员显示所有正常状态的目录和菜单
             menus = this.lambdaQuery()
                     .in(SysMenu::getMenuType, "M", "C")

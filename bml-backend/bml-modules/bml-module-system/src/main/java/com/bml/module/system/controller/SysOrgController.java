@@ -74,6 +74,9 @@ public class SysOrgController extends BaseController {
         if (orgService.checkOrgNameUnique(dto)) {
             return Result.badRequest("新增机构'" + dto.getOrgName() + "'失败，机构名称已存在");
         }
+        if (!orgService.checkOrgCodeUnique(dto)) {
+            return Result.badRequest("机构编码已存在");
+        }
         return toAjax(orgService.insertOrg(dto));
     }
 
@@ -87,6 +90,9 @@ public class SysOrgController extends BaseController {
         if (orgService.checkOrgNameUnique(dto)) {
             return Result.badRequest("修改机构'" + dto.getOrgName() + "'失败，机构名称已存在");
         }
+        if (!orgService.checkOrgCodeUnique(dto)) {
+            return Result.badRequest("机构编码已存在");
+        }
         return toAjax(orgService.updateOrg(dto));
     }
 
@@ -97,9 +103,8 @@ public class SysOrgController extends BaseController {
     @PreAuthorize("@ss.hasPermi('system:org:remove')")
     @DeleteMapping("/{orgId}")
     public Result<Void> remove(@PathVariable Long orgId) {
-        List<SysOrg> children = orgService.selectChildrenOrgById(orgId);
-        if (children != null && !children.isEmpty()) {
-            return Result.badRequest("存在下级机构，不允许删除");
+        if (orgService.checkOrgHasChild(orgId)) {
+            return Result.badRequest("存在子机构，不允许删除");
         }
         return toAjax(orgService.removeById(orgId));
     }

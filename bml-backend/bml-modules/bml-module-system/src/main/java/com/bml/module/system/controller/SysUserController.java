@@ -2,7 +2,6 @@ package com.bml.module.system.controller;
 
 import com.bml.core.base.controller.BaseController;
 import com.bml.core.common.result.Result;
-import com.bml.module.system.converter.UserConverter;
 import com.bml.module.system.dto.SysUserDTO;
 import com.bml.module.system.entity.SysUser;
 import com.bml.module.system.service.SysUserService;
@@ -15,6 +14,7 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 用户管理控制器
@@ -70,7 +70,7 @@ public class SysUserController extends BaseController {
     @PreAuthorize("@ss.hasPermi('system:user:list')")
     @GetMapping("/list")
     public Result<List<SysUserVO>> list(SysUserDTO dto) {
-        return Result.ok(UserConverter.INSTANCE.toVOList(userService.selectUserList(dto)));
+        return Result.ok(userService.selectUserList(dto));
     }
 
     /**
@@ -83,7 +83,7 @@ public class SysUserController extends BaseController {
     @PreAuthorize("@ss.hasPermi('system:user:query')")
     @GetMapping(value = "/{userId}")
     public Result<SysUserVO> getInfo(@PathVariable Long userId) {
-        return Result.ok(UserConverter.INSTANCE.toVO(userService.getById(userId)));
+        return Result.ok(userService.selectUserById(userId));
     }
 
     /**
@@ -127,5 +127,15 @@ public class SysUserController extends BaseController {
         user.setId(userId);
         userService.checkUserAllowed(user);
         return toAjax(userService.removeById(userId));
+    }
+
+    @PutMapping("/resetPwd")
+    @PreAuthorize("@ss.hasPermi('system:user:resetPwd')")
+    @Operation(summary = "重置用户密码")
+    public Result<Void> resetPwd(@RequestBody Map<String, Object> body) {
+        Long userId = Long.valueOf(body.get("userId").toString());
+        String password = (String) body.get("password");
+        userService.resetUserPassword(userId, password);
+        return Result.ok();
     }
 }

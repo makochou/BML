@@ -91,8 +91,14 @@ public class DataScopeAspect {
         if (userId == null) {
             return DENY_ALL_SQL;
         }
-        if (GlobalConstants.SYSTEM_USER_ID.equals(userId)) {
-            // 超级管理员不做数据范围限制
+        // 超级管理员判断：
+        //   1. userId 等于 SYSTEM_USER_ID（兼容旧逻辑，当前为 bml 用户 ID=2）
+        //   2. 权限集合中包含 *:*:* 通配符（基于角色的通用判断，更健壮）
+        //   两种方式任一满足即视为超级管理员，不做数据范围限制
+        boolean isSuperAdmin = GlobalConstants.SYSTEM_USER_ID.equals(userId)
+                || (loginUser.getPermissions() != null && loginUser.getPermissions().contains("*:*:*"));
+        if (isSuperAdmin) {
+            // 超级管理员不做数据范围限制，可查看所有数据
             return StrUtil.EMPTY;
         }
 

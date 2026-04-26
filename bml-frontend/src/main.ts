@@ -1,5 +1,6 @@
 import { createApp } from 'vue';
 import './style.css';
+import './assets/business-system.css';
 import App from './App.vue';
 import ArcoVue from '@arco-design/web-vue';
 import ArcoVueIcon from '@arco-design/web-vue/es/icon';
@@ -22,28 +23,28 @@ import router from './router';
  * - 应用初始化失败时，在页面显示友好的错误提示
  */
 try {
-    const app = createApp(App);
+  const app = createApp(App);
 
-    // 注册 Arco Design 组件库
-    app.use(ArcoVue);
-    // 注册 Arco Design 图标库（支持 <icon-xxx /> 全局使用）
-    app.use(ArcoVueIcon);
-    // 注册 Pinia 状态管理
-    app.use(createPinia());
-    // 注册 Vue Router
-    app.use(router);
+  // 注册 Arco Design 组件库
+  app.use(ArcoVue);
+  // 注册 Arco Design 图标库（支持 <icon-xxx /> 全局使用）
+  app.use(ArcoVueIcon);
+  // 注册 Pinia 状态管理
+  app.use(createPinia());
+  // 注册 Vue Router
+  app.use(router);
 
-    // 全局 Vue 错误处理器
-    app.config.errorHandler = (err, _instance, info) => {
-        console.error('[Vue 全局错误]', err);
-        console.error('[错误信息]', info);
-    };
+  // 全局 Vue 错误处理器
+  app.config.errorHandler = (err, _instance, info) => {
+    console.error('[Vue 全局错误]', err);
+    console.error('[错误信息]', info);
+  };
 
-    app.mount('#app');
+  app.mount('#app');
 } catch (error) {
-    console.error('[应用启动失败]', error);
-    // 启动失败时在页面显示友好提示，方便排查问题
-    document.body.innerHTML = `
+  console.error('[应用启动失败]', error);
+  // 启动失败时在页面显示友好提示，方便排查问题
+  document.body.innerHTML = `
     <div style="
       display: flex;
       flex-direction: column;

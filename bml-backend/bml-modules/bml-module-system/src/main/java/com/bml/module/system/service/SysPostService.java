@@ -1,8 +1,10 @@
 package com.bml.module.system.service;
 
 import com.bml.core.base.service.BaseService;
+import com.bml.core.common.result.PageResult;
 import com.bml.module.system.dto.SysPostDTO;
 import com.bml.module.system.entity.SysPost;
+import com.bml.module.system.vo.SysPostVO;
 
 import java.util.List;
 
@@ -17,6 +19,11 @@ public interface SysPostService extends BaseService<SysPost> {
      * 查询岗位列表
      */
     List<SysPost> selectPostList(SysPostDTO post);
+
+    /**
+     * 分页查询岗位列表
+     */
+    PageResult<SysPostVO> selectPostPage(SysPostDTO dto, int pageNum, int pageSize);
 
     /**
      * 校验岗位编码是否唯一
