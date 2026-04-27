@@ -17,6 +17,25 @@ export type ConfigurableTableColumn<Kind extends string> = {
   fixed?: ColumnFix;
   ellipsis?: boolean;
   tooltip?: boolean;
+  /**
+   * 列内容对齐方式（表头与单元格同时生效）。
+   * 默认值为 'center'，统一居中显示，视觉更整洁。
+   * 如需特定列左对齐（如长文本列），可显式设置为 'left'。
+   */
+  align?: 'left' | 'center' | 'right';
+  /**
+   * 是否开启排序功能。
+   * 设为 true 时，表头会显示排序图标，点击可在升序/降序/默认之间切换。
+   * 排序逻辑在前端完成，无需后端支持。
+   * 不需要排序的列（如操作列、序号列）不设置此属性或设为 false。
+   */
+  sortable?: boolean;
+  /**
+   * 自定义表头 slot 名称。
+   * 对应 Arco Table 列定义的 titleSlotName 属性。
+   * 在 a-table 中通过 #[titleSlotName] 插槽自定义表头内容。
+   */
+  titleSlotName?: string;
 };
 
 type TableColumnSource<Kind extends string> =
@@ -52,8 +71,22 @@ export function useTableColumns<Kind extends string>(
     const resolved = typeof source === 'function' ? source() : source;
     return resolved.map(column => ({
       ...column,
+      // 默认居中对齐：表头与单元格内容统一居中，视觉更整洁规范。
+      align: column.align ?? 'center',
       ellipsis: column.ellipsis ?? Boolean(column.tooltip),
-      tooltip: column.tooltip ?? Boolean(column.ellipsis)
+      tooltip: column.tooltip ?? Boolean(column.ellipsis),
+      // 若列声明了 sortable: true，则注入 Arco Table 所需的 sortable 配置对象。
+      // sortDirections 指定支持的排序方向：升序(ascend)、降序(descend)、取消排序(默认)。
+      ...(column.sortable
+        ? {
+          sortable: {
+            sortDirections: ['ascend', 'descend'] as ('ascend' | 'descend')[],
+          },
+        }
+        : {}),
+      // titleSlotName：透传给 Arco Table，用于自定义表头内容（如列头搜索图标）。
+      // Arco Table 内部会读取此属性，从父组件 slots 中找到对应名称的 slot 渲染表头。
+      ...(column.titleSlotName ? { titleSlotName: column.titleSlotName } : {}),
     }));
   });
 

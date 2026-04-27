@@ -408,6 +408,12 @@ const saveCaptchaSwitch = (): Promise<boolean> => {
  * 从 Arco Upload 的 change 回调中提取原始 File 对象，
  * 调用后端接口上传并将返回的 URL 写入对应的响应式变量。
  * </p>
+ * <p>
+ * 缓存破坏策略：
+ *   后端返回的 URL 已包含时间戳参数（如 ?t=1234567890），
+ *   前端直接使用该 URL，无需额外处理。
+ *   若后端未返回时间戳，前端会自动追加，确保浏览器不使用缓存的旧图片。
+ * </p>
  *
  * @param type     图片类型标识（loginBg / sidebarLogo / favicon）
  * @param fileList Arco Upload change 回调的第一个参数（文件列表，此处不使用）
@@ -419,10 +425,24 @@ const handleUploadBranding = async (type: string, _fileList: any, fileItem: any)
 
   try {
     const res = await uploadBrandingImage(type, rawFile) as any;
-    const url = res.data?.url || '';
+    let url: string = res.data?.url || '';
+
+    if (!url) {
+      Message.error('上传失败：服务器未返回图片地址');
+      return;
+    }
+
+    // 缓存破坏：确保 URL 包含时间戳参数，强制浏览器重新加载图片。
+    // 后端已在 URL 中追加时间戳，此处作为兜底处理：
+    // 若 URL 中已有时间戳参数则直接使用，否则追加当前时间戳。
+    if (!url.includes('?t=') && !url.includes('&t=')) {
+      const separator = url.includes('?') ? '&' : '?';
+      url = `${url}${separator}t=${Date.now()}`;
+    }
+
     Message.success('上传成功');
 
-    // 更新本地状态
+    // 更新本地状态，触发 Vue 响应式更新，img 标签会立即加载新 URL
     if (type === 'loginBg') loginBgUrl.value = url;
     else if (type === 'sidebarLogo') sidebarLogoUrl.value = url;
     else if (type === 'favicon') faviconUrl.value = url;

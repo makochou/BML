@@ -138,7 +138,9 @@ public class SysConfigController {
         }
 
         // 更新配置项
-        String imageUrl = "/api/system/config/branding/" + filename;
+        // 在 URL 末尾追加时间戳参数，确保每次上传后浏览器都能获取到最新图片，
+        // 彻底避免浏览器缓存导致的"上传成功但显示旧图"问题。
+        String imageUrl = "/api/system/config/branding/" + filename + "?t=" + System.currentTimeMillis();
         configService.upsertConfig(configKey, imageUrl, "登录页品牌图片-" + type);
 
         return Result.ok(Map.of("url", imageUrl));
@@ -184,7 +186,12 @@ public class SysConfigController {
         };
 
         response.setContentType(contentType);
-        response.setHeader("Cache-Control", "public, max-age=86400");
+        // 禁用缓存：品牌图片可能随时被替换，必须每次都从服务器获取最新版本。
+        // 使用 no-cache 而非 no-store，允许浏览器缓存但每次都需要向服务器验证是否有更新。
+        // 配合 URL 时间戳参数，可彻底解决"上传新图但显示旧图"的问题。
+        response.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+        response.setHeader("Pragma", "no-cache");
+        response.setHeader("Expires", "0");
 
         try {
             Files.copy(filePath, response.getOutputStream());

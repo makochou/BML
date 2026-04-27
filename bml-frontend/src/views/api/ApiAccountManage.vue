@@ -107,13 +107,82 @@
       <div class="table-shell__split">
         <div ref="accountTableListRegionRef" class="table-shell__list-region">
           <a-table :key="`account-table-${accountTableRenderVersion}`" class="account-table" size="small" row-key="id"
-            :data="accountList" :loading="tableLoading" :pagination="false"
+            :data="filteredAccountList" :loading="tableLoading" :pagination="false"
             v-model:selected-keys="selectedKeys" :row-selection="rowSelection"
             :scroll="{ x: accountTableScrollX, y: '100%' }" :scrollbar="true" sticky-header column-resizable
             :columns="accountTableColumns"
             :row-class="(record: ApiAccountItem) => record.id === activeRowId ? 'is-row-active' : ''"
             @row-click="(record: ApiAccountItem) => activeRowId = record.id"
-            @column-resize="handleAccountColumnResize" @row-dblclick="handleAccountRowDblClick">
+            @column-resize="handleAccountColumnResize"
+            @row-dblclick="handleAccountRowDblClick"
+            @sorter-change="handleAccountSorterChange">
+            <!--
+              ══════════════════════════════════════════════════════
+              自定义列头：每列标题旁加放大镜搜索图标
+              使用 TableColumnSearch 组件，v-model 绑定 columnFilters 对应字段。
+              slot 命名规则：与列定义中的 titleSlotName 属性对应（Arco Table 规范）
+              ══════════════════════════════════════════════════════
+            -->
+            <template #th-accountName>
+              <TableColumnSearch title="账号名称" v-model="columnFilters['accountName']" />
+            </template>
+            <template #th-status>
+              <TableColumnSearch title="状态" v-model="columnFilters['status']" />
+            </template>
+            <template #th-accountType>
+              <TableColumnSearch title="账号类型" v-model="columnFilters['accountType']" />
+            </template>
+            <template #th-systemName>
+              <TableColumnSearch title="业务系统" v-model="columnFilters['systemName']" />
+            </template>
+            <template #th-ownerName>
+              <TableColumnSearch title="负责人" v-model="columnFilters['ownerName']" />
+            </template>
+            <template #th-accessEnvironment>
+              <TableColumnSearch title="接入环境" v-model="columnFilters['accessEnvironment']" />
+            </template>
+            <template #th-authorizedCount>
+              <TableColumnSearch title="授权数" v-model="columnFilters['authorizedApiCount']" />
+            </template>
+            <template #th-updateTime>
+              <TableColumnSearch title="最近更新" v-model="columnFilters['updateTime']" />
+            </template>
+            <template #th-accountId>
+              <TableColumnSearch title="账号ID" v-model="columnFilters['id']" />
+            </template>
+            <template #th-accessKey>
+              <TableColumnSearch title="访问密钥" v-model="columnFilters['accessKey']" />
+            </template>
+            <template #th-systemCode>
+              <TableColumnSearch title="系统编码" v-model="columnFilters['systemCode']" />
+            </template>
+            <template #th-ownerContact>
+              <TableColumnSearch title="负责人联系方式" v-model="columnFilters['ownerContact']" />
+            </template>
+            <template #th-signVersion>
+              <TableColumnSearch title="签名版本" v-model="columnFilters['signVersion']" />
+            </template>
+            <template #th-rateLimit>
+              <TableColumnSearch title="限流配置" v-model="columnFilters['rateLimit']" />
+            </template>
+            <template #th-expireTime>
+              <TableColumnSearch title="过期时间" v-model="columnFilters['expireTime']" />
+            </template>
+            <template #th-callbackUrl>
+              <TableColumnSearch title="回调地址" v-model="columnFilters['callbackUrl']" />
+            </template>
+            <template #th-clientTypes>
+              <TableColumnSearch title="客户端类型" v-model="columnFilters['clientTypes']" />
+            </template>
+            <template #th-allowedScopes>
+              <TableColumnSearch title="权限范围" v-model="columnFilters['allowedScopes']" />
+            </template>
+            <template #th-remark>
+              <TableColumnSearch title="治理备注" v-model="columnFilters['remark']" />
+            </template>
+            <template #th-createTime>
+              <TableColumnSearch title="创建时间" v-model="columnFilters['createTime']" />
+            </template>
             <!-- 序号列 -->
             <template #index="{ rowIndex }">
               <div class="table-field-cell table-field-cell--index">
@@ -123,7 +192,7 @@
 
             <!-- 账号名称 -->
             <template #accountName="{ record }">
-              <div class="table-field-cell">
+              <div class="table-field-cell table-field-cell--left">
                 <EllipsisTooltipText :text="getPlainText(record, 'accountName', '-')" variant="primary" />
               </div>
             </template>
@@ -148,7 +217,7 @@
 
             <!-- 业务系统 -->
             <template #systemName="{ record }">
-              <div class="table-field-cell">
+              <div class="table-field-cell table-field-cell--left">
                 <EllipsisTooltipText :text="record.systemName || '-'" />
               </div>
             </template>
@@ -199,7 +268,7 @@
 
             <!-- 访问密钥 -->
             <template #accessKey="{ record }">
-              <div class="table-field-cell">
+              <div class="table-field-cell table-field-cell--left">
                 <EllipsisTooltipText
                   :text="record.accessKey ? `${record.accessKey.substring(0, 8)}****${record.accessKey.substring(record.accessKey.length - 4)}` : '-'"
                   variant="mono" />
@@ -259,14 +328,14 @@
 
             <!-- 系统编码 -->
             <template #systemCode="{ record }">
-              <div class="table-field-cell">
+              <div class="table-field-cell table-field-cell--left">
                 <EllipsisTooltipText :text="record.systemCode || '-'" variant="mono" />
               </div>
             </template>
 
             <!-- 负责人联系方式 -->
             <template #ownerContact="{ record }">
-              <div class="table-field-cell">
+              <div class="table-field-cell table-field-cell--left">
                 <EllipsisTooltipText :text="record.ownerContact || '-'" />
               </div>
             </template>
@@ -287,14 +356,14 @@
 
             <!-- 回调地址 -->
             <template #callbackUrl="{ record }">
-              <div class="table-field-cell">
+              <div class="table-field-cell table-field-cell--left">
                 <EllipsisTooltipText :text="record.callbackUrl || '-'" />
               </div>
             </template>
 
             <!-- 治理备注 -->
             <template #remark="{ record }">
-              <div class="table-field-cell">
+              <div class="table-field-cell table-field-cell--left">
                 <EllipsisTooltipText :text="record.remark || '-'" />
               </div>
             </template>
@@ -486,6 +555,7 @@ import ApiCredentialDeliveryModal from '../../components/api-account/ApiCredenti
 import ApiEnvironmentWhitelistEditor from '../../components/api-account/ApiEnvironmentWhitelistEditor.vue';
 import GovernanceCompactQueryPanel from '../../components/governance/GovernanceCompactQueryPanel.vue';
 import GovernanceFormSections from '../../components/governance/GovernanceFormSections.vue';
+import TableColumnSearch from '../../components/common/TableColumnSearch.vue';
 import GovernanceListStage from '../../components/governance/GovernanceListStage.vue';
 import EllipsisTooltipText from '../../components/common/EllipsisTooltipText.vue';
 import { useApiAccountFormValidation } from '../../composables/useApiAccountFormValidation';
@@ -620,6 +690,129 @@ const accountList = ref<ApiAccountItem[]>([]);
 const tableLoading = ref(false);
 const syncingRegistry = ref(false);
 const accountTablePagination = reactive({ current: 1, pageSize: 10, total: 0 });
+
+// ═══════════════════════════════════════════════════════
+// 表格排序状态
+// ═══════════════════════════════════════════════════════
+/**
+ * 当前排序字段（dataIndex）。
+ * 例如：'accountName'、'status'、'updateTime' 等。
+ * 为 null 时表示未排序，显示原始顺序。
+ */
+const sortField = ref<string | null>(null);
+
+/**
+ * 当前排序方向。
+ * - 'ascend'：升序（A→Z，0→9，旧→新）
+ * - 'descend'：降序（Z→A，9→0，新→旧）
+ * - null：取消排序，恢复默认顺序
+ */
+const sortOrder = ref<'ascend' | 'descend' | null>(null);
+
+/**
+ * 排序后的账号列表（计算属性）。
+ * 根据 sortField 和 sortOrder 对 accountList 进行前端排序。
+ * 排序规则：
+ *   - 字符串：按字典序（忽略大小写）
+ *   - 数字：按数值大小
+ *   - 日期时间：按时间戳
+ *   - 空值：统一排到末尾
+ */
+const sortedAccountList = computed(() => {
+  if (!sortField.value || !sortOrder.value) {
+    return accountList.value;
+  }
+
+  const field = sortField.value;
+  const order = sortOrder.value;
+
+  return [...accountList.value].sort((a, b) => {
+    const aVal = Reflect.get(a, field);
+    const bVal = Reflect.get(b, field);
+
+    // 空值统一排到末尾
+    if (aVal == null && bVal == null) return 0;
+    if (aVal == null) return 1;
+    if (bVal == null) return -1;
+
+    // 数字类型：直接比较
+    if (typeof aVal === 'number' && typeof bVal === 'number') {
+      return order === 'ascend' ? aVal - bVal : bVal - aVal;
+    }
+
+    // 日期时间字符串：转为时间戳比较
+    if (field.includes('Time') || field.includes('Date')) {
+      const aTime = new Date(aVal).getTime();
+      const bTime = new Date(bVal).getTime();
+      if (!isNaN(aTime) && !isNaN(bTime)) {
+        return order === 'ascend' ? aTime - bTime : bTime - aTime;
+      }
+    }
+
+    // 字符串：按字典序（忽略大小写）
+    const aStr = String(aVal).toLowerCase();
+    const bStr = String(bVal).toLowerCase();
+    const cmp = aStr.localeCompare(bStr, 'zh-CN');
+    return order === 'ascend' ? cmp : -cmp;
+  });
+});
+
+/**
+ * 处理表格排序变化事件。
+ * Arco Table 的 sorter-change 事件参数：
+ *   - dataIndex: 排序字段（列的 dataIndex）
+ *   - direction: 排序方向（'ascend' | 'descend' | ''）
+ * 空字符串表示取消排序，恢复默认顺序。
+ */
+const handleAccountSorterChange = (dataIndex: string, direction: string) => {
+  sortField.value = direction ? dataIndex : null;
+  sortOrder.value = direction ? (direction as 'ascend' | 'descend') : null;
+};
+
+// ═══════════════════════════════════════════════════════
+// 列头搜索状态
+// ═══════════════════════════════════════════════════════
+/**
+ * 各列的搜索关键词映射表。
+ * key 为列的 dataIndex，value 为搜索关键词。
+ * 例如：{ accountName: 'DXF', status: '', systemName: '大象' }
+ *
+ * 使用方式：
+ *   1. 在表头 slot 中绑定 v-model="columnFilters.xxx"
+ *   2. filteredAccountList 计算属性会自动根据此对象过滤数据
+ */
+const columnFilters = reactive<Record<string, string>>({});
+
+/**
+ * 经过列头搜索过滤后的账号列表（计算属性）。
+ * 在 sortedAccountList 的基础上，再叠加列头搜索过滤。
+ * 过滤规则：所有有值的列搜索条件同时满足（AND 逻辑）。
+ * 匹配方式：不区分大小写的包含匹配。
+ */
+const filteredAccountList = computed(() => {
+  const activeFilters = Object.entries(columnFilters).filter(([, v]) => v.trim());
+  if (activeFilters.length === 0) {
+    return sortedAccountList.value;
+  }
+
+  return sortedAccountList.value.filter(record => {
+    return activeFilters.every(([field, keyword]) => {
+      const val = Reflect.get(record, field);
+      if (val == null) return false;
+      return String(val).toLowerCase().includes(keyword.trim().toLowerCase());
+    });
+  });
+});
+
+/**
+ * 清除所有列头搜索条件。
+ */
+const clearAllColumnFilters = () => {
+  Object.keys(columnFilters).forEach(key => {
+    columnFilters[key] = '';
+  });
+};
+
 const accountModal = reactive({ visible: false, mode: 'create' as AccountModalMode, editingId: 0, submitting: false });
 /**
  * 新建/编辑弹窗视口状态。
@@ -808,30 +1001,36 @@ const ACCOUNT_TABLE_COLUMN_MAX_WIDTH: Record<AccountColumnKind, number> = {
 };
 // 列基础模型（默认顺序 + 默认宽度 + 固定信息）集中收口。
 // 按日常查看频率排序：核心标识 → 运营状态 → 归属信息 → 策略范围 → 低频字段 → 操作列。
+// align 说明：
+//   - 默认居中（useTableColumns 已设置 align: 'center' 为默认值）
+//   - 长文本列（账号名称、业务系统、回调地址等）显式设置 align: 'left'，阅读更自然
+// sortable 说明：
+//   - 设为 true 的列会在表头显示排序图标，点击可在升序/降序之间切换
+//   - 序号列、操作列不参与排序
 const accountTableColumnBaseModel = defineTableColumns<AccountColumnKind>([
-  { key: 'index', dataIndex: 'index', title: '序号', kind: 'index', width: 70, fixed: 'left', slotName: 'index' },
-  { key: 'accountName', dataIndex: 'accountName', title: '账号名称', kind: 'accountName', width: 220, fixed: 'left', slotName: 'accountName' },
-  { key: 'status', dataIndex: 'status', title: '状态', kind: 'status', width: 100, slotName: 'status' },
-  { key: 'accountType', dataIndex: 'accountType', title: '账号类型', kind: 'accountType', width: 110, slotName: 'accountType' },
-  { key: 'systemName', dataIndex: 'systemName', title: '业务系统', kind: 'systemName', width: 180, slotName: 'systemName' },
-  { key: 'ownerName', dataIndex: 'ownerName', title: '负责人', kind: 'ownerName', width: 120, slotName: 'ownerName' },
-  { key: 'accessEnvironment', dataIndex: 'accessEnvironment', title: '接入环境', kind: 'accessEnvironment', width: 110, slotName: 'accessEnvironment' },
-  { key: 'authorizedCount', dataIndex: 'authorizedApiCount', title: '授权数', kind: 'authorizedCount', width: 100, slotName: 'authorizedCount' },
-  { key: 'updateTime', dataIndex: 'updateTime', title: '最近更新', kind: 'updateTime', width: 180, slotName: 'updateTime' },
-  { key: 'actions', dataIndex: 'actions', title: '操作', kind: 'actions', width: 170, fixed: 'right', slotName: 'actions' },
+  { key: 'index',             dataIndex: 'index',           title: '序号',       kind: 'index',             width: 70,  fixed: 'left',  slotName: 'index' },
+  { key: 'accountName',       dataIndex: 'accountName',     title: '账号名称',   kind: 'accountName',       width: 220, fixed: 'left',  slotName: 'accountName',   align: 'left',  sortable: true, titleSlotName: 'th-accountName' },
+  { key: 'status',            dataIndex: 'status',          title: '状态',       kind: 'status',            width: 100, slotName: 'status',            sortable: true, titleSlotName: 'th-status' },
+  { key: 'accountType',       dataIndex: 'accountType',     title: '账号类型',   kind: 'accountType',       width: 110, slotName: 'accountType',       sortable: true, titleSlotName: 'th-accountType' },
+  { key: 'systemName',        dataIndex: 'systemName',      title: '业务系统',   kind: 'systemName',        width: 180, slotName: 'systemName',    align: 'left',  sortable: true, titleSlotName: 'th-systemName' },
+  { key: 'ownerName',         dataIndex: 'ownerName',       title: '负责人',     kind: 'ownerName',         width: 120, slotName: 'ownerName',         sortable: true, titleSlotName: 'th-ownerName' },
+  { key: 'accessEnvironment', dataIndex: 'accessEnvironment', title: '接入环境', kind: 'accessEnvironment', width: 110, slotName: 'accessEnvironment', sortable: true, titleSlotName: 'th-accessEnvironment' },
+  { key: 'authorizedCount',   dataIndex: 'authorizedApiCount', title: '授权数',  kind: 'authorizedCount',   width: 100, slotName: 'authorizedCount',   sortable: true, titleSlotName: 'th-authorizedCount' },
+  { key: 'updateTime',        dataIndex: 'updateTime',      title: '最近更新',   kind: 'updateTime',        width: 180, slotName: 'updateTime',        sortable: true, titleSlotName: 'th-updateTime' },
+  { key: 'actions',           dataIndex: 'actions',         title: '操作',       kind: 'actions',           width: 170, fixed: 'right', slotName: 'actions' },
   // 扩展字段，默认隐藏
-  { key: 'accountId', dataIndex: 'id', title: '账号ID', kind: 'accountId', width: 100, slotName: 'accountId' },
-  { key: 'accessKey', dataIndex: 'accessKey', title: '访问密钥', kind: 'accessKey', width: 220, slotName: 'accessKey' },
-  { key: 'systemCode', dataIndex: 'systemCode', title: '系统编码', kind: 'systemCode', width: 160, slotName: 'systemCode' },
-  { key: 'ownerContact', dataIndex: 'ownerContact', title: '负责人联系方式', kind: 'ownerContact', width: 180, slotName: 'ownerContact' },
-  { key: 'signVersion', dataIndex: 'signVersion', title: '签名版本', kind: 'signVersion', width: 110, slotName: 'signVersion' },
-  { key: 'rateLimit', dataIndex: 'rateLimit', title: '限流配置', kind: 'rateLimit', width: 120, slotName: 'rateLimit' },
-  { key: 'expireTime', dataIndex: 'expireTime', title: '过期时间', kind: 'expireTime', width: 180, slotName: 'expireTime' },
-  { key: 'callbackUrl', dataIndex: 'callbackUrl', title: '回调地址', kind: 'callbackUrl', width: 260, slotName: 'callbackUrl' },
-  { key: 'clientTypes', dataIndex: 'clientTypes', title: '客户端类型', kind: 'clientTypes', width: 180, slotName: 'clientTypes' },
-  { key: 'allowedScopes', dataIndex: 'allowedScopes', title: '权限范围', kind: 'allowedScopes', width: 200, slotName: 'allowedScopes' },
-  { key: 'remark', dataIndex: 'remark', title: '治理备注', kind: 'remark', width: 220, slotName: 'remark' },
-  { key: 'createTime', dataIndex: 'createTime', title: '创建时间', kind: 'createTime', width: 180, slotName: 'createTime' }
+  { key: 'accountId',         dataIndex: 'id',              title: '账号ID',     kind: 'accountId',         width: 100, slotName: 'accountId',         sortable: true, titleSlotName: 'th-accountId' },
+  { key: 'accessKey',         dataIndex: 'accessKey',       title: '访问密钥',   kind: 'accessKey',         width: 220, slotName: 'accessKey',     align: 'left',  sortable: true, titleSlotName: 'th-accessKey' },
+  { key: 'systemCode',        dataIndex: 'systemCode',      title: '系统编码',   kind: 'systemCode',        width: 160, slotName: 'systemCode',    align: 'left',  sortable: true, titleSlotName: 'th-systemCode' },
+  { key: 'ownerContact',      dataIndex: 'ownerContact',    title: '负责人联系方式', kind: 'ownerContact',  width: 180, slotName: 'ownerContact',  align: 'left',  sortable: true, titleSlotName: 'th-ownerContact' },
+  { key: 'signVersion',       dataIndex: 'signVersion',     title: '签名版本',   kind: 'signVersion',       width: 110, slotName: 'signVersion',       sortable: true, titleSlotName: 'th-signVersion' },
+  { key: 'rateLimit',         dataIndex: 'rateLimit',       title: '限流配置',   kind: 'rateLimit',         width: 120, slotName: 'rateLimit',         sortable: true, titleSlotName: 'th-rateLimit' },
+  { key: 'expireTime',        dataIndex: 'expireTime',      title: '过期时间',   kind: 'expireTime',        width: 180, slotName: 'expireTime',        sortable: true, titleSlotName: 'th-expireTime' },
+  { key: 'callbackUrl',       dataIndex: 'callbackUrl',     title: '回调地址',   kind: 'callbackUrl',       width: 260, slotName: 'callbackUrl',   align: 'left',  sortable: true, titleSlotName: 'th-callbackUrl' },
+  { key: 'clientTypes',       dataIndex: 'clientTypes',     title: '客户端类型', kind: 'clientTypes',       width: 180, slotName: 'clientTypes',       sortable: true, titleSlotName: 'th-clientTypes' },
+  { key: 'allowedScopes',     dataIndex: 'allowedScopes',   title: '权限范围',   kind: 'allowedScopes',     width: 200, slotName: 'allowedScopes',     sortable: true, titleSlotName: 'th-allowedScopes' },
+  { key: 'remark',            dataIndex: 'remark',          title: '治理备注',   kind: 'remark',            width: 220, slotName: 'remark',        align: 'left',  sortable: true, titleSlotName: 'th-remark' },
+  { key: 'createTime',        dataIndex: 'createTime',      title: '创建时间',   kind: 'createTime',        width: 180, slotName: 'createTime',        sortable: true, titleSlotName: 'th-createTime' }
 ]);
 const accountTableColumnBaseMap = (accountTableColumnBaseModel as any[]).reduce((accumulator, column) => {
   accumulator[column.kind] = column;
@@ -2378,11 +2577,23 @@ onBeforeUnmount(() => {
 .table-field-cell {
   display: flex;
   align-items: center;
+  /*
+   * 默认居中对齐：与列定义的 align: 'center' 保持一致。
+   * 对于账号名称、业务系统等长文本列，Arco Table 会在 td 上加 text-align: left，
+   * 但 flex 容器不受 text-align 影响，需通过 justify-content 控制。
+   * 长文本列在模板中使用 .table-field-cell--left 修饰类覆盖为左对齐。
+   */
+  justify-content: center;
   width: 100%;
   min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* 长文本列左对齐修饰类（账号名称、业务系统、回调地址等） */
+.table-field-cell--left {
+  justify-content: flex-start;
 }
 
 .table-field-cell--index {
@@ -2801,6 +3012,7 @@ onBeforeUnmount(() => {
 .table-field-cell {
   display: flex;
   align-items: center;
+  justify-content: center;
   width: 100%;
   min-width: 0;
   white-space: nowrap;
@@ -3028,6 +3240,69 @@ onBeforeUnmount(() => {
   white-space: nowrap;
 }
 
+/*
+ * 强制所有表头单元格内的标题文字居中对齐。
+ * 背景：Arco Table 的 align 属性同时控制表头和单元格，无法单独设置表头对齐。
+ * 解决方案：通过 :deep 穿透 scoped 样式，强制覆盖 .arco-table-cell 的 text-align，
+ * 确保所有列的表头标题（包括设置了 align: 'left' 的长文本列）都居中显示。
+ * 单元格内容的对齐由各列的 align 属性和 .table-field-cell 的 justify-content 控制，不受此影响。
+ */
+.account-table :deep(.arco-table-th .arco-table-cell) {
+  justify-content: center !important;
+  text-align: center !important;
+}
+
+/*
+ * 排序图标样式美化。
+ * 激活状态使用品牌主色高亮，整列排序激活时表头背景也跟随变化。
+ */
+.account-table :deep(.arco-table-th .arco-table-sorter) {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 4px;
+  cursor: pointer;
+  opacity: 0.4;
+  transition: opacity 0.2s;
+}
+.account-table :deep(.arco-table-th:hover .arco-table-sorter) {
+  opacity: 0.7;
+}
+.account-table :deep(.arco-table-th .arco-table-sorter-icon) {
+  font-size: 12px;
+  transition: color 0.2s;
+}
+/* 激活的排序方向图标高亮 */
+.account-table :deep(.arco-table-th .arco-table-sorter-icon.arco-table-sorter-icon-active) {
+  color: var(--color-primary, #165dff) !important;
+  opacity: 1;
+}
+/* 整列排序激活时，表头背景和文字跟随高亮 */
+.account-table :deep(.arco-table-th.arco-table-col-sorted) {
+  background: linear-gradient(180deg, #eef4ff, #e6f0ff) !important;
+  color: var(--color-primary, #165dff) !important;
+}
+.account-table :deep(.arco-table-th.arco-table-col-sorted .arco-table-sorter) {
+  opacity: 1;
+}
+
+/*
+ * 列头搜索 Popover 挂载到 body，不受表格 overflow:hidden 影响。
+ * 确保 Arco Popover 的 z-index 高于表格固定列（sticky）的层级。
+ */
+:global(.arco-popover-popup-content) {
+  z-index: 1050;
+}
+
+/*
+ * 自定义表头 slot 容器：确保 TableColumnSearch 组件能撑满表头单元格。
+ * Arco Table 的自定义表头 slot 默认是 inline 元素，需要改为 flex 以支持图标对齐。
+ */
+.account-table :deep(.arco-table-th .arco-table-cell-with-sorter) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+}
 /**
  * 为非固定列设定 position: relative，用于列分割线 ::after 伪元素的定位基准。
  * 注意：绝不能对 .arco-table-col-fixed-left / right 设定 position: relative，
