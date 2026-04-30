@@ -87,4 +87,71 @@ public interface ISysAlertService extends IService<SysAlert> {
      * @return 当日告警列表
      */
     List<SysAlert> getAlertsByDate(LocalDate date);
+
+    /**
+     * 智能保存或更新告警（带去重逻辑）
+     * <p>
+     * 核心去重策略：
+     * <ul>
+     * <li>1. 查询是否存在相同类型和标题的<strong>未读</strong>告警</li>
+     * <li>2. 如果存在，则更新该告警的内容、级别和时间（保持未读状态）</li>
+     * <li>3. 如果不存在未读告警，查询是否存在24小时内的<strong>已读</strong>告警</li>
+     * <li>4. 如果存在24小时内已读告警，则不创建新告警（避免重复打扰）</li>
+     * <li>5. 否则创建新告警</li>
+     * </ul>
+     * 这样可以避免许可证更新时产生大量重复告警，同时确保用户不会被频繁打扰。
+     * </p>
+     *
+     * @param alert 待保存的告警对象
+     * @return 保存或更新后的告警对象
+     */
+    SysAlert saveOrUpdateAlert(SysAlert alert);
+
+    /**
+     * 按告警类型批量标记为已读
+     * <p>
+     * 将所有指定类型的未读告警一键标记为已读，
+     * 适用于用户希望快速清理某一类告警的场景。
+     * </p>
+     *
+     * @param alertType 告警类型（如：LICENSE_CHANGE、SYSTEM_ERROR 等）
+     * @return 实际更新的记录数
+     */
+    int markAsReadByType(String alertType);
+
+    /**
+     * 按告警类型批量删除
+     * <p>
+     * 将所有指定类型的告警进行逻辑删除，
+     * 适用于用户希望彻底清理某一类告警的场景。
+     * </p>
+     *
+     * @param alertType 告警类型（如：LICENSE_CHANGE、SYSTEM_ERROR 等）
+     * @return 实际删除的记录数
+     */
+    int deleteByType(String alertType);
+
+    /**
+     * 按告警标题批量标记为已读
+     * <p>
+     * 将所有指定标题的未读告警一键标记为已读，
+     * 适用于用户希望快速清理相同标题告警的场景。
+     * </p>
+     *
+     * @param alertTitle 告警标题（如："API 账号上限升级"）
+     * @return 实际更新的记录数
+     */
+    int markAsReadByTitle(String alertTitle);
+
+    /**
+     * 按告警标题批量删除
+     * <p>
+     * 将所有指定标题的告警进行逻辑删除，
+     * 适用于用户希望彻底清理相同标题告警的场景。
+     * </p>
+     *
+     * @param alertTitle 告警标题（如："API 账号上限升级"）
+     * @return 实际删除的记录数
+     */
+    int deleteByTitle(String alertTitle);
 }

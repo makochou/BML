@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.bml.module.system.entity.SysAlert;
 import com.bml.module.system.mapper.SysAlertMapper;
 import com.bml.module.system.service.ISysAlertService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
@@ -27,6 +28,7 @@ import java.util.stream.Collectors;
  *
  * @author BML Team
  */
+@Slf4j
 @Service
 public class SysAlertServiceImpl extends ServiceImpl<SysAlertMapper, SysAlert> implements ISysAlertService {
 
@@ -150,5 +152,151 @@ public class SysAlertServiceImpl extends ServiceImpl<SysAlertMapper, SysAlert> i
                 .ge(SysAlert::getCreateTime, dayStart)
                 .le(SysAlert::getCreateTime, dayEnd)
                 .orderByDesc(SysAlert::getCreateTime));
+    }
+
+    /**
+     * 智能保存或更新告警（带去重逻辑）
+     * <p>
+     * 核心去重策略：
+     * <ol>
+     * <li>1. 查询是否存在相同类型和标题的<strong>未读</strong>告警</li>
+     * <li>2. 如果存在，则更新该告警的内容、级别和时间（保持未读状态）</li>
+     * <li>3. 如果不存在未读告警，查询是否存在24小时内的<strong>已读</strong>告警</li>
+     * <li>4. 如果存在24小时内已读告警，则不创建新告警（避免重复打扰）</li>
+     * <li>5. 否则创建新告警</li>
+     * </ol>
+     * 这样可以避免许可证更新时产生大量重复告警，同时确保用户不会被频繁打扰。
+     * </p>
+     *
+     * @param alert 待保存的告警对象
+     * @return 保存或更新后的告警对象
+     */
+    @Override
+    public SysAlert saveOrUpdateAlert(SysAlert alert) {
+        // 1. 查询是否存在相同类型和标题的未读告警
+        LambdaQueryWrapper<SysAlert> unreadQuery = new LambdaQueryWrapper<>();
+        unreadQuery.eq(SysAlert::getAlertType, alert.getAlertType())
+                .eq(SysAlert::getAlertTitle, alert.getAlertTitle())
+                .eq(SysAlert::getReadStatus, 0)
+                .orderByDesc(SysAlert::getCreateTime)
+                .last("LIMIT 1");
+        SysAlert existingUnread = this.getOne(unreadQuery);
+
+        if (existingUnread != null) {
+            // 2. 如果存在未读告警，则更新该告警
+            existingUnread.setAlertContent(alert.getAlertContent());
+            existingUnread.setAlertLevel(alert.getAlertLevel());
+            existingUnread.setUpdateTime(LocalDateTime.now());
+            this.updateById(existingUnread);
+            log.info("[Alert] 更新现有未读告警：类型={}, 标题={}, ID={}", 
+                    alert.getAlertType(), alert.getAlertTitle(), existingUnread.getId());
+            return existingUnread;
+        }
+
+        // 3. 查询是否存在24小时内的已读告警
+        LocalDateTime twentyFourHoursAgo = LocalDateTime.now().minusHours(24);
+        LambdaQueryWrapper<SysAlert> readQuery = new LambdaQueryWrapper<>();
+        readQuery.eq(SysAlert::getAlertType, alert.getAlertType())
+                .eq(SysAlert::getAlertTitle, alert.getAlertTitle())
+                .eq(SysAlert::getReadStatus, 1)
+                .ge(SysAlert::getUpdateTime, twentyFourHoursAgo)
+                .orderByDesc(SysAlert::getUpdateTime)
+                .last("LIMIT 1");
+        SysAlert existingRead = this.getOne(readQuery);
+
+        if (existingRead != null) {
+            // 4. 如果存在24小时内已读告警，则不创建新告警
+            log.info("[Alert] 24小时内已存在已读告警，跳过创建：类型={}, 标题={}, 上次更新时间={}", 
+                    alert.getAlertType(), alert.getAlertTitle(), existingRead.getUpdateTime());
+            return existingRead;
+        }
+
+        // 5. 否则创建新告警
+        this.save(alert);
+        log.info("[Alert] 创建新告警：类型={}, 标题={}, ID={}", 
+                alert.getAlertType(), alert.getAlertTitle(), alert.getId());
+        return alert;
+    }
+
+    /**
+     * 按告警类型批量标记为已读
+     * <p>
+     * 将所有指定类型的未读告警一键标记为已读。
+     * 适用于用户希望快速清理某一类告警的场景。
+     * </p>
+     *
+     * @param alertType 告警类型（如：LICENSE_CHANGE、SYSTEM_ERROR 等）
+     * @return 实际更新的记录数
+     */
+    @Override
+    public int markAsReadByType(String alertType) {
+        LambdaUpdateWrapper<SysAlert> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.eq(SysAlert::getAlertType, alertType)
+                .eq(SysAlert::getReadStatus, 0)
+                .set(SysAlert::getReadStatus, 1);
+        int count = this.baseMapper.update(null, updateWrapper);
+        log.info("[Alert] 按类型批量标记已读：类型={}, 数量={}", alertType, count);
+        return count;
+    }
+
+    /**
+     * 按告警类型批量删除
+     * <p>
+     * 将所有指定类型的告警进行逻辑删除。
+     * 适用于用户希望彻底清理某一类告警的场景。
+     * </p>
+     *
+     * @param alertType 告警类型（如：LICENSE_CHANGE、SYSTEM_ERROR 等）
+     * @return 实际删除的记录数
+     */
+    @Override
+    public int deleteByType(String alertType) {
+        LambdaQueryWrapper<SysAlert> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(SysAlert::getAlertType, alertType);
+        int count = (int) this.count(queryWrapper);
+        this.remove(queryWrapper);
+        log.info("[Alert] 按类型批量删除：类型={}, 数量={}", alertType, count);
+        return count;
+    }
+
+    /**
+     * 按告警标题批量标记为已读
+     * <p>
+     * 将所有指定标题的未读告警一键标记为已读。
+     * 适用于用户希望快速清理相同标题告警的场景。
+     * </p>
+     *
+     * @param alertTitle 告警标题（如："API 账号上限升级"）
+     * @return 实际更新的记录数
+     */
+    @Override
+    public int markAsReadByTitle(String alertTitle) {
+        LambdaUpdateWrapper<SysAlert> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.eq(SysAlert::getAlertTitle, alertTitle)
+                .eq(SysAlert::getReadStatus, 0)
+                .set(SysAlert::getReadStatus, 1);
+        int count = this.baseMapper.update(null, updateWrapper);
+        log.info("[Alert] 按标题批量标记已读：标题={}, 数量={}", alertTitle, count);
+        return count;
+    }
+
+    /**
+     * 按告警标题批量删除
+     * <p>
+     * 将所有指定标题的告警进行逻辑删除。
+     * 适用于用户希望彻底清理相同标题告警的场景。
+     * </p>
+     *
+     * @param alertTitle 告警标题（如："API 账号上限升级"）
+     * @return 实际删除的记录数
+     */
+    @Override
+    public int deleteByTitle(String alertTitle) {
+        LambdaQueryWrapper<SysAlert> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(SysAlert::getAlertTitle, alertTitle);
+        int count = (int) this.count(queryWrapper);
+        this.remove(queryWrapper);
+        log.info("[Alert] 按标题批量删除：标题={}, 数量={}", alertTitle, count);
+        return count;
     }
 }

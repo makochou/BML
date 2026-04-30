@@ -137,4 +137,64 @@ public class SysAlertController {
     public Result<Boolean> deleteAlert(@PathVariable("id") Long id) {
         return Result.ok(sysAlertService.deleteAlert(id));
     }
+
+    /**
+     * 按告警类型批量标记为已读
+     * <p>
+     * 将所有指定类型的未读告警一键标记为已读。
+     * 适用于用户希望快速清理某一类告警的场景。
+     * </p>
+     */
+    @Operation(summary = "按告警类型批量标记为已读")
+    @PreAuthorize("@ss.hasPermi('monitor:alert:edit')")
+    @PutMapping("/read-by-type")
+    public Result<Integer> markAsReadByType(
+            @Parameter(description = "告警类型（如：LICENSE_CHANGE、SYSTEM_ERROR 等）") @RequestParam("alertType") String alertType) {
+        return Result.ok(sysAlertService.markAsReadByType(alertType));
+    }
+
+    /**
+     * 按告警类型批量删除
+     * <p>
+     * 将所有指定类型的告警进行逻辑删除。
+     * 适用于用户希望彻底清理某一类告警的场景。
+     * </p>
+     */
+    @Operation(summary = "按告警类型批量删除")
+    @PreAuthorize("@ss.hasPermi('monitor:alert:remove')")
+    @DeleteMapping("/delete-by-type")
+    public Result<Integer> deleteByType(
+            @Parameter(description = "告警类型（如：LICENSE_CHANGE、SYSTEM_ERROR 等）") @RequestParam("alertType") String alertType) {
+        return Result.ok(sysAlertService.deleteByType(alertType));
+    }
+
+    /**
+     * 按告警标题批量标记为已读
+     * <p>
+     * 将所有指定标题的未读告警一键标记为已读。
+     * 适用于用户希望快速清理相同标题告警的场景。
+     * </p>
+     */
+    @Operation(summary = "按告警标题批量标记为已读")
+    @PreAuthorize("@ss.hasPermi('monitor:alert:edit')")
+    @PutMapping("/read-by-title")
+    public Result<Integer> markAsReadByTitle(
+            @Parameter(description = "告警标题（如：\"API 账号上限升级\"）") @RequestParam("alertTitle") String alertTitle) {
+        return Result.ok(sysAlertService.markAsReadByTitle(alertTitle));
+    }
+
+    /**
+     * 按告警标题批量删除
+     * <p>
+     * 将所有指定标题的告警进行逻辑删除。
+     * 适用于用户希望彻底清理相同标题告警的场景。
+     * </p>
+     */
+    @Operation(summary = "按告警标题批量删除")
+    @PreAuthorize("@ss.hasPermi('monitor:alert:remove')")
+    @DeleteMapping("/delete-by-title")
+    public Result<Integer> deleteByTitle(
+            @Parameter(description = "告警标题（如：\"API 账号上限升级\"）") @RequestParam("alertTitle") String alertTitle) {
+        return Result.ok(sysAlertService.deleteByTitle(alertTitle));
+    }
 }

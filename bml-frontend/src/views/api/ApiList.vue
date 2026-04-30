@@ -1,39 +1,99 @@
 <template>
   <div class="api-list-page">
-    <!-- 筛选与统计栏（无顶部大标题块） -->
+    <!-- 顶部统计卡片区域 -->
+    <div class="stats-cards-wrapper">
+      <div class="stats-card stats-card-modules">
+        <div class="stats-card-icon">
+          <icon-apps />
+        </div>
+        <div class="stats-card-content">
+          <div class="stats-card-value">{{ moduleCount }}</div>
+          <div class="stats-card-label">业务模块</div>
+        </div>
+        <div class="stats-card-bg-icon">
+          <icon-apps />
+        </div>
+      </div>
+      
+      <div class="stats-card stats-card-resources">
+        <div class="stats-card-icon">
+          <icon-folder />
+        </div>
+        <div class="stats-card-content">
+          <div class="stats-card-value">{{ resourceCount }}</div>
+          <div class="stats-card-label">业务分组</div>
+        </div>
+        <div class="stats-card-bg-icon">
+          <icon-folder />
+        </div>
+      </div>
+      
+      <div class="stats-card stats-card-apis">
+        <div class="stats-card-icon">
+          <icon-code-block />
+        </div>
+        <div class="stats-card-content">
+          <div class="stats-card-value">{{ apiCount }}</div>
+          <div class="stats-card-label">API 接口</div>
+        </div>
+        <div class="stats-card-bg-icon">
+          <icon-code-block />
+        </div>
+      </div>
+      
+      <div class="stats-card stats-card-status">
+        <div class="stats-card-icon">
+          <icon-check-circle />
+        </div>
+        <div class="stats-card-content">
+          <div class="stats-card-value">{{ openTabs.length }}</div>
+          <div class="stats-card-label">已打开标签</div>
+        </div>
+        <div class="stats-card-bg-icon">
+          <icon-check-circle />
+        </div>
+      </div>
+    </div>
+
+    <!-- 筛选与操作栏 -->
     <div class="api-list-toolbar">
       <div class="toolbar-left">
         <a-input-search
           v-model="filterKeyword"
-          placeholder="搜索接口名称、路径或描述"
+          placeholder="🔍 搜索接口名称、路径或描述..."
           allow-clear
-          style="width: 280px"
+          size="large"
+          style="width: 360px"
           @search="loadTree"
           @press-enter="loadTree"
-        />
+        >
+          <template #prefix>
+            <icon-search />
+          </template>
+        </a-input-search>
         <a-select
           v-model="filterMethod"
           placeholder="HTTP 方法"
           allow-clear
-          style="width: 120px"
+          size="large"
+          style="width: 140px"
           :options="methodOptions"
           @change="loadTree"
-        />
-        <a-button type="primary" :loading="loading" @click="loadTree">
-          <template #icon><icon-refresh /></template>
-          刷新
-        </a-button>
-        <a-button :loading="syncingRegistry" @click="handleSyncRegistry">
-          <template #icon><icon-sync /></template>
-          同步
-        </a-button>
+        >
+          <template #prefix>
+            <icon-filter />
+          </template>
+        </a-select>
       </div>
       <div class="toolbar-right">
-        <span class="stat-text" v-if="catalogTree.length">
-          共 <strong>{{ moduleCount }}</strong> 个模块，
-          <strong>{{ resourceCount }}</strong> 个业务分组，
-          <strong>{{ apiCount }}</strong> 个接口
-        </span>
+        <a-button type="primary" size="large" :loading="loading" @click="loadTree">
+          <template #icon><icon-refresh /></template>
+          刷新数据
+        </a-button>
+        <a-button size="large" :loading="syncingRegistry" @click="handleSyncRegistry">
+          <template #icon><icon-sync /></template>
+          同步接口
+        </a-button>
       </div>
     </div>
 
@@ -165,7 +225,7 @@ defineOptions({ name: 'ApiList' });
 
 import { ref, computed, onMounted } from 'vue';
 import { Message } from '@arco-design/web-vue';
-import { IconRefresh, IconRight, IconExpand, IconShrink, IconSend, IconLeft, IconSync } from '@arco-design/web-vue/es/icon';
+import { IconRefresh, IconRight, IconExpand, IconShrink, IconSend, IconLeft, IconSync, IconApps, IconFolder, IconCodeBlock, IconCheckCircle, IconSearch, IconFilter } from '@arco-design/web-vue/es/icon';
 import { fetchApiListTree } from '../../api/apiList';
 import { syncOpenApiRegistry } from '../../api/apiAccount';
 import type { ApiCatalogTreeNode } from '../../types/apiList';
@@ -585,6 +645,7 @@ onMounted(() => {
 /**
  * 整页铺满：作为 Layout .page-container 的 flex 子项，占满除标签栏外的可用高度；
  * 一页显示不全时，在「模块 / 业务分组 / 接口列表」各列内分别上下滚动。
+ * 终极设计：深色主题 + 霓虹色彩 + 粒子动画背景
  */
 .api-list-page {
   display: flex;
@@ -592,8 +653,231 @@ onMounted(() => {
   flex: 1;
   height: 100%;
   min-height: 0;
-  padding: 0 24px 24px;
-  background: linear-gradient(180deg, #f2f5fa 0%, #e8eef5 100%);
+  padding: 24px;
+  /* 深色渐变背景 */
+  background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
+  background-attachment: fixed;
+  position: relative;
+  overflow: hidden;
+}
+
+/* 粒子背景动画 */
+.api-list-page::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: 
+    radial-gradient(circle at 20% 50%, rgba(0, 245, 255, 0.15) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(181, 55, 242, 0.15) 0%, transparent 50%),
+    radial-gradient(circle at 40% 80%, rgba(255, 46, 151, 0.15) 0%, transparent 50%);
+  animation: particle-float 20s infinite ease-in-out;
+  pointer-events: none;
+}
+
+@keyframes particle-float {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(30px, -30px) scale(1.1); }
+  66% { transform: translate(-20px, 20px) scale(0.9); }
+}
+
+/* 网格线背景 */
+.api-list-page::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: 
+    linear-gradient(rgba(0, 245, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 245, 255, 0.03) 1px, transparent 1px);
+  background-size: 50px 50px;
+  animation: grid-move 20s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes grid-move {
+  0% { transform: translate(0, 0); }
+  100% { transform: translate(50px, 50px); }
+}
+
+/* 统计卡片容器 */
+.stats-cards-wrapper {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 24px;
+  margin-bottom: 24px;
+  position: relative;
+  z-index: 1;
+}
+
+/* 3D 统计卡片 */
+.stats-card {
+  position: relative;
+  height: 180px;
+  perspective: 1000px;
+  transform-style: preserve-3d;
+  transition: all 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  gap: 12px;
+  overflow: hidden;
+}
+
+.stats-card:hover {
+  transform: translateY(-12px) rotateX(5deg) scale(1.03);
+}
+
+/* 玻璃拟态背景 */
+.stats-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(20px);
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transition: all 0.3s;
+}
+
+.stats-card:hover::before {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(0, 245, 255, 0.3);
+}
+
+/* 霓虹发光边框 */
+.stats-card::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  background: linear-gradient(135deg, #00f5ff 0%, #b537f2 100%);
+  border-radius: 20px;
+  opacity: 0;
+  filter: blur(15px);
+  transition: opacity 0.3s;
+  z-index: -1;
+}
+
+.stats-card:hover::after {
+  opacity: 0.6;
+  animation: neon-pulse 2s infinite;
+}
+
+@keyframes neon-pulse {
+  0%, 100% { opacity: 0.6; filter: blur(15px); }
+  50% { opacity: 1; filter: blur(20px); }
+}
+
+/* 图标区域 */
+.stats-card-icon {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  transition: all 0.4s;
+  z-index: 1;
+}
+
+.stats-card:hover .stats-card-icon {
+  transform: rotate(10deg) scale(1.15);
+}
+
+/* 图标发光效果 */
+.stats-card-icon::before {
+  content: '';
+  position: absolute;
+  inset: -15px;
+  border-radius: 50%;
+  opacity: 0.5;
+  filter: blur(20px);
+  animation: icon-glow 3s infinite;
+  z-index: -1;
+}
+
+@keyframes icon-glow {
+  0%, 100% { transform: scale(1); opacity: 0.5; }
+  50% { transform: scale(1.3); opacity: 0.8; }
+}
+
+/* 不同卡片的图标颜色 */
+.stats-card-modules .stats-card-icon {
+  color: #00f5ff;
+}
+
+.stats-card-modules .stats-card-icon::before {
+  background: #00f5ff;
+}
+
+.stats-card-resources .stats-card-icon {
+  color: #b537f2;
+}
+
+.stats-card-resources .stats-card-icon::before {
+  background: #b537f2;
+}
+
+.stats-card-apis .stats-card-icon {
+  color: #ff2e97;
+}
+
+.stats-card-apis .stats-card-icon::before {
+  background: #ff2e97;
+}
+
+.stats-card-status .stats-card-icon {
+  color: #ffd700;
+}
+
+.stats-card-status .stats-card-icon::before {
+  background: #ffd700;
+}
+
+/* 卡片内容区域 */
+.stats-card-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  z-index: 1;
+}
+
+/* 数值显示 */
+.stats-card-value {
+  font-size: 42px;
+  font-weight: 800;
+  line-height: 1;
+  font-family: 'Orbitron', 'Rajdhani', 'Inter', sans-serif;
+  background: linear-gradient(135deg, #00f5ff 0%, #b537f2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: 0 0 30px rgba(0, 245, 255, 0.5);
+  animation: number-glow 3s infinite;
+}
+
+@keyframes number-glow {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.3); }
+}
+
+/* 标签文字 */
+.stats-card-label {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* 隐藏背景图标（简化设计） */
+.stats-card-bg-icon {
+  display: none;
 }
 
 .api-list-toolbar {
@@ -603,58 +887,164 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 14px 24px;
-  background: rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(10px);
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.8);
+  padding: 20px 28px;
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(20px);
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: 
-    0 4px 12px rgba(0, 0, 0, 0.03),
-    0 1px 2px rgba(0, 0, 0, 0.02);
-  margin-bottom: 20px;
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  margin-bottom: 24px;
+  position: relative;
+  z-index: 1;
 }
 
-/* 自定义全局滚动条样式：打造精致、极简的视觉交互 */
+/* 霓虹滚动条样式 */
 .api-list-page :deep(::-webkit-scrollbar) {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 
 .api-list-page :deep(::-webkit-scrollbar-track) {
-  background: transparent;
+  background: rgba(0, 0, 0, 0.2);
   border-radius: 10px;
 }
 
 .api-list-page :deep(::-webkit-scrollbar-thumb) {
-  background: rgba(201, 205, 212, 0.5);
+  background: linear-gradient(135deg, #00f5ff 0%, #b537f2 100%);
   border-radius: 10px;
-  border: 1px solid transparent;
-  background-clip: content-box;
+  box-shadow: 0 0 10px rgba(0, 245, 255, 0.5);
 }
 
 .api-list-page :deep(::-webkit-scrollbar-thumb:hover) {
-  background: rgba(134, 144, 156, 0.6);
+  background: linear-gradient(135deg, #00f5ff 0%, #ff2e97 100%);
+  box-shadow: 0 0 20px rgba(0, 245, 255, 0.8);
 }
 
 .toolbar-left {
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-wrap: wrap;
 }
 
-.toolbar-right .stat-text {
-  font-size: 13px;
-  color: #86909c;
+.toolbar-right {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 12px;
 }
 
-.toolbar-right strong {
-  color: var(--bml-primary, #165dff);
-  font-weight: 700;
-  font-family: 'JetBrains Mono', 'Inter', sans-serif;
-  font-size: 15px;
+/* 霓虹搜索框 */
+.toolbar-left :deep(.arco-input-wrapper) {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(0, 245, 255, 0.2);
+  border-radius: 12px;
+  transition: all 0.3s;
+}
+
+.toolbar-left :deep(.arco-input-wrapper:hover) {
+  border-color: rgba(0, 245, 255, 0.5);
+  box-shadow: 0 0 20px rgba(0, 245, 255, 0.3);
+}
+
+.toolbar-left :deep(.arco-input-wrapper.arco-input-focus) {
+  border-color: #00f5ff;
+  box-shadow: 
+    0 0 20px rgba(0, 245, 255, 0.5),
+    0 0 40px rgba(0, 245, 255, 0.3);
+}
+
+.toolbar-left :deep(.arco-input) {
+  color: #fff;
+  font-size: 14px;
+}
+
+.toolbar-left :deep(.arco-input::placeholder) {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.toolbar-left :deep(.arco-input-prefix) {
+  color: #00f5ff;
+}
+
+/* 霓虹下拉框 */
+.toolbar-left :deep(.arco-select-view) {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(181, 55, 242, 0.2);
+  border-radius: 12px;
+  color: #fff;
+  transition: all 0.3s;
+}
+
+.toolbar-left :deep(.arco-select-view:hover) {
+  border-color: rgba(181, 55, 242, 0.5);
+  box-shadow: 0 0 20px rgba(181, 55, 242, 0.3);
+}
+
+/* 霓虹按钮 - 主按钮 */
+.toolbar-right :deep(.arco-btn-primary) {
+  background: linear-gradient(135deg, #00f5ff 0%, #b537f2 100%);
+  border: none;
+  border-radius: 12px;
+  padding: 0 24px;
+  height: 40px;
+  font-weight: 600;
+  color: #fff;
+  box-shadow: 
+    0 4px 16px rgba(0, 245, 255, 0.4),
+    0 0 20px rgba(0, 245, 255, 0.3);
+  transition: all 0.3s;
+  position: relative;
+  overflow: hidden;
+}
+
+.toolbar-right :deep(.arco-btn-primary::before) {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.3) 50%,
+    transparent 100%
+  );
+  transform: translateX(-100%);
+  transition: transform 0.6s;
+}
+
+.toolbar-right :deep(.arco-btn-primary:hover::before) {
+  transform: translateX(100%);
+}
+
+.toolbar-right :deep(.arco-btn-primary:hover) {
+  transform: translateY(-2px);
+  box-shadow: 
+    0 6px 24px rgba(0, 245, 255, 0.6),
+    0 0 40px rgba(0, 245, 255, 0.4);
+}
+
+/* 霓虹按钮 - 次按钮 */
+.toolbar-right :deep(.arco-btn:not(.arco-btn-primary)) {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 46, 151, 0.3);
+  border-radius: 12px;
+  padding: 0 24px;
+  height: 40px;
+  font-weight: 600;
+  color: #ff2e97;
+  transition: all 0.3s;
+}
+
+.toolbar-right :deep(.arco-btn:not(.arco-btn-primary):hover) {
+  border-color: #ff2e97;
+  color: #fff;
+  background: rgba(255, 46, 151, 0.1);
+  transform: translateY(-2px);
+  box-shadow: 0 0 20px rgba(255, 46, 151, 0.4);
 }
 
 /* 卡片区域：占据剩余高度，内容超出时在列内上下滚动 */
@@ -663,11 +1053,17 @@ onMounted(() => {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(20px);
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
   padding: 0;
   overflow: hidden;
+  position: relative;
+  z-index: 1;
 }
 
 .api-list-spin {
@@ -715,17 +1111,20 @@ onMounted(() => {
 
 /* 左栏：接口目录（模块 → 业务分组 → 接口 三级树），固定宽度以让右侧调试有更多空间 */
 .hierarchy-col-catalog {
-  width: 320px;
+  width: 360px;
   flex-shrink: 0;
+  background: rgba(0, 0, 0, 0.2);
+  border-right: 1px solid rgba(0, 245, 255, 0.1);
 }
 
 /* 右栏：API 调试面板，占满剩余宽度 */
 .hierarchy-col-debug {
   flex: 1;
-  min-width: 480px;
+  min-width: 520px;
   display: flex;
   flex-direction: column;
   min-height: 0;
+  background: rgba(0, 0, 0, 0.1);
 }
 
 .col-debug-content {
@@ -900,47 +1299,58 @@ onMounted(() => {
 }
 
 .empty-icon-wrapper {
-  width: 64px;
-  height: 64px;
+  width: 80px;
+  height: 80px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #f2f5fa 0%, #e8eef5 100%);
-  color: #c9cdd4;
+  background: linear-gradient(135deg, #00f5ff 0%, #b537f2 100%);
+  color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 28px;
-  margin: 0 auto 16px;
+  font-size: 36px;
+  margin: 0 auto 20px;
+  box-shadow: 
+    0 8px 24px rgba(0, 245, 255, 0.4),
+    0 0 40px rgba(0, 245, 255, 0.3);
+  animation: empty-icon-float 3s infinite;
+}
+
+@keyframes empty-icon-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
 }
 
 .col-title {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 16px;
-  background: #f7f8fa;
-  border-bottom: 1px solid #f2f3f5;
+  padding: 16px 20px;
+  background: rgba(0, 245, 255, 0.05);
+  border-bottom: 1px solid rgba(0, 245, 255, 0.2);
   position: relative;
 }
 
 .col-title::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 3px;
-    height: 14px;
-    background: var(--bml-primary, #165dff);
-    border-radius: 0 2px 2px 0;
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 20px;
+  background: linear-gradient(135deg, #00f5ff 0%, #b537f2 100%);
+  border-radius: 0 4px 4px 0;
+  box-shadow: 0 0 10px rgba(0, 245, 255, 0.6);
 }
 
 .title-text {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
-  color: #4e5969;
-  letter-spacing: 0.05em;
+  color: #00f5ff;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  margin-left: 4px;
+  margin-left: 8px;
+  text-shadow: 0 0 10px rgba(0, 245, 255, 0.5);
 }
 
 .title-actions {
@@ -956,14 +1366,14 @@ onMounted(() => {
 .action-btn {
   padding: 0 4px;
   font-size: 12px;
-  color: #4e5969;
+  color: rgba(255, 255, 255, 0.6);
   border-radius: 4px;
   transition: all 0.2s ease;
 }
 
 .action-btn:hover {
-  background-color: #e8f3ff;
-  color: #165dff;
+  background-color: rgba(0, 245, 255, 0.1);
+  color: #00f5ff;
 }
 
 /* 列内列表 */

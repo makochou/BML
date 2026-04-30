@@ -54,8 +54,13 @@
         <maven.compiler.release>${java.version}</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-        <!-- 测试期 JVM 参数：允许动态 Agent 加载，消除 JDK 21 的警告噪声 -->
-        <surefire.argLine>-XX:+EnableDynamicAgentLoading</surefire.argLine>
+        <!--
+            测试期 JVM 参数：
+              1. -XX:+EnableDynamicAgentLoading：允许动态 Agent 加载，消除 JDK 21 的警告噪声
+              2. -Djdk.net.URLClassPath.disableClassPathURLCheck=true：
+                 禁用 JDK 类路径 URL 检查，解决 Windows 绝对路径问题（SUREFIRE-2065）
+        -->
+        <surefire.argLine>-XX:+EnableDynamicAgentLoading -Djdk.net.URLClassPath.disableClassPathURLCheck=true</surefire.argLine>
 
         <!-- ── Spring 生态 ── -->
         <!-- 与 parent 中的 spring-boot-starter-parent 版本保持一致 -->
@@ -401,13 +406,24 @@
                 </configuration>
             </plugin>
 
-            <!-- 统一测试执行参数，减少 JDK 21 动态 Agent 警告噪声 -->
+            <!-- 
+                统一测试执行参数
+                配置说明：
+                  1. argLine：JVM 参数，包含动态 Agent 加载和类路径检查禁用
+                  2. useFile：禁用文件输出，直接输出到控制台，便于 CI/CD 查看
+                  3. trimStackTrace：保留完整堆栈跟踪，便于问题排查
+                  4. forkCount：并行执行测试的 JVM 进程数，1C 表示每个 CPU 核心一个进程
+                  5. reuseForks：复用 JVM 进程，提升测试执行速度
+            -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
                     <argLine>${surefire.argLine}</argLine>
                     <useFile>false</useFile>
+                    <trimStackTrace>false</trimStackTrace>
+                    <forkCount>1C</forkCount>
+                    <reuseForks>true</reuseForks>
                 </configuration>
             </plugin>
 

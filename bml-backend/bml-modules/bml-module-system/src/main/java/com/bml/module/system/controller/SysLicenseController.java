@@ -490,10 +490,16 @@ public class SysLicenseController {
     }
 
     /**
-     * 通用告警保存工具方法。
+     * 通用告警保存工具方法（智能去重版本）
      * <p>
      * 统一封装 SysAlert 对象的构建与持久化，避免在 createLicenseChangeAlerts 中重复样板代码。
      * 所有许可证变更告警均通过此方法写入，便于后续统一调整字段默认值。
+     * </p>
+     * <p>
+     * <strong>智能去重机制：</strong>
+     * 在保存新告警前，先检查是否已存在相同类型（alertType）和标题（alertTitle）的未读告警。
+     * 如果存在，则更新该告警的内容和时间，而不是创建新记录。
+     * 这样可以确保每种类型的许可证变更只显示最新的一条告警，避免重复提醒用户。
      * </p>
      *
      * @param alertType    告警类型标识（如 LICENSE_CHANGE）
@@ -508,7 +514,8 @@ public class SysLicenseController {
         alert.setAlertTitle(alertTitle);
         alert.setAlertContent(alertContent);
         alert.setReadStatus(0);
-        sysAlertService.save(alert);
+        // 使用智能去重保存方法，避免重复告警
+        sysAlertService.saveOrUpdateAlert(alert);
     }
 
     /**
