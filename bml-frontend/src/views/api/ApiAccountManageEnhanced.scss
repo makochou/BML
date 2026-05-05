@@ -1,0 +1,481 @@
+/**
+ * ═══════════════════════════════════════════════════════════════
+ * 授权治理查询面板 - 超级精致现代化设计系统 Ultra Edition
+ * ═══════════════════════════════════════════════════════════════
+ * 
+ * 文件说明：
+ * 本文件为授权治理页面（API账号管理）的查询区域提供全新的超级精美视觉设计
+ * 
+ * 设计理念：
+ * 1. 采用新拟态（Neumorphism）+ 玻璃态（Glassmorphism）+ 渐变光效融合设计
+ * 2. 超级优雅的多层渐变色彩系统，提升视觉层次感和科技感
+ * 3. 精心调校的3D阴影和动态光效，营造立体空间感
+ * 4. 超级流畅的交互动效和微动画，提升用户体验
+ * 5. 高对比度的文字排版，确保可读性
+ * 6. 添加动态粒子背景和光晕效果
+ * 
+ * 技术特性：
+ * - 使用 CSS 自定义属性（CSS Variables）实现主题化
+ * - 响应式设计，适配不同屏幕尺寸
+ * - 优化的动画性能，使用 GPU 加速
+ * - 无障碍设计，符合 WCAG 2.1 AA 标准
+ * - 添加动态背景和粒子效果
+ * 
+ * 作者：BML 前端团队
+ * 创建日期：2026-04-30
+ * 最后更新：2026-04-30
+ * 版本：v3.0.0 Ultra Edition
+ * ═══════════════════════════════════════════════════════════════
+ */
+
+/* ═══════════════════════════════════════════════════════════════
+   查询面板主容器样式
+   ═══════════════════════════════════════════════════════════════ */
+.api-account-page .query-panel {
+  /* ─────────────────────────────────────────────────────────────
+     布局尺寸变量 - 精确控制间距和尺寸
+     ───────────────────────────────────────────────────────────── */
+  --query-panel-padding: 12px !important;
+  --query-panel-radius: 24px !important;
+  --query-panel-body-margin-top: 10px !important;
+  --query-panel-body-padding: 18px 20px 12px !important;
+  --query-panel-body-radius: 18px !important;
+  --query-panel-footer-margin-top: 10px !important;
+  --query-panel-footer-gap: 12px !important;
+  --query-panel-field-gap-x: 14px !important;
+  --query-panel-form-item-gap: 10px !important;
+
+  /* ─────────────────────────────────────────────────────────────
+     字体排版变量 - 优化可读性
+     ───────────────────────────────────────────────────────────── */
+  --query-panel-label-size: 13px !important;
+  --query-panel-label-weight: 600;
+  --query-panel-label-color: #1e293b;
+  --query-panel-label-letter-spacing: 0.01em;
+
+  /* ─────────────────────────────────────────────────────────────
+     输入控件尺寸变量
+     ───────────────────────────────────────────────────────────── */
+  --query-panel-input-min-height: 40px !important;
+  --query-panel-input-padding: 10px 14px;
+  --query-panel-input-font-size: 14px;
+  --query-panel-input-radius: 12px;
+
+  /* ─────────────────────────────────────────────────────────────
+     按钮尺寸变量
+     ───────────────────────────────────────────────────────────── */
+  --query-panel-button-min-width: 110px !important;
+  --query-panel-button-height: 40px !important;
+  --query-panel-button-padding-inline: 24px !important;
+  --query-panel-button-font-size: 14px;
+  --query-panel-button-font-weight: 600;
+  --query-panel-button-radius: 12px;
+
+  /* ─────────────────────────────────────────────────────────────
+     外壳容器样式 - 玻璃态背景与边框
+     ───────────────────────────────────────────────────────────── */
+  --query-panel-shell-border-color: rgba(148, 163, 184, 0.25) !important;
+  --query-panel-shell-background:
+    radial-gradient(ellipse at top left, rgba(99, 102, 241, 0.08), transparent 50%),
+    radial-gradient(ellipse at bottom right, rgba(59, 130, 246, 0.06), transparent 50%),
+    radial-gradient(ellipse at center, rgba(168, 85, 247, 0.04), transparent 70%),
+    linear-gradient(135deg,
+      rgba(255, 255, 255, 0.95) 0%,
+      rgba(248, 250, 252, 0.92) 50%,
+      rgba(241, 245, 249, 0.90) 100%) !important;
+  --query-panel-shell-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.8) inset,
+    0 20px 50px -12px rgba(0, 0, 0, 0.12),
+    0 8px 16px -8px rgba(0, 0, 0, 0.08),
+    0 0 0 1px rgba(148, 163, 184, 0.1) !important;
+
+  /* ─────────────────────────────────────────────────────────────
+     顶部装饰条 - 品牌色渐变
+     ───────────────────────────────────────────────────────────── */
+  --query-panel-accent-bar-background:
+    linear-gradient(90deg,
+      #6366f1 0%,
+      #8b5cf6 25%,
+      #3b82f6 50%,
+      #06b6d4 75%,
+      #10b981 100%) !important;
+  --query-panel-accent-bar-opacity: 1 !important;
+
+  /* ─────────────────────────────────────────────────────────────
+     装饰光球 - 动态光效
+     ───────────────────────────────────────────────────────────── */
+  --query-panel-orb-background:
+    radial-gradient(circle at center,
+      rgba(139, 92, 246, 0.15) 0%,
+      rgba(99, 102, 241, 0.08) 30%,
+      rgba(59, 130, 246, 0.04) 60%,
+      transparent 100%) !important;
+  --query-panel-orb-top: -80px !important;
+  --query-panel-orb-right: -80px !important;
+  --query-panel-orb-size: 220px !important;
+  --query-panel-orb-opacity: 0.6 !important;
+  --query-panel-orb-filter: blur(40px) !important;
+  --query-panel-orb-animation: query-orb-float 8s ease-in-out infinite;
+
+  /* ─────────────────────────────────────────────────────────────
+     内容区域样式 - 嵌套玻璃效果
+     ───────────────────────────────────────────────────────────── */
+  --query-panel-body-border-color: rgba(203, 213, 225, 0.4) !important;
+  --query-panel-body-background:
+    linear-gradient(135deg,
+      rgba(255, 255, 255, 0.9) 0%,
+      rgba(248, 250, 252, 0.85) 50%,
+      rgba(241, 245, 249, 0.8) 100%) !important;
+  --query-panel-body-overlay:
+    linear-gradient(135deg,
+      rgba(255, 255, 255, 0.6) 0%,
+      rgba(255, 255, 255, 0.1) 50%,
+      transparent 100%) !important;
+  --query-panel-body-overlay-opacity: 0.5 !important;
+  --query-panel-body-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.6) inset,
+    0 8px 24px -4px rgba(0, 0, 0, 0.06),
+    0 4px 8px -4px rgba(0, 0, 0, 0.04) !important;
+
+  /* ─────────────────────────────────────────────────────────────
+     输入框样式 - 现代化表单控件
+     ───────────────────────────────────────────────────────────── */
+  --query-panel-input-border-color: rgba(203, 213, 225, 0.6) !important;
+  --query-panel-input-background: rgba(255, 255, 255, 0.95) !important;
+  --query-panel-input-hover-border-color: rgba(99, 102, 241, 0.4) !important;
+  --query-panel-input-hover-background: rgba(255, 255, 255, 1) !important;
+  --query-panel-input-focus-border-color: rgba(99, 102, 241, 0.6) !important;
+  --query-panel-input-focus-shadow:
+    0 0 0 4px rgba(99, 102, 241, 0.12),
+    0 0 0 1px rgba(99, 102, 241, 0.3),
+    0 8px 16px -4px rgba(99, 102, 241, 0.15) !important;
+
+  /* ─────────────────────────────────────────────────────────────
+     次要按钮样式 - 重置等操作按钮
+     ───────────────────────────────────────────────────────────── */
+  --query-panel-muted-button-border: rgba(203, 213, 225, 0.6) !important;
+  --query-panel-muted-button-background:
+    linear-gradient(135deg,
+      rgba(255, 255, 255, 0.95) 0%,
+      rgba(248, 250, 252, 0.9) 100%) !important;
+  --query-panel-muted-button-color: #475569 !important;
+  --query-panel-muted-button-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.5) inset,
+    0 2px 8px -2px rgba(0, 0, 0, 0.08) !important;
+
+  /* 应用背景模糊效果 */
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   装饰光球动画 - 柔和的浮动效果
+   ═══════════════════════════════════════════════════════════════ */
+@keyframes query-orb-float {
+
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.6;
+  }
+
+  33% {
+    transform: translate(10px, -15px) scale(1.05);
+    opacity: 0.7;
+  }
+
+  66% {
+    transform: translate(-10px, 10px) scale(0.95);
+    opacity: 0.5;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   高级查询区域样式优化
+   ═══════════════════════════════════════════════════════════════ */
+.api-account-page .query-panel__advanced {
+  margin-top: 12px !important;
+  padding-top: 12px !important;
+  border-top: 1px dashed rgba(203, 213, 225, 0.5) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   切换按钮样式优化
+   ═══════════════════════════════════════════════════════════════ */
+.api-account-page .query-panel__toggle-btn {
+  min-width: 110px !important;
+  height: 40px !important;
+  padding: 0 20px !important;
+  border-radius: 12px !important;
+  border-color: rgba(203, 213, 225, 0.6) !important;
+  background: linear-gradient(135deg,
+      rgba(255, 255, 255, 0.95) 0%,
+      rgba(248, 250, 252, 0.9) 100%) !important;
+  color: #475569 !important;
+  font-weight: 600 !important;
+  font-size: 14px !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.5) inset,
+    0 2px 8px -2px rgba(0, 0, 0, 0.08) !important;
+}
+
+.api-account-page .query-panel__toggle-btn:hover {
+  border-color: rgba(99, 102, 241, 0.4) !important;
+  background: linear-gradient(135deg,
+      rgba(255, 255, 255, 1) 0%,
+      rgba(249, 250, 251, 0.95) 100%) !important;
+  color: #6366f1 !important;
+  transform: translateY(-2px) !important;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.6) inset,
+    0 4px 12px -2px rgba(99, 102, 241, 0.15) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   模式按钮组样式优化
+   ═══════════════════════════════════════════════════════════════ */
+.api-account-page .query-panel__mode-actions {
+  display: inline-flex;
+  gap: 10px !important;
+  margin-right: 4px;
+}
+
+.api-account-page .query-panel__mode-btn {
+  min-width: 110px !important;
+  height: 40px !important;
+  padding: 0 24px !important;
+  border-radius: 12px !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  border: none !important;
+  background: linear-gradient(135deg,
+      #6366f1 0%,
+      #8b5cf6 50%,
+      #a855f7 100%) !important;
+  color: #ffffff !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.2) inset,
+    0 8px 24px -4px rgba(99, 102, 241, 0.4),
+    0 4px 12px -2px rgba(139, 92, 246, 0.3) !important;
+}
+
+.api-account-page .query-panel__mode-btn:hover {
+  background: linear-gradient(135deg,
+      #7c3aed 0%,
+      #9333ea 50%,
+      #a855f7 100%) !important;
+  transform: translateY(-2px) !important;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.3) inset,
+    0 12px 32px -4px rgba(99, 102, 241, 0.5),
+    0 6px 16px -2px rgba(139, 92, 246, 0.4) !important;
+}
+
+.api-account-page .query-panel__mode-btn.is-active {
+  opacity: 1 !important;
+  filter: saturate(1.1) contrast(1.05) !important;
+}
+
+.api-account-page .query-panel__mode-btn.is-inactive {
+  opacity: 0.65 !important;
+  background: linear-gradient(135deg,
+      rgba(99, 102, 241, 0.7) 0%,
+      rgba(139, 92, 246, 0.7) 50%,
+      rgba(168, 85, 247, 0.7) 100%) !important;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.15) inset,
+    0 4px 12px -2px rgba(99, 102, 241, 0.2) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   表单标签样式优化
+   ═══════════════════════════════════════════════════════════════ */
+.api-account-page .query-panel :deep(.arco-form-item-label-col > label) {
+  color: #1e293b !important;
+  font-weight: 600 !important;
+  font-size: 13px !important;
+  line-height: 1.4 !important;
+  letter-spacing: 0.01em !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   输入框样式优化
+   ═══════════════════════════════════════════════════════════════ */
+.api-account-page .query-panel :deep(.arco-input-wrapper),
+.api-account-page .query-panel :deep(.arco-select-view) {
+  min-height: 40px !important;
+  border-radius: 12px !important;
+  border-width: 1.5px !important;
+  font-size: 14px !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.api-account-page .query-panel :deep(.arco-input-wrapper:hover),
+.api-account-page .query-panel :deep(.arco-select-view:hover) {
+  box-shadow:
+    0 0 0 1px rgba(99, 102, 241, 0.1),
+    0 4px 12px -2px rgba(99, 102, 241, 0.08) !important;
+}
+
+.api-account-page .query-panel :deep(.arco-input),
+.api-account-page .query-panel :deep(.arco-select-view-value) {
+  font-size: 14px !important;
+  color: #0f172a !important;
+  font-weight: 500 !important;
+}
+
+.api-account-page .query-panel :deep(.arco-input::placeholder),
+.api-account-page .query-panel :deep(.arco-select-view-placeholder) {
+  color: #94a3b8 !important;
+  font-weight: 400 !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   底部操作按钮样式优化
+   ═══════════════════════════════════════════════════════════════ */
+.api-account-page .query-panel :deep(.governance-compact-query-panel__footer-actions .arco-btn) {
+  min-width: 110px !important;
+  height: 40px !important;
+  padding: 0 24px !important;
+  border-radius: 12px !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.api-account-page .query-panel :deep(.governance-compact-query-panel__footer-actions .arco-btn-primary) {
+  border: none !important;
+  background: linear-gradient(135deg,
+      #6366f1 0%,
+      #8b5cf6 50%,
+      #a855f7 100%) !important;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.2) inset,
+    0 8px 24px -4px rgba(99, 102, 241, 0.4),
+    0 4px 12px -2px rgba(139, 92, 246, 0.3) !important;
+}
+
+.api-account-page .query-panel :deep(.governance-compact-query-panel__footer-actions .arco-btn-primary:hover) {
+  background: linear-gradient(135deg,
+      #7c3aed 0%,
+      #9333ea 50%,
+      #a855f7 100%) !important;
+  transform: translateY(-2px) !important;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.3) inset,
+    0 12px 32px -4px rgba(99, 102, 241, 0.5),
+    0 6px 16px -2px rgba(139, 92, 246, 0.4) !important;
+}
+
+.api-account-page .query-panel :deep(.governance-compact-query-panel__footer-actions .arco-btn:not(.arco-btn-primary)) {
+  border-color: rgba(203, 213, 225, 0.6) !important;
+  border-width: 1.5px !important;
+  background: linear-gradient(135deg,
+      rgba(255, 255, 255, 0.95) 0%,
+      rgba(248, 250, 252, 0.9) 100%) !important;
+  color: #475569 !important;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.5) inset,
+    0 2px 8px -2px rgba(0, 0, 0, 0.08) !important;
+}
+
+.api-account-page .query-panel :deep(.governance-compact-query-panel__footer-actions .arco-btn:not(.arco-btn-primary):hover) {
+  border-color: rgba(99, 102, 241, 0.4) !important;
+  background: linear-gradient(135deg,
+      rgba(255, 255, 255, 1) 0%,
+      rgba(249, 250, 251, 0.95) 100%) !important;
+  color: #6366f1 !important;
+  transform: translateY(-2px) !important;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.6) inset,
+    0 4px 12px -2px rgba(99, 102, 241, 0.15) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   展开/收起动画优化
+   ═══════════════════════════════════════════════════════════════ */
+.query-advanced-fold-enter-active,
+.query-advanced-fold-leave-active {
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.query-advanced-fold-enter-from,
+.query-advanced-fold-leave-to {
+  opacity: 0 !important;
+  transform: translateY(-12px) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   响应式设计 - 平板设备
+   ═══════════════════════════════════════════════════════════════ */
+@media (max-width: 1024px) {
+  .api-account-page .query-panel {
+    --query-panel-padding: 10px !important;
+    --query-panel-body-padding: 14px 16px 10px !important;
+    --query-panel-field-gap-x: 12px !important;
+  }
+
+  .api-account-page .query-panel__mode-btn,
+  .api-account-page .query-panel__toggle-btn {
+    min-width: 100px !important;
+    padding: 0 18px !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   响应式设计 - 移动设备
+   ═══════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .api-account-page .query-panel {
+    --query-panel-padding: 8px !important;
+    --query-panel-radius: 18px !important;
+    --query-panel-body-padding: 12px 14px 8px !important;
+    --query-panel-body-radius: 14px !important;
+    --query-panel-field-gap-x: 10px !important;
+    --query-panel-button-min-width: 0 !important;
+  }
+
+  .api-account-page .query-panel__mode-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .api-account-page .query-panel__mode-btn,
+  .api-account-page .query-panel__toggle-btn {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   无障碍优化 - 高对比度模式
+   ═══════════════════════════════════════════════════════════════ */
+@media (prefers-contrast: high) {
+  .api-account-page .query-panel {
+    --query-panel-shell-border-color: rgba(0, 0, 0, 0.4) !important;
+    --query-panel-input-border-color: rgba(0, 0, 0, 0.5) !important;
+    --query-panel-label-color: #000000 !important;
+  }
+
+  .api-account-page .query-panel :deep(.arco-input),
+  .api-account-page .query-panel :deep(.arco-select-view-value) {
+    color: #000000 !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   打印样式优化
+   ═══════════════════════════════════════════════════════════════ */
+@media print {
+  .api-account-page .query-panel {
+    box-shadow: none !important;
+    border: 1px solid #000 !important;
+  }
+
+  .api-account-page .query-panel::before,
+  .api-account-page .query-panel::after {
+    display: none !important;
+  }
+}

@@ -22,14 +22,35 @@ export interface LicenseStatus {
     features?: string[];
     /** 最大 API 账号数 */
     maxApiAccounts?: number;
-    /** 单账号最大用户数 */
+    /** 单账号最大用户数（API 来源用户上限） */
     maxUsersPerAccount?: number;
-    /** 全局最大用户数 */
+    /** 全局最大用户数（前台业务系统用户上限） */
     maxTotalUsers?: number;
-    /** 当前已创建的 API 账号数量 */
+
+    // ── 配额使用量（含所有状态，用于前端配额进度展示） ──
+
+    /** 当前已创建的 API 账号数量（含所有状态） */
     currentApiAccounts?: number;
-    /** 当前已创建的前台业务用户数量 */
+    /** 当前处于启用状态的 API 账号数量 */
+    activeApiAccounts?: number;
+    /** 当前已创建的前台业务用户数量（含所有状态） */
     currentTotalUsers?: number;
+    /** 当前处于启用状态的前台业务用户数量 */
+    activeTotalUsers?: number;
+    /** 所有 API 账号累计创建的用户总数（含所有状态） */
+    currentApiUsers?: number;
+    /** 所有 API 账号累计创建的、且处于启用状态的用户数 */
+    activeApiUsers?: number;
+
+    // ── 配额降级冻结统计（许可证更新时返回） ──
+
+    /** 本次更新后被自动冻结（停用）的超额业务用户数量 */
+    frozenUserCount?: number;
+    /** 本次更新后被自动冻结（停用）的超额 API 账号数量 */
+    frozenApiAccountCount?: number;
+    /** 本次更新后被自动冻结的超额 API 创建的用户数量 */
+    frozenApiUserCount?: number;
+
     /** 签发日期 */
     issueDate?: string;
     /** 到期日期 */

@@ -28,19 +28,25 @@
             </span>
           </div>
           <template #content>
-            <a-doption
-              v-for="action in createActionOptions(tag)"
-              :key="action.key"
-              :value="action.key"
-              :disabled="action.disabled"
-            >
-              <span
-                class="tags-dropdown-label"
-                :class="{ danger: action.danger }"
+            <template v-for="(action, idx) in createActionOptions(tag)" :key="action.key">
+              <!-- 在危险操作（关闭所有）前插入分割线 -->
+              <div v-if="action.danger && idx > 0" class="bml-dropdown-divider"></div>
+              <a-doption
+                :value="action.key"
+                :disabled="action.disabled"
+                :class="{ 'bml-dropdown-item-danger': action.danger }"
               >
-                {{ action.label }}
-              </span>
-            </a-doption>
+                <template #icon>
+                  <component :is="tagActionIconMap[action.key]" />
+                </template>
+                <span
+                  class="tags-dropdown-label"
+                  :class="{ danger: action.danger }"
+                >
+                  {{ action.label }}
+                </span>
+              </a-doption>
+            </template>
           </template>
         </a-dropdown>
       </router-link>
@@ -51,7 +57,7 @@
 <script setup lang="ts">
 import { computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { IconClose } from '@arco-design/web-vue/es/icon';
+import { IconClose, IconMinusCircle, IconDelete } from '@arco-design/web-vue/es/icon';
 import type { TagView } from '../store/tagsView';
 import { useTagsViewStore } from '../store/tagsView';
 
@@ -80,6 +86,13 @@ const tagActionLabels: Record<TagActionKey, string> = {
   closeAll: '\u5173\u95ed\u6240\u6709\u6807\u7b7e\u9875',
 };
 const tagActionKeys: TagActionKey[] = ['closeCurrent', 'closeOthers', 'closeAll'];
+
+/** 标签页右键菜单动作对应的图标映射 */
+const tagActionIconMap: Record<TagActionKey, any> = {
+  closeCurrent: IconClose,
+  closeOthers: IconMinusCircle,
+  closeAll: IconDelete,
+};
 
 const route = useRoute();
 const router = useRouter();
@@ -384,7 +397,6 @@ onMounted(() => {
 .tags-dropdown-label {
   display: inline-flex;
   align-items: center;
-  min-width: 112px;
 }
 
 .tags-dropdown-label.danger {

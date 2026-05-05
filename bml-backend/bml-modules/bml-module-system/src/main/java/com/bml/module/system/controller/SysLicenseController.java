@@ -166,6 +166,11 @@ public class SysLicenseController {
             return Result.fail(GlobalErrorCode.LICENSE_PARSE_ERROR);
         }
 
+        // ── 快照旧许可证（首次激活时为 null）──
+        // loadFromContent() 会直接覆盖 licenseHolder.currentLicense，
+        // 必须在调用前保存旧引用，否则后续全量变更对比无法得知"更新前"状态。
+        BmlLicense oldLicense = licenseHolder.getCurrentLicense();
+
         // 验证许可证内容
         boolean valid = licenseHolder.loadFromContent(fileContent);
         if (!valid) {
@@ -196,8 +201,11 @@ public class SysLicenseController {
         LicenseQuotaEnforcer.EnforceResult enforceResult =
                 licenseQuotaEnforcer.enforceAll(licenseHolder.getCurrentLicense());
 
-        // 配额降级记录写入告警中心（由前端轮询自动弹窗展示）
-        createQuotaDowngradeAlerts(enforceResult);
+        // ── 全量变更告警（含首次激活 + 配额变更 + 模块增减等） ──
+        // 与 update() 共用同一套变更检测逻辑，确保所有许可证操作都在告警中心留痕。
+        // 首次激活时 oldLicense 为 null，createLicenseChangeAlerts 会生成"系统授权激活"记录。
+        BmlLicense newLicense = licenseHolder.getCurrentLicense();
+        createLicenseChangeAlerts(oldLicense, newLicense, enforceResult);
 
         LicenseStatusVO vo = LicenseStatusVO.from(
                 licenseHolder.getCurrentLicense(),
@@ -397,8 +405,16 @@ public class SysLicenseController {
             }
         }
 
-        // 旧许可证为空（首次激活）时，后续对比无意义，直接返回
+        // 旧许可证为空（首次激活）时，写入一条"系统授权激活成功"记录后返回
         if (oldLicense == null) {
+            String activationContent = String.format(
+                    "系统许可证首次激活成功。客户：%s，许可证 ID：%s，有效期至：%s。",
+                    newLicense.getCustomerName(),
+                    newLicense.getLicenseId(),
+                    newLicense.getExpireDate() != null
+                            ? newLicense.getExpireDate().toLocalDate().toString()
+                            : "永久");
+            saveAlert("LICENSE_CHANGE", "info", "系统授权激活成功", activationContent);
             return;
         }
 

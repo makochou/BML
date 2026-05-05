@@ -232,6 +232,74 @@ public class SysMenuServiceImpl extends BaseServiceImpl<SysMenuMapper, SysMenu> 
     }
 
     /**
+     * 查询权限分配面板所需的扁平菜单列表（业务系统角色授权专用）
+     * <p>
+     * <b>仅返回业务系统菜单</b>，即挂载在"系统管理"（path=
+     * {@value GlobalConstants#BUSINESS_SYSTEM_MENU_PATH}）目录下的所有子孙菜单。
+     * 中台管理的菜单（工作台、资产目录、授权治理、系统监控等）不包含在结果中。
+     * </p>
+     *
+     * <h3>架构说明：</h3>
+     * <ul>
+     *   <li>中台管理平台（ip:port/admin）拥有独立的菜单体系，不参与业务系统角色授权</li>
+     *   <li>业务系统（ip:port/）的菜单全部挂载在 path='system' 的顶级 M 目录下</li>
+     *   <li>该目录本身 visible=0（在路由构建时隐藏），但其子菜单 visible=1，
+     *       权限分配时需要包含该目录以保持树形结构的完整性</li>
+     * </ul>
+     *
+     * <h3>过滤规则：</h3>
+     * <ol>
+     *   <li>查询所有 status=1（正常）的菜单，不过滤 visible（业务根目录 visible=0）</li>
+     *   <li>定位业务系统根目录：path='system'、menuType='M'、parentId=0</li>
+     *   <li>递归收集该根目录及其所有子孙菜单</li>
+     *   <li>仅返回这些菜单，天然排除中台管理的所有菜单</li>
+     * </ol>
+     *
+     * @return 扁平菜单列表（仅包含业务系统菜单，含根目录本身）
+     */
+    @Override
+    public List<SysMenu> selectPermissionMenuList() {
+        // 1. 查询所有正常状态的菜单（不过滤 visible，因为业务根目录 visible=0）
+        List<SysMenu> allMenus = this.lambdaQuery()
+                .eq(SysMenu::getStatus, GlobalConstants.STATUS_NORMAL)
+                .orderByAsc(SysMenu::getParentId, SysMenu::getSort)
+                .list();
+
+        // 2. 定位业务系统菜单根目录（path='system' 的顶级 M 类型目录）
+        Optional<SysMenu> businessRoot = allMenus.stream()
+                .filter(m -> GlobalConstants.BUSINESS_SYSTEM_MENU_PATH.equals(m.getPath())
+                        && "M".equals(m.getMenuType())
+                        && GlobalConstants.ROOT_NODE_ID.equals(m.getParentId()))
+                .findFirst();
+
+        if (businessRoot.isEmpty()) {
+            // 未找到业务系统根目录，返回空列表（避免误授权中台管理菜单）
+            return Collections.emptyList();
+        }
+
+        // 3. 递归收集业务根目录及其所有子孙菜单的 ID
+        Long rootId = businessRoot.get().getId();
+        Set<Long> includeIds = new HashSet<>();
+        includeIds.add(rootId);
+
+        boolean changed = true;
+        while (changed) {
+            changed = false;
+            for (SysMenu m : allMenus) {
+                if (!includeIds.contains(m.getId()) && includeIds.contains(m.getParentId())) {
+                    includeIds.add(m.getId());
+                    changed = true;
+                }
+            }
+        }
+
+        // 4. 仅返回业务系统菜单（根目录 + 所有子孙）
+        return allMenus.stream()
+                .filter(m -> includeIds.contains(m.getId()))
+                .collect(Collectors.toList());
+    }
+
+    /**
      * 修改菜单
      *
      * @param menuDto 菜单 DTO

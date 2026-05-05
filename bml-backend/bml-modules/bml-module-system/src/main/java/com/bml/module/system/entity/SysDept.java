@@ -42,6 +42,10 @@ public class SysDept extends BaseEntity {
     @Schema(description = "所属机构ID")
     private Long orgId;
 
+    @Schema(description = "所属机构名称（非持久化字段，由服务层根据 orgId 批量填充）")
+    @TableField(exist = false)
+    private String orgName;
+
     @Schema(description = "父部门ID（0 表示顶级部门）")
     private Long parentId;
 

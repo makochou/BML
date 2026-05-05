@@ -1,5 +1,6 @@
 package com.bml.core.framework.security.service;
 
+import com.bml.core.common.constant.GlobalConstants;
 import com.bml.core.common.constant.TokenConstants;
 import com.bml.core.common.enums.GlobalErrorCode;
 import com.bml.core.common.exception.BusinessException;
@@ -30,12 +31,14 @@ import java.util.concurrent.TimeUnit;
  * <li>完整的 {@link LoginUser}（含权限列表）存储在 Redis 中</li>
  * <li>支持实时踢下线（删除 Redis 即可）</li>
  * <li>支持权限变更即时生效（更新 Redis 中的 LoginUser）</li>
+ * <li>中台管理员会话活动时间单独记录，用于空闲超时检查</li>
  * </ul>
  *
  * <h3>Redis Key 格式：</h3>
  * 
  * <pre>
- * login_tokens:{uuid}  →  LoginUser JSON
+ * login_tokens:{uuid}                →  LoginUser JSON
+ * admin_session_activity:{uuid}      →  最后活动时间戳（仅中台管理员）
  * </pre>
  *
  * <h3>Token 流程：</h3>
@@ -53,6 +56,11 @@ import java.util.concurrent.TimeUnit;
 public class TokenService {
 
     private static final Logger log = LoggerFactory.getLogger(TokenService.class);
+
+    /**
+     * Redis Key 前缀：管理员会话活动时间
+     */
+    private static final String ADMIN_SESSION_ACTIVITY_KEY_PREFIX = "admin_session_activity:";
 
     private final JwtUtils jwtUtils;
 
@@ -79,6 +87,7 @@ public class TokenService {
      * <li>生成 UUID 作为用户唯一标识（userKey）</li>
      * <li>记录登录时间和过期时间</li>
      * <li>将完整的 LoginUser 对象缓存到 Redis</li>
+     * <li>如果是中台管理员，初始化会话活动时间到 Redis</li>
      * <li>生成 AccessToken 和 RefreshToken</li>
      * </ol>
      * </p>
@@ -99,19 +108,24 @@ public class TokenService {
         // 3. 缓存到 Redis（过期时间与 RefreshToken 保持一致）
         refreshCache(loginUser);
 
-        // 4. 构建 JWT Claims
+        // 4. 如果是中台管理员，初始化会话活动时间
+        if (GlobalConstants.ADMIN_USER_ID.equals(loginUser.getUserId())) {
+            initAdminSessionActivity(userKey);
+        }
+
+        // 5. 构建 JWT Claims
         Map<String, Object> claims = new HashMap<>();
         claims.put(TokenConstants.CLAIMS_KEY_USER_KEY, userKey);
         claims.put(TokenConstants.CLAIMS_KEY_USER_ID, loginUser.getUserId());
         claims.put(TokenConstants.CLAIMS_KEY_USERNAME, loginUser.getUsername());
 
-        // 5. 生成双 Token
+        // 6. 生成双 Token
         // 注意：必须分别创建新Map，因为 createAccessToken/createRefreshToken 会向 claims 中追加
         // token_type
         String accessToken = jwtUtils.createAccessToken(new HashMap<>(claims));
         String refreshToken = jwtUtils.createRefreshToken(new HashMap<>(claims));
 
-        // 6. 组装返回结果
+        // 7. 组装返回结果
         return TokenVO.builder()
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
@@ -273,6 +287,7 @@ public class TokenService {
      * <p>
      * 删除后，该用户的所有 Token（包括 AccessToken 和 RefreshToken）
      * 均无法再从 Redis 中恢复 LoginUser，从而实现即时登出。
+     * 如果是中台管理员，同时删除会话活动时间记录。
      * </p>
      *
      * @param userKey 用户唯一标识（UUID）
@@ -281,11 +296,33 @@ public class TokenService {
         if (StringUtils.hasText(userKey)) {
             String redisKey = getRedisKey(userKey);
             redisTemplate.delete(redisKey);
+            
+            // 删除中台管理员的会话活动时间记录
+            String activityKey = getAdminSessionActivityKey(userKey);
+            redisTemplate.delete(activityKey);
+            
             log.info("用户[{}]已登出，Redis缓存已清除", userKey);
         }
     }
 
     // ======================== 私有工具方法 ========================
+
+    /**
+     * 初始化中台管理员会话活动时间
+     * <p>
+     * 在管理员登录成功后调用，记录初始活动时间到 Redis。
+     * </p>
+     *
+     * @param userKey 用户唯一标识（UUID）
+     */
+    private void initAdminSessionActivity(String userKey) {
+        String activityKey = getAdminSessionActivityKey(userKey);
+        long currentTime = System.currentTimeMillis();
+        // 设置过期时间为 RefreshToken 过期时间的 2 倍，确保不会过早删除
+        long expireSeconds = jwtUtils.getRefreshTokenExpiration() / 1000 * 2;
+        redisTemplate.opsForValue().set(activityKey, currentTime, expireSeconds, TimeUnit.SECONDS);
+        log.debug("中台管理员会话活动时间已初始化: userKey={}", userKey);
+    }
 
     /**
      * 从请求头中提取 Token
@@ -327,5 +364,15 @@ public class TokenService {
      */
     private String getRedisKey(String userKey) {
         return TokenConstants.LOGIN_TOKEN_KEY + userKey;
+    }
+
+    /**
+     * 构建中台管理员会话活动时间的 Redis Key
+     *
+     * @param userKey 用户唯一标识（UUID）
+     * @return 完整的 Redis Key，格式：{@code admin_session_activity:{userKey}}
+     */
+    private String getAdminSessionActivityKey(String userKey) {
+        return ADMIN_SESSION_ACTIVITY_KEY_PREFIX + userKey;
     }
 }

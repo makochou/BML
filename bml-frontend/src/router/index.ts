@@ -1,7 +1,8 @@
 import { h } from 'vue';
 import { createRouter, createWebHistory, RouterView, type RouteRecordRaw } from 'vue-router';
 import request from '../utils/request';
-import { clearAuthTokens, getAccessToken } from '../utils/auth';
+import { clearAuthTokens, getAccessToken, getRefreshToken, setAuthTokens, isAccessTokenExpired } from '../utils/auth';
+import axios from 'axios';
 import { usePermissionStore, type BackendRouteItem } from '../store/permission';
 import { fetchLicenseStatus } from '../api/license';
 
@@ -300,6 +301,47 @@ export const resetLicenseCache = () => {
     licenseValid = false;
 };
 
+/**
+ * 路由守卫专用：尝试用 RefreshToken 刷新已过期的 AccessToken。
+ * 与 request.ts 中的拦截器独立，避免循环依赖。
+ * 仅在路由跳转时前置调用，确保进入页面前 token 有效。
+ *
+ * @returns true = 刷新成功（新 token 已写入 localStorage），false = 刷新失败（应跳转登录页）
+ */
+const tryRefreshToken = async (): Promise<boolean> => {
+    const refreshToken = getRefreshToken();
+    if (!refreshToken) return false;
+    try {
+        const apiBaseURL = import.meta.env.VITE_API_BASE_URL || '/api';
+        const response = await axios.post<{ code: number; data?: { accessToken: string; refreshToken?: string } }>(
+            `${apiBaseURL}/auth/refresh`,
+            { refreshToken },
+            { timeout: 10000 }
+        );
+        const payload = response.data;
+        if (payload.code === 200 && payload.data?.accessToken) {
+            setAuthTokens({
+                accessToken: payload.data.accessToken,
+                refreshToken: payload.data.refreshToken || refreshToken
+            });
+            return true;
+        }
+        return false;
+    } catch {
+        return false;
+    }
+};
+
+/**
+ * 校验当前 AccessToken 是否可用。
+ * 若 JWT 已过期则尝试用 RefreshToken 刷新；刷新失败则返回 false。
+ * 若 JWT 未过期则直接返回 true，无额外网络请求。
+ */
+const ensureTokenValid = async (): Promise<boolean> => {
+    if (!isAccessTokenExpired()) return true;
+    return tryRefreshToken();
+};
+
 /** 前台业务系统需要认证的路径前缀 */
 const BUSINESS_AUTH_PREFIXES = ['/dashboard', '/system'];
 
@@ -347,6 +389,13 @@ router.beforeEach(async (to, _from, next) => {
             next('/login');
             return;
         }
+        // 前置校验：AccessToken JWT 过期时尝试刷新，刷新失败则跳转登录
+        const valid = await ensureTokenValid();
+        if (!valid) {
+            clearAuthTokens();
+            next('/login');
+            return;
+        }
         next();
         return;
     }
@@ -370,6 +419,15 @@ router.beforeEach(async (to, _from, next) => {
 
     // ── 中台管理平台认证区域 ──
     if (!token) {
+        resetPermissionState();
+        next('/admin/login');
+        return;
+    }
+
+    // 前置校验：AccessToken JWT 过期时尝试刷新，刷新失败则跳转登录
+    const adminTokenValid = await ensureTokenValid();
+    if (!adminTokenValid) {
+        clearAuthTokens();
         resetPermissionState();
         next('/admin/login');
         return;

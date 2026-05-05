@@ -1,0 +1,586 @@
+/**
+ * ═══════════════════════════════════════════════════════════════
+ * 授权治理表格列表 - 精致现代化设计系统
+ * ═══════════════════════════════════════════════════════════════
+ * 
+ * 文件说明：
+ * 本文件为授权治理页面（API账号管理）的表格列表区域提供全新的视觉设计
+ * 
+ * 设计理念：
+ * 1. 采用卡片化设计，提升数据可读性
+ * 2. 优雅的悬停效果和交互反馈
+ * 3. 精心调校的字体排版和间距
+ * 4. 现代化的标签和徽章设计
+ * 5. 流畅的动画过渡效果
+ * 
+ * 技术特性：
+ * - 使用 CSS 自定义属性实现主题化
+ * - 响应式表格设计
+ * - 优化的滚动性能
+ * - 无障碍设计支持
+ * 
+ * 作者：BML 前端团队
+ * 创建日期：2026-04-30
+ * 最后更新：2026-04-30
+ * 版本：v2.0.0
+ * ═══════════════════════════════════════════════════════════════
+ */
+
+/* ═══════════════════════════════════════════════════════════════
+   表格容器样式
+   ═══════════════════════════════════════════════════════════════ */
+.api-account-page .table-shell {
+    /* ─────────────────────────────────────────────────────────────
+     容器变量定义
+     ───────────────────────────────────────────────────────────── */
+    --table-shell-padding: 12px;
+    --table-shell-radius: 24px;
+    --table-shell-border-color: rgba(148, 163, 184, 0.25);
+    --table-shell-background:
+        radial-gradient(ellipse at top left, rgba(99, 102, 241, 0.06), transparent 50%),
+        radial-gradient(ellipse at bottom right, rgba(59, 130, 246, 0.04), transparent 50%),
+        linear-gradient(135deg,
+            rgba(255, 255, 255, 0.98) 0%,
+            rgba(248, 250, 252, 0.95) 50%,
+            rgba(241, 245, 249, 0.92) 100%);
+    --table-shell-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.8) inset,
+        0 20px 50px -12px rgba(0, 0, 0, 0.1),
+        0 8px 16px -8px rgba(0, 0, 0, 0.06);
+
+    margin-top: 16px;
+    padding: var(--table-shell-padding);
+    border: 1px solid var(--table-shell-border-color);
+    border-radius: var(--table-shell-radius);
+    background: var(--table-shell-background);
+    box-shadow: var(--table-shell-shadow);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   表格头部操作区域
+   ═══════════════════════════════════════════════════════════════ */
+.api-account-page .table-shell :deep(.governance-list-stage__actions) {
+    margin-bottom: 12px;
+    padding: 12px 16px;
+    border-radius: 16px;
+    background: linear-gradient(135deg,
+            rgba(255, 255, 255, 0.95) 0%,
+            rgba(248, 250, 252, 0.9) 100%);
+    border: 1px solid rgba(203, 213, 225, 0.4);
+    box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.6) inset,
+        0 4px 12px -2px rgba(0, 0, 0, 0.04);
+}
+
+/* 操作按钮样式优化 */
+.api-account-page .table-shell :deep(.governance-list-stage__actions .arco-btn) {
+    height: 38px;
+    padding: 0 20px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 主要按钮 */
+.api-account-page .table-shell :deep(.governance-list-stage__actions .arco-btn-primary) {
+    border: none;
+    background: linear-gradient(135deg,
+            #6366f1 0%,
+            #8b5cf6 50%,
+            #a855f7 100%);
+    box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.2) inset,
+        0 8px 24px -4px rgba(99, 102, 241, 0.4),
+        0 4px 12px -2px rgba(139, 92, 246, 0.3);
+}
+
+.api-account-page .table-shell :deep(.governance-list-stage__actions .arco-btn-primary:hover) {
+    background: linear-gradient(135deg,
+            #7c3aed 0%,
+            #9333ea 50%,
+            #a855f7 100%);
+    transform: translateY(-2px);
+    box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.3) inset,
+        0 12px 32px -4px rgba(99, 102, 241, 0.5),
+        0 6px 16px -2px rgba(139, 92, 246, 0.4);
+}
+
+/* 次要按钮 */
+.api-account-page .table-shell :deep(.governance-list-stage__actions .arco-btn:not(.arco-btn-primary)) {
+    border-color: rgba(203, 213, 225, 0.6);
+    border-width: 1.5px;
+    background: linear-gradient(135deg,
+            rgba(255, 255, 255, 0.95) 0%,
+            rgba(248, 250, 252, 0.9) 100%);
+    color: #475569;
+    box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.5) inset,
+        0 2px 8px -2px rgba(0, 0, 0, 0.08);
+}
+
+.api-account-page .table-shell :deep(.governance-list-stage__actions .arco-btn:not(.arco-btn-primary):hover) {
+    border-color: rgba(99, 102, 241, 0.4);
+    background: linear-gradient(135deg,
+            rgba(255, 255, 255, 1) 0%,
+            rgba(249, 250, 251, 0.95) 100%);
+    color: #6366f1;
+    transform: translateY(-2px);
+    box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.6) inset,
+        0 4px 12px -2px rgba(99, 102, 241, 0.15);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   表格主体样式
+   ═══════════════════════════════════════════════════════════════ */
+.api-account-page .account-table {
+    /* ─────────────────────────────────────────────────────────────
+     表格变量定义
+     ───────────────────────────────────────────────────────────── */
+    --table-header-height: 48px;
+    --table-row-height: 56px;
+    --table-cell-padding: 12px 16px;
+    --table-border-color: rgba(226, 232, 240, 0.6);
+    --table-header-bg: linear-gradient(135deg,
+            rgba(248, 250, 252, 0.95) 0%,
+            rgba(241, 245, 249, 0.9) 100%);
+    --table-row-bg: rgba(255, 255, 255, 0.6);
+    --table-row-hover-bg: linear-gradient(135deg,
+            rgba(249, 250, 251, 0.95) 0%,
+            rgba(243, 244, 246, 0.9) 100%);
+    --table-row-active-bg: linear-gradient(135deg,
+            rgba(238, 242, 255, 0.95) 0%,
+            rgba(224, 231, 255, 0.9) 100%);
+
+    border-radius: 16px !important;
+    overflow: hidden;
+}
+
+/* 表格头部样式 */
+.api-account-page .account-table :deep(.arco-table-th) {
+    height: var(--table-header-height) !important;
+    padding: var(--table-cell-padding) !important;
+    background: var(--table-header-bg) !important;
+    border-bottom: 2px solid var(--table-border-color) !important;
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    color: #1e293b !important;
+    letter-spacing: 0.02em !important;
+    text-transform: uppercase !important;
+    transition: all 0.3s ease !important;
+}
+
+.api-account-page .account-table :deep(.arco-table-th:hover) {
+    background: linear-gradient(135deg,
+            rgba(241, 245, 249, 0.98) 0%,
+            rgba(226, 232, 240, 0.95) 100%) !important;
+}
+
+/* 表格单元格样式 */
+.api-account-page .account-table :deep(.arco-table-td) {
+    height: var(--table-row-height) !important;
+    padding: var(--table-cell-padding) !important;
+    border-bottom: 1px solid var(--table-border-color) !important;
+    font-size: 14px !important;
+    color: #334155 !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* 表格行样式 */
+.api-account-page .account-table :deep(.arco-table-tr) {
+    background: var(--table-row-bg) !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* 表格行悬停效果 */
+.api-account-page .account-table :deep(.arco-table-tr:hover) {
+    background: var(--table-row-hover-bg) !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.08);
+}
+
+/* 表格行激活状态 */
+.api-account-page .account-table :deep(.arco-table-tr.is-row-active) {
+    background: var(--table-row-active-bg) !important;
+    box-shadow:
+        0 0 0 2px rgba(99, 102, 241, 0.2) inset,
+        0 4px 12px -2px rgba(99, 102, 241, 0.15);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   表格单元格内容样式
+   ═══════════════════════════════════════════════════════════════ */
+
+/* 序号列 */
+.api-account-page .table-field-cell--index {
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    color: #64748b !important;
+    font-variant-numeric: tabular-nums;
+}
+
+/* 左对齐文本 */
+.api-account-page .table-field-cell--left {
+    text-align: left !important;
+}
+
+/* 时间列 */
+.api-account-page .table-field-cell--time {
+    font-family: 'SF Mono', 'Monaco', 'Consolas', monospace !important;
+    font-size: 13px !important;
+    color: #64748b !important;
+    font-variant-numeric: tabular-nums;
+}
+
+.api-account-page .table-field-cell__mono {
+    font-family: 'SF Mono', 'Monaco', 'Consolas', monospace !important;
+    font-size: 13px !important;
+    color: #475569 !important;
+    background: rgba(241, 245, 249, 0.6);
+    padding: 4px 8px;
+    border-radius: 6px;
+    display: inline-block;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   标签和徽章样式
+   ═══════════════════════════════════════════════════════════════ */
+.api-account-page .account-table :deep(.arco-tag) {
+    height: 26px;
+    padding: 0 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.3s ease;
+}
+
+/* 绿色标签（成功/启用） */
+.api-account-page .account-table :deep(.arco-tag-green) {
+    background: linear-gradient(135deg,
+            rgba(16, 185, 129, 0.15) 0%,
+            rgba(5, 150, 105, 0.12) 100%);
+    color: #047857;
+    box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.2) inset;
+}
+
+.api-account-page .account-table :deep(.arco-tag-green:hover) {
+    background: linear-gradient(135deg,
+            rgba(16, 185, 129, 0.2) 0%,
+            rgba(5, 150, 105, 0.18) 100%);
+    transform: translateY(-1px);
+    box-shadow:
+        0 0 0 1px rgba(16, 185, 129, 0.3) inset,
+        0 4px 8px -2px rgba(16, 185, 129, 0.2);
+}
+
+/* 红色标签（错误/禁用） */
+.api-account-page .account-table :deep(.arco-tag-red) {
+    background: linear-gradient(135deg,
+            rgba(239, 68, 68, 0.15) 0%,
+            rgba(220, 38, 38, 0.12) 100%);
+    color: #b91c1c;
+    box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.2) inset;
+}
+
+.api-account-page .account-table :deep(.arco-tag-red:hover) {
+    background: linear-gradient(135deg,
+            rgba(239, 68, 68, 0.2) 0%,
+            rgba(220, 38, 38, 0.18) 100%);
+    transform: translateY(-1px);
+    box-shadow:
+        0 0 0 1px rgba(239, 68, 68, 0.3) inset,
+        0 4px 8px -2px rgba(239, 68, 68, 0.2);
+}
+
+/* 蓝色标签（信息） */
+.api-account-page .account-table :deep(.arco-tag-arcoblue),
+.api-account-page .account-table :deep(.arco-tag-blue) {
+    background: linear-gradient(135deg,
+            rgba(59, 130, 246, 0.15) 0%,
+            rgba(37, 99, 235, 0.12) 100%);
+    color: #1d4ed8;
+    box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.2) inset;
+}
+
+.api-account-page .account-table :deep(.arco-tag-arcoblue:hover),
+.api-account-page .account-table :deep(.arco-tag-blue:hover) {
+    background: linear-gradient(135deg,
+            rgba(59, 130, 246, 0.2) 0%,
+            rgba(37, 99, 235, 0.18) 100%);
+    transform: translateY(-1px);
+    box-shadow:
+        0 0 0 1px rgba(59, 130, 246, 0.3) inset,
+        0 4px 8px -2px rgba(59, 130, 246, 0.2);
+}
+
+/* 灰色标签（默认） */
+.api-account-page .account-table :deep(.arco-tag-gray) {
+    background: linear-gradient(135deg,
+            rgba(148, 163, 184, 0.15) 0%,
+            rgba(100, 116, 139, 0.12) 100%);
+    color: #475569;
+    box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.2) inset;
+}
+
+/* 小尺寸标签 */
+.api-account-page .account-table :deep(.arco-tag-size-small) {
+    height: 22px;
+    padding: 0 8px;
+    font-size: 11px;
+    border-radius: 6px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   操作按钮样式
+   ═══════════════════════════════════════════════════════════════ */
+.api-account-page .table-row-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: nowrap;
+}
+
+.api-account-page .table-action-btn {
+    height: 32px;
+    padding: 0 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    white-space: nowrap;
+}
+
+/* 主要操作按钮 */
+.api-account-page .table-action-btn--primary {
+    border: none;
+    background: linear-gradient(135deg,
+            rgba(99, 102, 241, 0.9) 0%,
+            rgba(139, 92, 246, 0.85) 100%);
+    color: #ffffff;
+    box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.2) inset,
+        0 4px 12px -2px rgba(99, 102, 241, 0.3);
+}
+
+.api-account-page .table-action-btn--primary:hover {
+    background: linear-gradient(135deg,
+            rgba(99, 102, 241, 1) 0%,
+            rgba(139, 92, 246, 0.95) 100%);
+    transform: translateY(-1px);
+    box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.3) inset,
+        0 6px 16px -2px rgba(99, 102, 241, 0.4);
+}
+
+/* 更多操作按钮 */
+.api-account-page .table-action-btn--more {
+    width: 32px;
+    padding: 0;
+    border-color: rgba(203, 213, 225, 0.6);
+    background: rgba(255, 255, 255, 0.9);
+    color: #64748b;
+}
+
+.api-account-page .table-action-btn--more:hover {
+    border-color: rgba(99, 102, 241, 0.4);
+    background: rgba(255, 255, 255, 1);
+    color: #6366f1;
+    transform: translateY(-1px);
+}
+
+/* 危险操作选项 */
+.api-account-page .table-row-actions__danger {
+    color: #dc2626 !important;
+}
+
+.api-account-page .table-row-actions__danger:hover {
+    background: rgba(239, 68, 68, 0.1) !important;
+    color: #b91c1c !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   分页器样式
+   ═══════════════════════════════════════════════════════════════ */
+.api-account-page .table-shell__footer {
+    margin-top: 16px;
+    padding: 12px 16px;
+    border-radius: 16px;
+    background: linear-gradient(135deg,
+            rgba(255, 255, 255, 0.95) 0%,
+            rgba(248, 250, 252, 0.9) 100%);
+    border: 1px solid rgba(203, 213, 225, 0.4);
+    box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.6) inset,
+        0 4px 12px -2px rgba(0, 0, 0, 0.04);
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+}
+
+.api-account-page .table-shell__footer :deep(.arco-pagination) {
+    font-size: 14px;
+}
+
+.api-account-page .table-shell__footer :deep(.arco-pagination-item) {
+    min-width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    border-color: rgba(203, 213, 225, 0.5);
+    background: rgba(255, 255, 255, 0.8);
+    color: #475569;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.api-account-page .table-shell__footer :deep(.arco-pagination-item:hover) {
+    border-color: rgba(99, 102, 241, 0.4);
+    background: rgba(255, 255, 255, 1);
+    color: #6366f1;
+    transform: translateY(-1px);
+}
+
+.api-account-page .table-shell__footer :deep(.arco-pagination-item-active) {
+    border-color: rgba(99, 102, 241, 0.6);
+    background: linear-gradient(135deg,
+            rgba(99, 102, 241, 0.15) 0%,
+            rgba(139, 92, 246, 0.12) 100%);
+    color: #6366f1;
+    box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.2) inset;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   空状态样式
+   ═══════════════════════════════════════════════════════════════ */
+.api-account-page .account-table :deep(.arco-empty) {
+    padding: 60px 20px;
+}
+
+.api-account-page .account-table :deep(.arco-empty-image) {
+    width: 120px;
+    height: 120px;
+    margin: 0 auto 20px;
+    opacity: 0.6;
+}
+
+.api-account-page .account-table :deep(.arco-empty-description) {
+    font-size: 15px;
+    color: #64748b;
+    font-weight: 500;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   加载状态样式
+   ═══════════════════════════════════════════════════════════════ */
+.api-account-page .account-table :deep(.arco-spin) {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+.api-account-page .account-table :deep(.arco-spin-icon) {
+    color: #6366f1;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   滚动条样式
+   ═══════════════════════════════════════════════════════════════ */
+.api-account-page .account-table :deep(.arco-table-body) {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(148, 163, 184, 0.3) transparent;
+}
+
+.api-account-page .account-table :deep(.arco-table-body::-webkit-scrollbar) {
+    width: 8px;
+    height: 8px;
+}
+
+.api-account-page .account-table :deep(.arco-table-body::-webkit-scrollbar-track) {
+    background: rgba(241, 245, 249, 0.5);
+    border-radius: 4px;
+}
+
+.api-account-page .account-table :deep(.arco-table-body::-webkit-scrollbar-thumb) {
+    background: rgba(148, 163, 184, 0.3);
+    border-radius: 4px;
+    transition: background 0.3s ease;
+}
+
+.api-account-page .account-table :deep(.arco-table-body::-webkit-scrollbar-thumb:hover) {
+    background: rgba(148, 163, 184, 0.5);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   响应式设计 - 平板设备
+   ═══════════════════════════════════════════════════════════════ */
+@media (max-width: 1024px) {
+    .api-account-page .table-shell {
+        --table-shell-padding: 10px;
+        --table-row-height: 52px;
+    }
+
+    .api-account-page .table-action-btn {
+        height: 30px;
+        padding: 0 12px;
+        font-size: 12px;
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   响应式设计 - 移动设备
+   ═══════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+    .api-account-page .table-shell {
+        --table-shell-padding: 8px;
+        --table-shell-radius: 18px;
+        --table-row-height: 48px;
+    }
+
+    .api-account-page .account-table :deep(.arco-table-th),
+    .api-account-page .account-table :deep(.arco-table-td) {
+        padding: 8px 12px !important;
+        font-size: 13px !important;
+    }
+
+    .api-account-page .table-row-actions {
+        flex-wrap: wrap;
+    }
+
+    .api-account-page .table-action-btn {
+        height: 28px;
+        padding: 0 10px;
+        font-size: 12px;
+    }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   打印样式优化
+   ═══════════════════════════════════════════════════════════════ */
+@media print {
+    .api-account-page .table-shell {
+        box-shadow: none;
+        border: 1px solid #000;
+        background: #fff;
+    }
+
+    .api-account-page .table-shell :deep(.governance-list-stage__actions),
+    .api-account-page .table-shell__footer {
+        display: none;
+    }
+
+    .api-account-page .table-row-actions {
+        display: none;
+    }
+
+    .api-account-page .account-table :deep(.arco-table-tr:hover) {
+        transform: none;
+        box-shadow: none;
+    }
+}

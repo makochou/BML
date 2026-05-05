@@ -228,6 +228,8 @@ export const clearAuthTokens = () => {
     localStorage.removeItem(scopedKey(scope, BASE_ACCESS_TOKEN_KEY));
     localStorage.removeItem(scopedKey(scope, BASE_REFRESH_TOKEN_KEY));
     localStorage.removeItem(scopedKey(scope, BASE_USER_IDENTITY_KEY));
+    // 清除最后活动时间，确保下次访问必须重新登录
+    localStorage.removeItem(scopedKey(scope, 'lastActivityTime'));
     // 同时清理旧版无前缀键（如果还残留）
     localStorage.removeItem(LEGACY_TOKEN_KEY);
     localStorage.removeItem(LEGACY_ACCESS_TOKEN_KEY);
@@ -247,4 +249,78 @@ export const redirectToLogin = () => {
             window.location.href = '/login';
         }
     }
+};
+
+// ═══════════════════════════════════════════════════════════════
+// 最后活动时间持久化
+// ───────────────────────────────────────────────────────────────
+// 空闲超时检测需要在页面刷新 / 浏览器重启后仍然有效。
+// 将最后活动时间戳存入 localStorage，启动时与配置的超时时长比较，
+// 若已超时则立即触发登出，确保关闭页面后再打开也能正确过期。
+// ═══════════════════════════════════════════════════════════════
+
+const BASE_LAST_ACTIVITY_KEY = 'lastActivityTime';
+
+/**
+ * 记录当前时间为最后活动时间（按作用域隔离存储）。
+ * 由空闲超时 composable 在用户交互事件中调用。
+ */
+export const setLastActivityTime = (): void => {
+    const scope = getAuthScope();
+    localStorage.setItem(scopedKey(scope, BASE_LAST_ACTIVITY_KEY), String(Date.now()));
+};
+
+/**
+ * 获取上次活动时间戳（毫秒）。
+ * 若不存在则返回 null，表示尚未记录过活动时间。
+ */
+export const getLastActivityTime = (): number | null => {
+    const scope = getAuthScope();
+    const raw = localStorage.getItem(scopedKey(scope, BASE_LAST_ACTIVITY_KEY));
+    if (!raw) return null;
+    const ts = parseInt(raw, 10);
+    return isNaN(ts) ? null : ts;
+};
+
+/**
+ * 清除当前作用域的最后活动时间（登出时调用）。
+ */
+export const clearLastActivityTime = (): void => {
+    const scope = getAuthScope();
+    localStorage.removeItem(scopedKey(scope, BASE_LAST_ACTIVITY_KEY));
+};
+
+/**
+ * 检查会话是否因空闲超时而过期。
+ * @param timeoutMinutes 配置的超时时长（分钟），<= 0 表示不限制
+ * @returns true = 已超时应该登出, false = 仍在有效期内
+ */
+export const isSessionIdleExpired = (timeoutMinutes: number): boolean => {
+    if (timeoutMinutes <= 0) return false;
+    const lastActivity = getLastActivityTime();
+    if (lastActivity === null) return false; // 从未记录过，视为首次启动
+    const elapsed = Date.now() - lastActivity;
+    return elapsed > timeoutMinutes * 60 * 1000;
+};
+
+// ═══════════════════════════════════════════════════════════════
+// JWT 有效期校验
+// ───────────────────────────────────────────────────────────────
+// 路由守卫中使用：在放行前先检查 AccessToken 的 JWT exp 字段，
+// 若已过期则尝试 refresh；若 refresh 也失败则跳转登录页。
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * 检查当前 AccessToken 的 JWT 是否已过期。
+ * @returns true = 已过期或无法解析, false = 仍在有效期内
+ */
+export const isAccessTokenExpired = (): boolean => {
+    const token = getAccessToken();
+    if (!token) return true;
+    const payload = parseJwtPayload(token);
+    if (!payload) return true;
+    const exp = payload.exp;
+    if (typeof exp !== 'number') return true;
+    // JWT exp 是秒级时间戳，加 5 秒缓冲避免临界值竞态
+    return Date.now() > (exp - 5) * 1000;
 };

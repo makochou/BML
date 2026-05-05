@@ -12,6 +12,7 @@
       trigger="click"
       position="bottom"
       :arrow-style="{ display: 'none' }"
+      :content-style="{ padding: '0', borderRadius: '12px', boxShadow: '0 8px 24px rgba(15,23,42,0.12)', border: '1px solid rgba(218,228,240,0.8)' }"
       :popup-container="popupContainer"
       @popup-visible-change="handlePopoverVisibleChange"
     >
@@ -27,23 +28,15 @@
         <span v-if="hasValue" class="tcs-badge"></span>
       </span>
 
-      <!-- Popover 内容：搜索输入框 -->
+      <!-- Popover 内容：紧凑搜索面板 -->
       <template #content>
         <div class="tcs-popover" @click.stop>
-          <div class="tcs-popover__header">
-            <span class="tcs-popover__label">搜索 {{ title }}</span>
-            <span
-              v-if="hasValue"
-              class="tcs-popover__clear"
-              @click="handleClear"
-            >清除</span>
-          </div>
           <a-input
             ref="inputRef"
             v-model="inputValue"
-            :placeholder="placeholder || `输入${title}关键词`"
+            :placeholder="placeholder || `搜索${title}`"
             allow-clear
-            size="small"
+            size="mini"
             class="tcs-input"
             @press-enter="handleConfirm"
             @clear="handleClear"
@@ -52,9 +45,9 @@
               <icon-search class="tcs-input-icon" />
             </template>
           </a-input>
-          <div class="tcs-popover__footer">
-            <a-button size="mini" @click="handleReset">重置</a-button>
-            <a-button type="primary" size="mini" @click="handleConfirm">确认</a-button>
+          <div class="tcs-popover__actions">
+            <a-button size="mini" class="tcs-btn tcs-btn--reset" @click="handleReset">重置</a-button>
+            <a-button type="primary" size="mini" class="tcs-btn tcs-btn--confirm" @click="handleConfirm">确认</a-button>
           </div>
         </div>
       </template>
@@ -248,54 +241,85 @@ const handleReset = () => {
 }
 
 /* ─────────────────────────────────────────────
-   Popover 内容区
+   Popover 弹窗面板
+   紧凑精致的搜索面板：输入框 + 确认/重置按钮
    ───────────────────────────────────────────── */
 .tcs-popover {
-  width: 220px;
-  padding: 4px 0;
+  width: 200px;
+  padding: 6px;
 }
 
-/* Popover 头部：标签 + 清除按钮 */
-.tcs-popover__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 8px;
-  padding: 0 2px;
-}
-
-.tcs-popover__label {
-  font-size: 12px;
-  font-weight: 600;
-  color: #334155;
-}
-
-.tcs-popover__clear {
-  font-size: 11px;
-  color: var(--color-primary, #165dff);
-  cursor: pointer;
-  transition: opacity 0.15s;
-}
-
-.tcs-popover__clear:hover {
-  opacity: 0.75;
-}
-
-/* 搜索输入框 */
+/* 搜索输入框：迷你尺寸，圆角，与面板风格融合 */
 .tcs-input {
   width: 100%;
-  margin-bottom: 10px;
+}
+
+.tcs-input :deep(.arco-input-wrapper) {
+  height: 28px;
+  border-radius: 8px;
+  border-color: rgba(155, 183, 216, 0.6);
+  background: rgba(248, 251, 255, 0.9);
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.04);
+  transition: all 0.2s ease;
+}
+
+.tcs-input :deep(.arco-input-wrapper:hover) {
+  border-color: rgba(67, 134, 220, 0.6);
+}
+
+.tcs-input :deep(.arco-input-wrapper.arco-input-focus) {
+  border-color: rgba(23, 105, 255, 0.6);
+  box-shadow: 0 0 0 3px rgba(23, 105, 255, 0.08);
+}
+
+.tcs-input :deep(.arco-input) {
+  font-size: 12px;
 }
 
 .tcs-input-icon {
-  font-size: 13px;
+  font-size: 12px;
   color: #94a3b8;
 }
 
-/* Popover 底部：操作按钮 */
-.tcs-popover__footer {
+/* 底部操作区：确认/重置按钮水平排列 */
+.tcs-popover__actions {
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+/* 按钮通用：迷你圆角药丸 */
+.tcs-btn.arco-btn {
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  transition: all 0.15s ease;
+}
+
+/* 重置按钮：淡灰色边框 */
+.tcs-btn--reset.arco-btn {
+  border-color: rgba(203, 213, 225, 0.8);
+  color: #64748b;
+  background: #fff;
+}
+
+.tcs-btn--reset.arco-btn:hover {
+  border-color: rgba(148, 163, 184, 0.9);
+  color: #475569;
+}
+
+/* 确认按钮：蓝绿渐变 */
+.tcs-btn--confirm.arco-btn-primary {
+  border: 0;
+  background: linear-gradient(135deg, #1769ff, #12b8a6);
+  box-shadow: 0 2px 6px rgba(23, 105, 255, 0.2);
+}
+
+.tcs-btn--confirm.arco-btn-primary:hover {
+  box-shadow: 0 4px 10px rgba(23, 105, 255, 0.28);
+  transform: translateY(-0.5px);
 }
 </style>

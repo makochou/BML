@@ -217,20 +217,21 @@ const hasFooter = computed(() => Boolean(props.noteTitle || props.noteText || sl
 }
 
 .governance-compact-query-panel.density-ultra {
-  --query-panel-padding: 7px;
-  --query-panel-radius: 16px;
-  --query-panel-body-margin-top: 6px;
-  --query-panel-body-padding: 6px 8px 0;
-  --query-panel-body-radius: 12px;
-  --query-panel-footer-margin-top: 4px;
-  --query-panel-footer-gap: 8px;
-  --query-panel-field-gap-x: 6px;
-  --query-panel-form-item-gap: 2px;
+  /* 与中台授权治理 .query-panel 覆盖值完全对齐，确保面板整体高度一致 */
+  --query-panel-padding: 6px;
+  --query-panel-radius: 14px;
+  --query-panel-body-margin-top: 4px;
+  --query-panel-body-padding: 5px 6px 0;
+  --query-panel-body-radius: 10px;
+  --query-panel-footer-margin-top: 3px;
+  --query-panel-footer-gap: 6px;
+  --query-panel-field-gap-x: 5px;
+  --query-panel-form-item-gap: 1px;
   --query-panel-label-size: 11px;
-  --query-panel-input-min-height: 30px;
-  --query-panel-button-min-width: 84px;
-  --query-panel-button-height: 30px;
-  --query-panel-button-padding-inline: 10px;
+  --query-panel-input-min-height: 28px;
+  --query-panel-button-min-width: 78px;
+  --query-panel-button-height: 28px;
+  --query-panel-button-padding-inline: 8px;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.92),
     0 6px 14px rgba(15, 23, 42, 0.04);

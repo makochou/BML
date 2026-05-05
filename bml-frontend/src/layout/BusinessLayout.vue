@@ -106,8 +106,22 @@
                 <icon-down class="user-arrow" />
               </div>
               <template #content>
-                <a-doption @click="handleLogout" style="color: #f53f3f;">
-                  <template #icon><icon-export /></template>退出登录
+                <!-- 用户信息头部 -->
+                <div class="bml-dropdown-user-header">
+                  <div class="bml-dropdown-user-avatar">
+                    <a-avatar :size="32"><icon-user /></a-avatar>
+                  </div>
+                  <div class="bml-dropdown-user-info">
+                    <span class="bml-dropdown-user-name">{{ userInfo?.nickname || userInfo?.username || '用户' }}</span>
+                    <span class="bml-dropdown-user-role">业务系统用户</span>
+                  </div>
+                </div>
+                <!-- 分割线 -->
+                <div class="bml-dropdown-divider"></div>
+                <!-- 退出登录 -->
+                <a-doption @click="handleLogout" class="bml-dropdown-item-danger">
+                  <template #icon><icon-export /></template>
+                  退出登录
                 </a-doption>
               </template>
             </a-dropdown>
@@ -162,12 +176,14 @@ import TagsView from '../components/TagsView.vue';
 import ThemeSettings from '../components/ThemeSettings.vue';
 import { useTagsViewStore } from '../store/tagsView';
 import { useAppStore } from '../store/app';
+import { usePermissionStore } from '../store/permission';
 import { useIdleTimeout } from '../composables/useIdleTimeout';
 
 const router = useRouter();
 const route = useRoute();
 const tagsViewStore = useTagsViewStore();
 const appStore = useAppStore();
+const permissionStore = usePermissionStore();
 
 /** keep-alive 缓存的视图列表 */
 const cachedViews = computed(() => tagsViewStore.cachedViews);
@@ -219,6 +235,10 @@ const loadUserInfo = async () => {
     const res = await request.get('/auth/info') as any;
     if (res.data?.user) {
       userInfo.value = { id: res.data.user.id, username: res.data.user.username, nickname: res.data.user.nickname };
+    }
+    /* 将后端返回的按钮级权限标识存入权限 Store，供各页面通过 hasPermission 检查 */
+    if (Array.isArray(res.data?.permissions)) {
+      permissionStore.setButtonPermissions(res.data.permissions);
     }
   } catch { /* ignore */ }
 };

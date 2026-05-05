@@ -140,26 +140,29 @@ class SysAlertServiceTest {
         SysAlert newAlert = createTestAlert("LICENSE_CHANGE", "API 账号上限升级",
                 "许可证更新：最大 API 账号数从 10 变更为 15。", 0);
 
-        // 准备已读告警（24小时内）
-        SysAlert readAlert = createTestAlert("LICENSE_CHANGE", "API 账号上限升级",
-                "许可证更新：最大 API 账号数从 5 变更为 10。", 1);
-        readAlert.setId(1L);
-        readAlert.setUpdateTime(LocalDateTime.now().minusHours(2));
-
-        // Mock 行为：第一次查询未读告警返回 null，第二次查询已读告警返回已读记录
+        // Mock 行为：查询未读告警返回 null（已读告警不影响去重逻辑）
         when(sysAlertMapper.selectOne(any(LambdaQueryWrapper.class), anyBoolean()))
-                .thenReturn(null)  // 第一次：查询未读告警，返回 null
-                .thenReturn(readAlert);  // 第二次：查询24小时内已读告警，返回已读记录
+                .thenReturn(null);
+
+        // Mock 行为：插入成功，返回 1
+        when(sysAlertMapper.insert(any(SysAlert.class)))
+                .thenAnswer(invocation -> {
+                    SysAlert inserted = invocation.getArgument(0);
+                    inserted.setId(2L);
+                    inserted.setCreateTime(LocalDateTime.now());
+                    inserted.setUpdateTime(LocalDateTime.now());
+                    return 1;
+                });
 
         // 执行保存
         SysAlert savedAlert = sysAlertService.saveOrUpdateAlert(newAlert);
 
-        // 验证结果：应该返回已读告警（不创建新记录）
-        assertEquals(1L, savedAlert.getId(), "应该返回已读告警，不创建新记录");
-        assertEquals(1, savedAlert.getReadStatus(), "返回的应该是已读告警");
+        // 验证结果：即使存在已读告警，也应创建新记录（24小时去重规则已移除）
+        assertNotNull(savedAlert.getId(), "无未读告警时应创建新记录");
+        assertEquals(0, savedAlert.getReadStatus(), "新创建的告警应为未读状态");
         
-        // 验证没有调用插入或更新方法
-        verify(sysAlertMapper, never()).insert(any(SysAlert.class));
+        // 验证调用了插入方法
+        verify(sysAlertMapper, times(1)).insert(any(SysAlert.class));
         verify(sysAlertMapper, never()).updateById(any(SysAlert.class));
     }
 

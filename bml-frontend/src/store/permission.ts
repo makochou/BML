@@ -29,6 +29,13 @@ interface PermissionState {
     dynamicRoutesLoaded: boolean;
     backendRoutes: BackendRouteItem[];
     sidebarMenus: SidebarMenuItem[];
+    /**
+     * 用户按钮级权限标识列表。
+     * 来自后端 /auth/info 接口返回的 permissions 字段，
+     * 格式如 ['system:org:list', 'system:org:edit', ...]
+     * 超级管理员为 ['*:*:*']，表示拥有全部权限。
+     */
+    buttonPermissions: string[];
 }
 
 const buildSidebarMenus = (routes: BackendRouteItem[]): SidebarMenuItem[] => {
@@ -72,7 +79,8 @@ export const usePermissionStore = defineStore('permission', {
     state: (): PermissionState => ({
         dynamicRoutesLoaded: false,
         backendRoutes: [],
-        sidebarMenus: []
+        sidebarMenus: [],
+        buttonPermissions: [],
     }),
     actions: {
         setBackendRoutes(routes: BackendRouteItem[]) {
@@ -90,6 +98,32 @@ export const usePermissionStore = defineStore('permission', {
             this.dynamicRoutesLoaded = false;
             this.backendRoutes = [];
             this.sidebarMenus = [];
+            this.buttonPermissions = [];
+        },
+
+        /**
+         * 设置用户按钮级权限列表。
+         * 在 BusinessLayout 获取 /auth/info 后调用此方法缓存权限。
+         * @param perms 后端返回的权限标识数组，如 ['system:org:list', 'system:org:edit']
+         */
+        setButtonPermissions(perms: string[]) {
+            this.buttonPermissions = perms || [];
+        },
+
+        /**
+         * 判断当前用户是否拥有指定按钮权限。
+         *
+         * 匹配规则（与后端 PermissionService 一致）：
+         * 1. 超级管理员（含 '*:*:*'）→ 拥有全部权限
+         * 2. 精确匹配 → permissions 中包含该字符串
+         *
+         * @param perm 权限标识，如 'system:org:edit'
+         * @returns true 表示有权限
+         */
+        hasPermission(perm: string): boolean {
+            if (!perm) return true;
+            if (this.buttonPermissions.includes('*:*:*')) return true;
+            return this.buttonPermissions.includes(perm);
         }
     }
 });

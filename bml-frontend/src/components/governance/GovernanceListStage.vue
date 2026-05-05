@@ -354,6 +354,164 @@ const hasHeadContent = computed(() => Boolean(hasIntroContent.value || slots.act
   }
 }
 
+/* ═══════════════════════════════════════════════════════════
+   表头居中 + 排序图标美化（与授权治理完全一致）：
+   确保所有列的表头标题居中，排序图标精致优雅。
+   ═══════════════════════════════════════════════════════════ */
+
+/**
+ * 强制所有表头单元格内的标题文字居中对齐。
+ * Arco Table 的 align 属性同时控制表头和单元格，无法单独设置表头对齐。
+ * 通过 :deep 穿透强制覆盖 .arco-table-cell 的对齐方式。
+ */
+.governance-list-stage__body :deep(.arco-table-th .arco-table-cell) {
+  justify-content: center !important;
+  text-align: center !important;
+}
+
+/**
+ * 排序图标默认状态：低透明度，不干扰阅读。
+ */
+.governance-list-stage__body :deep(.arco-table-th .arco-table-sorter) {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 4px;
+  cursor: pointer;
+  opacity: 0.4;
+  transition: opacity 0.2s;
+}
+
+/** 悬停时排序图标显现 */
+.governance-list-stage__body :deep(.arco-table-th:hover .arco-table-sorter) {
+  opacity: 0.7;
+}
+
+.governance-list-stage__body :deep(.arco-table-th .arco-table-sorter-icon) {
+  font-size: 12px;
+  transition: color 0.2s;
+}
+
+/** 激活的排序方向图标高亮为品牌主色 */
+.governance-list-stage__body :deep(.arco-table-th .arco-table-sorter-icon.arco-table-sorter-icon-active) {
+  color: var(--color-primary, #165dff) !important;
+  opacity: 1;
+}
+
+/** 整列排序激活时，表头背景和文字跟随高亮 */
+.governance-list-stage__body :deep(.arco-table-th.arco-table-col-sorted) {
+  background: linear-gradient(180deg, #eef4ff, #e6f0ff) !important;
+  color: var(--color-primary, #165dff) !important;
+}
+
+.governance-list-stage__body :deep(.arco-table-th.arco-table-col-sorted .arco-table-sorter) {
+  opacity: 1;
+}
+
+/**
+ * 自定义表头 slot 容器（用于 TableColumnSearch 搜索图标）：
+ * Arco Table 的自定义表头 slot 默认是 inline 元素，需改为 flex 以支持图标对齐。
+ */
+.governance-list-stage__body :deep(.arco-table-th .arco-table-cell-with-sorter) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   列分割线与拖拽手柄视觉增强（与授权治理完全一致）：
+   让"表头拖拽调间距（列宽）"的交互意图更明显，贴近电子表格操作体验。
+   通过 :deep 穿透 Arco Table 作用域，所有使用本组件的页面自动生效。
+   ═══════════════════════════════════════════════════════════ */
+
+/**
+ * 为非固定列设定 position: relative，用于列分割线 ::after 伪元素的定位基准。
+ * 注意：绝不能对 .arco-table-col-fixed-left / right 设定 position: relative，
+ * 因为 Arco 的固定列依赖 position: sticky 来实现滚动时"钉住"效果，
+ * 而 CSS 只允许一个 position 值，relative 会直接覆盖 sticky 导致固定列失效。
+ */
+.governance-list-stage__body :deep(.arco-table-th:not(.arco-table-col-fixed-left):not(.arco-table-col-fixed-right)),
+.governance-list-stage__body :deep(.arco-table-td:not(.arco-table-col-fixed-left):not(.arco-table-col-fixed-right)) {
+  position: relative;
+}
+
+/**
+ * 表头列分割线：
+ * 使用渐变线条（上下渐隐）替代实线，视觉更精致。
+ * 排除最后一列避免右侧多余线条。
+ */
+.governance-list-stage__body :deep(.arco-table-th:not(:last-child)::after) {
+  content: '';
+  position: absolute;
+  top: 12%;
+  bottom: 12%;
+  right: 0;
+  width: 1px;
+  background: linear-gradient(180deg, rgba(186, 201, 220, 0.24), rgba(186, 201, 220, 0.66), rgba(186, 201, 220, 0.24));
+  pointer-events: none;
+}
+
+/**
+ * 数据行列分割线：
+ * 比表头更淡，保持数据区清爽。
+ */
+.governance-list-stage__body :deep(.arco-table-td:not(:last-child)::after) {
+  content: '';
+  position: absolute;
+  top: 12%;
+  bottom: 12%;
+  right: 0;
+  width: 1px;
+  background: linear-gradient(180deg, rgba(186, 201, 220, 0.12), rgba(186, 201, 220, 0.33), rgba(186, 201, 220, 0.12));
+  pointer-events: none;
+}
+
+/** 隐藏 Arco Table 自动生成的 filler 占位列的分割线 */
+.governance-list-stage__body :deep(.arco-table-td.arco-table-filler::after),
+.governance-list-stage__body :deep(.arco-table-th.arco-table-filler::after) {
+  display: none !important;
+}
+
+/**
+ * 列宽拖拽手柄：
+ * 增大可拖拽区域（9px），提升拖拽容错率。
+ */
+.governance-list-stage__body :deep(.arco-table-column-handle) {
+  position: absolute;
+  top: 0;
+  right: -4px;
+  width: 9px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 6;
+}
+
+/**
+ * 拖拽手柄默认状态：
+ * 半透明竖线，不干扰阅读。
+ */
+.governance-list-stage__body :deep(.arco-table-column-handle::before) {
+  content: '';
+  position: absolute;
+  top: 16%;
+  bottom: 16%;
+  left: 50%;
+  width: 2px;
+  border-radius: 2px;
+  transform: translateX(-50%);
+  background: rgba(122, 147, 178, 0.32);
+  transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+
+/**
+ * 拖拽手柄悬停/拖拽中状态：
+ * 高亮为蓝绿渐变，引导用户拖拽。
+ */
+.governance-list-stage__body :deep(.arco-table-th:hover .arco-table-column-handle::before),
+.governance-list-stage__body :deep(.arco-table-th.arco-table-th-resizing .arco-table-column-handle::before) {
+  background: linear-gradient(180deg, #2f80ed, #2ac8bf);
+  box-shadow: 0 0 0 1px rgba(47, 128, 237, 0.16);
+}
+
 @media (max-width: 768px) {
   .governance-list-stage {
     --stage-padding: 9px;

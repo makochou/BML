@@ -11,13 +11,19 @@ import com.bml.module.system.datascope.DataScope;
 import com.bml.module.system.datascope.DataScopeContext;
 import com.bml.module.system.dto.SysDeptDTO;
 import com.bml.module.system.entity.SysDept;
+import com.bml.module.system.entity.SysOrg;
 import com.bml.module.system.mapper.SysDeptMapper;
+import com.bml.module.system.mapper.SysOrgMapper;
 import com.bml.module.system.service.SysDeptService;
 import org.springframework.stereotype.Service;
 
+import jakarta.annotation.Resource;
+
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -38,6 +44,9 @@ import java.util.stream.Collectors;
  */
 @Service
 public class SysDeptServiceImpl extends BaseServiceImpl<SysDeptMapper, SysDept> implements SysDeptService {
+
+    @Resource
+    private SysOrgMapper orgMapper;
 
     /**
      * 查询部门列表
@@ -63,7 +72,10 @@ public class SysDeptServiceImpl extends BaseServiceImpl<SysDeptMapper, SysDept> 
             lqw.apply(dataScopeSql);
         }
         lqw.orderByAsc(SysDept::getParentId, SysDept::getSort);
-        return baseMapper.selectList(lqw);
+        List<SysDept> depts = baseMapper.selectList(lqw);
+        // 批量填充所属机构名称（orgName），避免 N+1 查询
+        fillOrgName(depts);
+        return depts;
     }
 
     /**
@@ -170,6 +182,40 @@ public class SysDeptServiceImpl extends BaseServiceImpl<SysDeptMapper, SysDept> 
     }
 
     // ======================== 私有方法 ========================
+
+    /**
+     * 批量填充部门列表中的所属机构名称（orgName）
+     * <p>
+     * 从部门列表中收集所有不为 null 的 orgId，一次性查询 sys_org 表，
+     * 构建 orgId → orgName 映射后回填到每个部门实体的 orgName 字段。
+     * 该方法可有效避免逐条查询产生的 N+1 性能问题。
+     * </p>
+     *
+     * @param depts 部门平铺列表（会直接修改列表中各元素的 orgName）
+     */
+    private void fillOrgName(List<SysDept> depts) {
+        if (CollUtil.isEmpty(depts)) {
+            return;
+        }
+        // 收集所有不为 null 的机构ID（去重）
+        Set<Long> orgIds = depts.stream()
+                .map(SysDept::getOrgId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        if (orgIds.isEmpty()) {
+            return;
+        }
+        // 批量查询机构信息，构建 orgId → orgName 映射
+        List<SysOrg> orgs = orgMapper.selectBatchIds(orgIds);
+        Map<Long, String> orgNameMap = orgs.stream()
+                .collect(Collectors.toMap(SysOrg::getId, SysOrg::getOrgName, (a, b) -> a));
+        // 回填 orgName
+        depts.forEach(d -> {
+            if (d.getOrgId() != null) {
+                d.setOrgName(orgNameMap.get(d.getOrgId()));
+            }
+        });
+    }
 
     /**
      * 级联更新子部门的 ancestors 字段

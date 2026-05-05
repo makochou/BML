@@ -71,6 +71,9 @@ public class SysUser extends BaseEntity {
     @Schema(description = "岗位ID")
     private Long postId;
 
+    @Schema(description = "直属上级用户ID（构建汇报链，NULL表示无上级）")
+    private Long superiorId;
+
     @Schema(description = "工号")
     private String employeeNo;
 

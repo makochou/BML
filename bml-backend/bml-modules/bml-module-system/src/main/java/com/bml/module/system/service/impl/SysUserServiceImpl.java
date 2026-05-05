@@ -3,8 +3,10 @@ package com.bml.module.system.service.impl;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.bml.core.base.service.impl.BaseServiceImpl;
 import com.bml.core.common.constant.GlobalConstants;
+import com.bml.core.common.result.PageResult;
 import com.bml.core.framework.license.LicenseQuotaChecker;
 import com.bml.core.framework.security.utils.SecurityUtils;
 import com.bml.module.system.converter.UserConverter;
@@ -137,6 +139,45 @@ public class SysUserServiceImpl extends BaseServiceImpl<SysUserMapper, SysUser> 
             result.add(vo);
         }
         return result;
+    }
+
+    /**
+     * 分页查询用户列表（含机构/部门/岗位/角色关联名称 + 数据权限过滤）
+     * <p>
+     * 与 {@link #selectUserList} 使用相同的查询条件和数据权限逻辑，
+     * 额外支持 MyBatis-Plus 的分页插件进行物理分页。
+     * </p>
+     */
+    @Override
+    @DataScope(deptColumn = "dept_id", orgColumn = "org_id", userColumn = "id", creatorColumn = "create_by")
+    public PageResult<SysUserVO> selectUserPage(SysUserDTO dto, int pageNum, int pageSize) {
+        if (dto == null) {
+            dto = new SysUserDTO();
+        }
+        LambdaQueryWrapper<SysUser> queryWrapper = new LambdaQueryWrapper<>();
+        if (StringUtils.hasText(dto.getUsername())) {
+            queryWrapper.like(SysUser::getUsername, dto.getUsername());
+        }
+        if (StringUtils.hasText(dto.getPhone())) {
+            queryWrapper.like(SysUser::getPhone, dto.getPhone());
+        }
+        if (dto.getStatus() != null) {
+            queryWrapper.eq(SysUser::getStatus, dto.getStatus());
+        }
+        if (dto.getDeptId() != null) {
+            queryWrapper.eq(SysUser::getDeptId, dto.getDeptId());
+        }
+        if (dto.getOrgId() != null) {
+            queryWrapper.eq(SysUser::getOrgId, dto.getOrgId());
+        }
+        // 注入数据权限 SQL
+        String dataScopeSql = DataScopeContext.getDataScopeSql();
+        if (StrUtil.isNotBlank(dataScopeSql)) {
+            queryWrapper.apply(dataScopeSql);
+        }
+        Page<SysUser> page = this.page(new Page<>(pageNum, pageSize), queryWrapper);
+        List<SysUserVO> records = enrichUserVOList(page.getRecords());
+        return PageResult.of(records, page.getTotal(), pageNum, pageSize);
     }
 
     @Override

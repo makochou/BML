@@ -1,6 +1,6 @@
 <template>
   <!--
-    右下角告警弹窗组件 (AlertToast)
+    右上角告警弹窗组件 (AlertToast)
 
     功能说明：
     - 监听 notificationStore.newAlerts 队列，有新告警时自动弹出
@@ -8,6 +8,7 @@
     - 队列模式：上一条消失后才弹出下一条，不叠加
     - 支持手动关闭和点击跳转
     - 显示告警级别图标（warning/error/critical 不同颜色）
+    - 所有告警（包括授权变更 LICENSE_CHANGE）统一在右上角展示
   -->
   <Teleport to="body">
     <Transition name="toast-slide">
@@ -36,7 +37,7 @@
 
           <!-- 右侧文字 -->
           <div class="toast-text">
-            <div class="toast-label">系统告警</div>
+            <div class="toast-label">{{ currentAlert.alertType === 'LICENSE_CHANGE' ? '授权变更通知' : '系统告警' }}</div>
             <div class="toast-title">{{ currentAlert.alertTitle }}</div>
             <div class="toast-desc">{{ currentAlert.alertContent }}</div>
             <div class="toast-time">{{ currentAlert.createTime }}</div>
@@ -58,7 +59,7 @@
 
 <script lang="ts" setup>
 /**
- * AlertToast — 右下角告警弹窗通知组件
+ * AlertToast — 右上角告警弹窗通知组件
  *
  * 工作机制：
  * 1. 通过 watch 监听 notificationStore.newAlerts 队列长度变化
@@ -66,7 +67,7 @@
  * 3. 启动 5 秒倒计时定时器
  * 4. 倒计时结束或手动关闭后，检查队列是否还有数据，有则继续弹出
  *
- * 挂载位置：Layout.vue 模板底部
+ * 挂载位置：Layout.vue 模板底部，弹窗展示在页面右上角（Header 下方）
  */
 import { ref, watch, onUnmounted } from 'vue';
 import {
@@ -161,7 +162,7 @@ onUnmounted(() => {
 /* ==================== Toast 容器 ==================== */
 .alert-toast {
   position: fixed;
-  bottom: 24px;
+  top: 80px;
   right: 24px;
   width: 380px;
   background: rgba(255, 255, 255, 0.98);

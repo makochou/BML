@@ -1,6 +1,7 @@
 package com.bml.module.system.controller;
 
 import com.bml.core.base.controller.BaseController;
+import com.bml.core.common.constant.GlobalConstants;
 import com.bml.core.common.result.Result;
 import com.bml.module.system.dto.SysMenuDTO;
 import com.bml.module.system.entity.SysMenu;
@@ -28,7 +29,8 @@ import java.util.List;
  * <ul>
  * <li><b>M</b> — 目录（Directory），用于分组菜单项</li>
  * <li><b>C</b> — 菜单（Menu），对应前端的一个页面</li>
- * <li><b>F</b> — 按钮（Button），对应页面上的操作按钮（纯权限标识，无路由）</li>
+ * <li><b>B</b> — 按钮（Button），对应页面上的操作按钮（纯权限标识，无路由）</li>
+ * <li><b>F</b> — 字段（Field），控制字段可见性（纯权限标识，无路由）</li>
  * </ul>
  *
  * <h3>权限标识说明：</h3>
@@ -84,6 +86,50 @@ public class SysMenuController extends BaseController {
     public Result<List<SysMenuVO>> list(SysMenuDTO dto) {
         Long userId = SecurityUtils.getUserId();
         return Result.ok(MenuConverter.INSTANCE.toVOList(menuService.selectMenuList(dto, userId)));
+    }
+
+    /**
+     * 获取菜单授权树
+     * <p>
+     * 用于角色权限分配，返回完整的菜单树结构（含目录 M、菜单 C、按钮 B、字段 F 四种类型）。
+     * 该接口无需 {@code system:menu:list} 权限，拥有角色管理权限即可调用。
+     * </p>
+     *
+     * @return 完整菜单授权树
+     */
+    @Operation(summary = "获取菜单授权树（角色权限分配用）")
+    @PreAuthorize("@ss.hasPermi('system:role:list') or @ss.hasPermi('system:role:edit') or @ss.hasPermi('system:role:add')")
+    @GetMapping("/authTree")
+    public Result<List<SysMenuVO>> authTree() {
+        // 使用 SYSTEM_USER_ID 以超管身份获取全部菜单（含 M/C/B/F 全部类型）
+        return Result.ok(MenuConverter.INSTANCE.toVOList(
+                menuService.selectMenuList(new SysMenuDTO(), GlobalConstants.SYSTEM_USER_ID)));
+    }
+
+    /**
+     * 获取权限分配面板数据（业务系统角色授权专用）
+     * <p>
+     * 专为角色权限分配三面板 UI 设计，返回扁平列表格式的<b>业务系统菜单</b>。
+     * 仅包含"系统管理"（path='system'）目录及其所有子孙菜单，
+     * 不包含中台管理的菜单（工作台、资产目录、授权治理、系统监控等）。
+     * </p>
+     * <p>
+     * 前端根据 menuType 和 parentId 分组为：
+     * <ul>
+     *   <li>左面板：模块菜单（M 目录 + C 菜单），以树形展示</li>
+     *   <li>中面板：功能按钮（B），按所属菜单分组展示</li>
+     *   <li>右面板：表单字段（F），按所属菜单分组展示</li>
+     * </ul>
+     * </p>
+     *
+     * @return 扁平菜单列表（仅业务系统菜单）
+     */
+    @Operation(summary = "获取权限分配面板数据（角色授权三面板专用）")
+    @PreAuthorize("@ss.hasPermi('system:role:list') or @ss.hasPermi('system:role:edit') or @ss.hasPermi('system:role:add')")
+    @GetMapping("/permissionData")
+    public Result<List<SysMenuVO>> permissionData() {
+        return Result.ok(MenuConverter.INSTANCE.toVOList(
+                menuService.selectPermissionMenuList()));
     }
 
     /**
