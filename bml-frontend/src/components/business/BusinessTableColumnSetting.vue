@@ -144,12 +144,29 @@ defineEmits<{
 </script>
 
 <style scoped>
-/* ── 面板容器 ── */
+/*
+ * ════════════════════════════════════════════════════════════════
+ * 列设置面板样式（与授权治理 table-column-setting-panel 完全一致）
+ * ────────────────────────────────────────────────────────────────
+ * 设计要素：
+ * 1. 280px 紧凑宽度，渐变背景玻璃质感
+ * 2. 卡片式列项（带边框和圆角），舒适的点击区域
+ * 3. 精致拖拽手柄、固定按钮渐变高亮
+ * 4. 美化滚动条（Webkit + Firefox）
+ * 5. 开关使用主题色，清晰可见
+ * ════════════════════════════════════════════════════════════════
+ */
+
+/* ── 面板容器：渐变背景 + 玻璃质感 ── */
 .biz-col-setting {
-  width: 260px;
-  background: #ffffff;
+  width: 280px;
+  padding: 10px 12px;
   border-radius: 12px;
-  overflow: hidden;
+  border: 1px solid rgba(209, 220, 235, 0.9);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(245, 250, 255, 0.96));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.96),
+    0 12px 24px rgba(16, 43, 82, 0.12);
 }
 
 /* ── 面板头部 ── */
@@ -157,15 +174,14 @@ defineEmits<{
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 14px 8px;
-  border-bottom: 1px solid rgba(226, 232, 240, 0.8);
-  background: linear-gradient(180deg, #f8faff, #ffffff);
+  gap: 10px;
+  margin-bottom: 8px;
 }
 
 .biz-col-setting__title {
+  color: #1e293b;
   font-size: 13px;
   font-weight: 700;
-  color: #0f172a;
 }
 
 .biz-col-setting__reset {
@@ -173,82 +189,118 @@ defineEmits<{
   color: #1769ff;
 }
 
-/* ── 列列表 ── */
+/* ── 列列表容器 ── */
 .biz-col-setting__list {
-  max-height: 360px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 320px;
   overflow-y: auto;
-  padding: 4px 0;
+  overflow-x: hidden;
+  padding: 4px;
+  /* Firefox 滚动条 */
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 rgba(241, 245, 249, 0.6);
 }
 
-/* ── 列项 ── */
+/* Webkit 浏览器滚动条 */
+.biz-col-setting__list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.biz-col-setting__list::-webkit-scrollbar-track {
+  background: rgba(241, 245, 249, 0.6);
+  border-radius: 10px;
+  margin: 4px 0;
+}
+
+.biz-col-setting__list::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #cbd5e1 0%, #94a3b8 100%);
+  border-radius: 10px;
+  transition: background 0.3s ease;
+}
+
+.biz-col-setting__list::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #94a3b8 0%, #64748b 100%);
+}
+
+.biz-col-setting__list::-webkit-scrollbar-thumb:active {
+  background: linear-gradient(180deg, #64748b 0%, #475569 100%);
+}
+
+/* ── 列项：卡片式边框，舒适点击区域 ── */
 .biz-col-setting__item {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  padding: 5px 10px;
+  gap: 4px;
+  padding: 6px 8px;
+  min-height: 36px;
   border-radius: 6px;
-  margin: 1px 4px;
-  transition: background 0.15s ease;
-  position: relative;
+  border: 1px solid rgba(220, 230, 243, 0.92);
+  background: rgba(255, 255, 255, 0.92);
+  transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
 }
 
-.biz-col-setting__item:hover {
-  background: rgba(23, 105, 255, 0.04);
+.biz-col-setting__item.is-draggable {
+  cursor: default;
 }
 
 /* 拖拽源（正在被拖拽的列） */
 .biz-col-setting__item.is-drag-source {
-  opacity: 0.5;
-  background: rgba(23, 105, 255, 0.06);
+  opacity: 0.65;
+  border-color: rgba(96, 146, 205, 0.5);
 }
 
-/* 拖拽目标：上方插入指示线 */
-.biz-col-setting__item.is-drag-over-before::before {
-  content: '';
-  position: absolute;
-  top: -1px;
-  left: 8px;
-  right: 8px;
-  height: 2px;
-  border-radius: 999px;
-  background: linear-gradient(90deg, #1769ff, #12b8a6);
-}
-
-/* 拖拽目标：下方插入指示线 */
+/* 拖拽目标：插入指示线（蓝绿渐变） */
+.biz-col-setting__item.is-drag-over-before::before,
 .biz-col-setting__item.is-drag-over-after::after {
   content: '';
   position: absolute;
-  bottom: -1px;
-  left: 8px;
-  right: 8px;
+  left: 10px;
+  right: 10px;
   height: 2px;
-  border-radius: 999px;
-  background: linear-gradient(90deg, #1769ff, #12b8a6);
+  border-radius: 2px;
+  background: linear-gradient(90deg, #2f80ed, #22b5a5);
+}
+
+.biz-col-setting__item.is-drag-over-before::before {
+  top: -1px;
+}
+
+.biz-col-setting__item.is-drag-over-after::after {
+  bottom: -1px;
 }
 
 /* ── 左侧标签区 ── */
 .biz-col-setting__label {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   min-width: 0;
   flex: 1;
 }
 
-/* 拖拽手柄 */
+/* 拖拽手柄：方块图标，悬浮高亮 */
 .biz-col-setting__drag-handle {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
   color: #94a3b8;
   cursor: grab;
-  font-size: 14px;
-  flex-shrink: 0;
-  transition: color 0.15s ease;
+  user-select: none;
+  flex: 0 0 auto;
+  transition: color 0.2s ease, background-color 0.2s ease;
+  font-size: 11px;
 }
 
 .biz-col-setting__drag-handle:hover {
-  color: #1769ff;
+  color: #2563eb;
+  background: rgba(37, 99, 235, 0.12);
 }
 
 .biz-col-setting__drag-handle:active {
@@ -257,69 +309,96 @@ defineEmits<{
 
 /* 列名 */
 .biz-col-setting__col-name {
-  font-size: 12px;
   color: #334155;
-  font-weight: 500;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 /* 锁定标记 */
 .biz-col-setting__locked-badge {
-  font-size: 10px;
-  color: #94a3b8;
-  background: rgba(148, 163, 184, 0.12);
-  padding: 1px 5px;
-  border-radius: 4px;
+  padding: 1px 4px;
+  border-radius: 999px;
+  background: rgba(226, 232, 240, 0.9);
+  color: #64748b;
+  font-size: 9px;
+  font-weight: 700;
   flex-shrink: 0;
 }
 
 /* ── 右侧操作区 ── */
 .biz-col-setting__actions {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: 3px;
   flex-shrink: 0;
 }
 
+/* 开关：使用主题色 */
+.biz-col-setting__actions :deep(.arco-switch) {
+  flex-shrink: 0;
+}
+
+.biz-col-setting__actions :deep(.arco-switch-checked) {
+  background-color: var(--color-primary, #165dff) !important;
+}
+
+.biz-col-setting__actions :deep(.arco-switch-checked:hover) {
+  background-color: var(--color-primary-light-4, #4080ff) !important;
+}
+
+.biz-col-setting__actions :deep(.arco-switch:not(.arco-switch-checked)) {
+  background-color: #e5e6eb !important;
+}
+
+.biz-col-setting__actions :deep(.arco-switch:not(.arco-switch-checked):hover) {
+  background-color: #c9cdd4 !important;
+}
+
+/* 上移/下移 + 固定按钮通用尺寸 */
+.biz-col-setting__order-btn.arco-btn,
+.biz-col-setting__fixed-btn.arco-btn {
+  width: 20px !important;
+  min-width: 20px !important;
+  height: 20px !important;
+  padding: 0 !important;
+  border-radius: 4px !important;
+  font-size: 11px !important;
+}
+
 /* 上移/下移按钮 */
 .biz-col-setting__order-btn.arco-btn {
-  width: 22px;
-  height: 22px;
-  padding: 0;
-  border-radius: 5px;
-  border-color: rgba(203, 213, 225, 0.7);
-  background: rgba(255, 255, 255, 0.9);
   color: #64748b;
-  font-size: 11px;
 }
 
-.biz-col-setting__order-btn.arco-btn:not(:disabled):hover {
-  border-color: rgba(23, 105, 255, 0.4);
-  color: #1769ff;
-}
-
-/* 固定按钮 */
+/* 固定按钮：渐变背景 */
 .biz-col-setting__fixed-btn.arco-btn {
-  width: 22px;
-  height: 22px;
-  padding: 0;
-  border-radius: 5px;
-  border-color: rgba(203, 213, 225, 0.7);
-  background: rgba(255, 255, 255, 0.9);
-  color: #94a3b8;
-  font-size: 11px;
-}
-
-.biz-col-setting__fixed-btn.arco-btn.is-active {
-  border-color: rgba(23, 105, 255, 0.5);
-  background: rgba(23, 105, 255, 0.08);
-  color: #1769ff;
+  color: #64748b;
+  border-color: rgba(203, 213, 225, 0.88);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(244, 249, 255, 0.96));
 }
 
 .biz-col-setting__fixed-btn.arco-btn:not(:disabled):hover {
-  border-color: rgba(23, 105, 255, 0.4);
-  color: #1769ff;
+  color: #1d4ed8;
+  border-color: rgba(59, 130, 246, 0.52);
+}
+
+/* 固定按钮激活态：蓝色渐变高亮 */
+.biz-col-setting__fixed-btn.arco-btn.is-active {
+  color: #1d4ed8;
+  border-color: rgba(59, 130, 246, 0.62);
+  background: linear-gradient(135deg, rgba(219, 234, 254, 0.95), rgba(224, 242, 254, 0.95));
+  box-shadow: inset 0 0 0 1px rgba(147, 197, 253, 0.48);
+}
+
+/* 固定按钮禁用态 */
+.biz-col-setting__fixed-btn.arco-btn:disabled,
+.biz-col-setting__fixed-btn.arco-btn.is-active:disabled {
+  color: #94a3b8;
+  border-color: rgba(226, 232, 240, 0.9);
+  background: rgba(248, 250, 252, 0.96);
+  box-shadow: none;
 }
 </style>

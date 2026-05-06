@@ -46,6 +46,7 @@ export interface UserForm {
   orgId?: number;
   deptId?: number;
   postId?: number;
+  superiorId?: number;
   employeeNo?: string;
   entryDate?: string;
   roleIds?: number[];
@@ -94,7 +95,9 @@ export interface RoleForm {
   dataScope?: number;
   status?: number;
   menuIds?: number[];
+  halfCheckMenuIds?: number[];
   customOrgIds?: number[];
+  customDeptIds?: number[];
   remark?: string;
 }
 
@@ -108,6 +111,10 @@ export interface RoleVO {
   status: number;
   remark: string;
   createTime: string;
+  menuIds?: number[];
+  halfCheckMenuIds?: number[];
+  customOrgIds?: number[];
+  customDeptIds?: number[];
 }
 
 /** 菜单表单数据 */
@@ -187,6 +194,13 @@ export interface OrgQuery {
   orgCode?: string;
   orgType?: number;
   status?: number;
+  dataIsolation?: number;
+  leader?: string;
+  phone?: string;
+  creditCode?: string;
+  legalPerson?: string;
+  province?: string;
+  city?: string;
 }
 
 /** 机构表单数据（新增/编辑） */
@@ -338,6 +352,14 @@ export const deleteRole = (roleId: number) =>
 export const fetchMenuList = (params?: { menuName?: string; status?: number }) =>
   request.get('/system/menu/list', { params });
 
+/** 获取菜单授权树（角色权限分配用，含 M/C/B/F 全部类型） */
+export const fetchMenuAuthTree = () =>
+  request.get('/system/menu/authTree');
+
+/** 获取权限分配面板数据（扁平列表，角色授权三面板专用） */
+export const fetchPermissionData = () =>
+  request.get('/system/menu/permissionData');
+
 /** 获取菜单详情 */
 export const fetchMenuDetail = (menuId: number) =>
   request.get(`/system/menu/${menuId}`);
@@ -436,8 +458,97 @@ export const fetchPostPage = (params?: PostQuery & PageQuery) =>
 
 /** 分页查询用户 */
 export const fetchUserPage = (params?: UserQuery & PageQuery) =>
-  request.get<PageResult<UserVO>>('/system/user/list', { params });
+  request.get<PageResult<UserVO>>('/system/user/page', { params });
 
 /** 分页查询角色 */
 export const fetchRolePage = (params?: RoleQuery & PageQuery) =>
-  request.get<PageResult<RoleVO>>('/system/role/list', { params });
+  request.get<PageResult<RoleVO>>('/system/role/page', { params });
+
+/* ═════════════════════════════════════════════════════════
+   机构数据共享规则 API
+   ═════════════════════════════════════════════════════════ */
+
+/** 机构数据共享规则 VO */
+export interface OrgDataShareVO {
+  id: number;
+  sourceOrgId: number;
+  targetOrgId: number;
+  targetOrgName?: string;
+  shareType: number;
+  moduleCode: string;
+  permission: number;
+  status: number;
+  expireTime: string;
+  remark: string;
+  createTime: string;
+}
+
+/** 机构数据共享规则表单 */
+export interface OrgDataShareForm {
+  id?: number;
+  sourceOrgId?: number;
+  targetOrgId?: number;
+  shareType?: number;
+  moduleCode?: string;
+  permission?: number;
+  status?: number;
+  expireTime?: string;
+  remark?: string;
+}
+
+/** 查询机构共享规则列表 */
+export const fetchOrgShareList = (sourceOrgId: number) =>
+  request.get<OrgDataShareVO[]>(`/system/org/share/list/${sourceOrgId}`);
+
+/** 新增机构共享规则 */
+export const createOrgShare = (data: OrgDataShareForm) =>
+  request.post('/system/org/share', data);
+
+/** 修改机构共享规则 */
+export const updateOrgShare = (data: OrgDataShareForm) =>
+  request.put('/system/org/share', data);
+
+/** 删除机构共享规则 */
+export const deleteOrgShare = (id: number) =>
+  request.delete(`/system/org/share/${id}`);
+
+/* ═════════════════════════════════════════════════════════
+   用户个人数据权限 API
+   ═════════════════════════════════════════════════════════ */
+
+/** 用户个人数据权限 VO */
+export interface UserDataScopeVO {
+  id: number;
+  userId: number;
+  dataScope: number;
+  customOrgIds: string;
+  customDeptIds: string;
+  status: number;
+  expireTime: string;
+  remark: string;
+  createTime: string;
+}
+
+/** 用户个人数据权限表单 */
+export interface UserDataScopeForm {
+  id?: number;
+  userId?: number;
+  dataScope?: number;
+  customOrgIds?: string;
+  customDeptIds?: string;
+  status?: number;
+  expireTime?: string;
+  remark?: string;
+}
+
+/** 查询用户个人数据权限 */
+export const fetchUserDataScope = (userId: number) =>
+  request.get<UserDataScopeVO>(`/system/user/datascope/${userId}`);
+
+/** 保存用户个人数据权限 */
+export const saveUserDataScope = (data: UserDataScopeForm) =>
+  request.post('/system/user/datascope', data);
+
+/** 删除用户个人数据权限 */
+export const deleteUserDataScope = (userId: number) =>
+  request.delete(`/system/user/datascope/${userId}`);

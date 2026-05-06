@@ -160,12 +160,17 @@ public class SysAlertServiceImpl extends ServiceImpl<SysAlertMapper, SysAlert> i
      * 核心去重策略：
      * <ol>
      * <li>1. 查询是否存在相同类型和标题的<strong>未读</strong>告警</li>
-     * <li>2. 如果存在，则更新该告警的内容、级别和时间（保持未读状态）</li>
-     * <li>3. 如果不存在未读告警，查询是否存在24小时内的<strong>已读</strong>告警</li>
-     * <li>4. 如果存在24小时内已读告警，则不创建新告警（避免重复打扰）</li>
-     * <li>5. 否则创建新告警</li>
+     * <li>2. 如果存在，则更新该告警的内容、级别和时间（保持未读状态，防止快速重复点击产生多条）</li>
+     * <li>3. 如果不存在未读告警，直接创建新告警</li>
      * </ol>
-     * 这样可以避免许可证更新时产生大量重复告警，同时确保用户不会被频繁打扰。
+     * <p>
+     * <strong>设计说明：</strong>
+     * 不再检查已读告警（原 24 小时去重规则已移除）。原因：
+     * <ul>
+     * <li>许可证变更（LICENSE_CHANGE）是用户主动发起的独立业务事件，每次都应留痕</li>
+     * <li>即使内容相同（如 API 账号上限 1→2，再还原后又 1→2），也属于两次独立操作</li>
+     * <li>系统监控告警（CPU/内存等）由 {@code ServerAlertJob} 直接调用 {@code save()} 写入，不经此方法</li>
+     * </ul>
      * </p>
      *
      * @param alert 待保存的告警对象
@@ -183,37 +188,19 @@ public class SysAlertServiceImpl extends ServiceImpl<SysAlertMapper, SysAlert> i
         SysAlert existingUnread = this.getOne(unreadQuery);
 
         if (existingUnread != null) {
-            // 2. 如果存在未读告警，则更新该告警
+            // 2. 如果存在未读告警，则更新该告警（防止快速重复点击产生多条重复记录）
             existingUnread.setAlertContent(alert.getAlertContent());
             existingUnread.setAlertLevel(alert.getAlertLevel());
             existingUnread.setUpdateTime(LocalDateTime.now());
             this.updateById(existingUnread);
-            log.info("[Alert] 更新现有未读告警：类型={}, 标题={}, ID={}", 
+            log.info("[Alert] 更新现有未读告警：类型={}, 标题={}, ID={}",
                     alert.getAlertType(), alert.getAlertTitle(), existingUnread.getId());
             return existingUnread;
         }
 
-        // 3. 查询是否存在24小时内的已读告警
-        LocalDateTime twentyFourHoursAgo = LocalDateTime.now().minusHours(24);
-        LambdaQueryWrapper<SysAlert> readQuery = new LambdaQueryWrapper<>();
-        readQuery.eq(SysAlert::getAlertType, alert.getAlertType())
-                .eq(SysAlert::getAlertTitle, alert.getAlertTitle())
-                .eq(SysAlert::getReadStatus, 1)
-                .ge(SysAlert::getUpdateTime, twentyFourHoursAgo)
-                .orderByDesc(SysAlert::getUpdateTime)
-                .last("LIMIT 1");
-        SysAlert existingRead = this.getOne(readQuery);
-
-        if (existingRead != null) {
-            // 4. 如果存在24小时内已读告警，则不创建新告警
-            log.info("[Alert] 24小时内已存在已读告警，跳过创建：类型={}, 标题={}, 上次更新时间={}", 
-                    alert.getAlertType(), alert.getAlertTitle(), existingRead.getUpdateTime());
-            return existingRead;
-        }
-
-        // 5. 否则创建新告警
+        // 3. 不存在未读告警 → 直接创建新告警
         this.save(alert);
-        log.info("[Alert] 创建新告警：类型={}, 标题={}, ID={}", 
+        log.info("[Alert] 创建新告警：类型={}, 标题={}, ID={}",
                 alert.getAlertType(), alert.getAlertTitle(), alert.getId());
         return alert;
     }

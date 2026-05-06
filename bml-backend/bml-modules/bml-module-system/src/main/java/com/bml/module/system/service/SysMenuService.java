@@ -36,6 +36,18 @@ public interface SysMenuService extends BaseService<SysMenu> {
     List<RouterVO> buildMenus(List<SysMenu> menus);
 
     /**
+     * 查询权限分配面板所需的扁平菜单列表（业务系统角色授权专用）
+     * <p>
+     * 仅返回业务系统菜单（即 path='system' 目录及其所有子孙菜单），
+     * 不包含中台管理的菜单（工作台、资产目录、授权治理等）。
+     * 按 parentId + sort 排序，不组装树结构，由前端按 menuType 分类。
+     * </p>
+     *
+     * @return 扁平菜单列表（仅业务系统菜单）
+     */
+    List<SysMenu> selectPermissionMenuList();
+
+    /**
      * 校验菜单名称是否唯一
      */
     boolean checkMenuNameUnique(SysMenuDTO menu);

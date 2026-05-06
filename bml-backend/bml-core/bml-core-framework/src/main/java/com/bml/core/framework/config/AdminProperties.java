@@ -15,9 +15,10 @@ import org.springframework.stereotype.Component;
  * <pre>
  * bml:
  *   admin:
- *     username: admin          # 管理员用户名
- *     password: admin123       # 管理员密码（明文，启动时自动 BCrypt 编码比对）
- *     nickname: 系统管理员      # 管理员显示昵称
+ *     username: admin                    # 管理员用户名
+ *     password: admin123                 # 管理员密码（明文，启动时自动 BCrypt 编码比对）
+ *     nickname: 系统管理员                # 管理员显示昵称
+ *     session-timeout-minutes: 30        # 会话超时时长（分钟），0 表示不限制
  * </pre>
  *
  * <h3>环境变量覆盖：</h3>
@@ -25,6 +26,7 @@ import org.springframework.stereotype.Component;
  * BML_ADMIN_USERNAME=admin
  * BML_ADMIN_PASSWORD=your-secure-password
  * BML_ADMIN_NICKNAME=管理员
+ * BML_ADMIN_SESSION_TIMEOUT_MINUTES=60
  * </pre>
  *
  * <h3>设计说明：</h3>
@@ -34,6 +36,8 @@ import org.springframework.stereotype.Component;
  *   <li>管理员使用虚拟 userId（{@link com.bml.core.common.constant.GlobalConstants#ADMIN_USER_ID} = -1L），
  *       不与 sys_user 数据库表中的任何用户冲突</li>
  *   <li>密码以明文配置，登录时通过 BCrypt 编码比对验证</li>
+ *   <li>会话超时控制：通过 {@code session-timeout-minutes} 配置中台管理员的空闲超时时长，
+ *       与业务系统的 {@code sys.login.idleTimeout} 独立管理</li>
  * </ul>
  *
  * @author BML Team
@@ -61,4 +65,14 @@ public class AdminProperties {
      * 管理员显示昵称（必须在 application.yml 中配置）
      */
     private String nickname;
+
+    /**
+     * 中台管理员会话超时时长（分钟），默认 30 分钟。
+     * <p>
+     * 设置为 0 表示不限制会话时长。
+     * 此配置仅针对中台管理平台，与业务系统的 {@code sys.login.idleTimeout} 独立。
+     * 生产环境建议通过环境变量 {@code BML_ADMIN_SESSION_TIMEOUT_MINUTES} 注入。
+     * </p>
+     */
+    private Integer sessionTimeoutMinutes = 30;
 }

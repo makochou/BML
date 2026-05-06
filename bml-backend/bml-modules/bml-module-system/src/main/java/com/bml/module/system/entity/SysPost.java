@@ -1,5 +1,7 @@
 package com.bml.module.system.entity;
 
+import com.baomidou.mybatisplus.annotation.FieldStrategy;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.bml.core.base.entity.BaseEntity;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -28,6 +30,7 @@ public class SysPost extends BaseEntity {
     private String postName;
 
     @Schema(description = "所属机构ID（NULL 表示全局岗位）")
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private Long orgId;
 
     @Schema(description = "岗位类别 (管理类/技术类/行政类/财务类/销售类/生产类)")

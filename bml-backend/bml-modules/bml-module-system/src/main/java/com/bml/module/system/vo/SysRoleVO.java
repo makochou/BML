@@ -41,6 +41,15 @@ public class SysRoleVO implements Serializable {
     @Schema(description = "创建时间")
     private LocalDateTime createTime;
 
-    @Schema(description = "菜单ID列表")
+    @Schema(description = "菜单ID列表（完全勾选的菜单/按钮/字段 ID）")
     private List<Long> menuIds;
+
+    @Schema(description = "半选菜单 ID 列表（仅部分子权限授予的父节点，用于前端权限树回显）")
+    private List<Long> halfCheckMenuIds;
+
+    @Schema(description = "自定义数据权限时的机构ID列表")
+    private List<Long> customOrgIds;
+
+    @Schema(description = "自定义数据权限时的部门ID列表")
+    private List<Long> customDeptIds;
 }

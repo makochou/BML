@@ -46,8 +46,10 @@
             <slot name="header-extra"></slot>
           </div>
           <div class="bml-modal__header-actions">
-            <!-- 自定义操作按钮插槽（footer 内容提升到 header 时使用） -->
-            <slot name="header-actions"></slot>
+            <!-- 自定义操作按钮区域（表单的「取消/确定」等按钮提升到标题栏右侧） -->
+            <div v-if="$slots['header-actions']" class="bml-modal__header-form-actions">
+              <slot name="header-actions"></slot>
+            </div>
             <a-tooltip :content="controller.fullscreen.value ? '退出全屏' : '全屏展示'">
               <button class="bml-modal__action-btn" type="button" @click.stop="controller.toggleFullscreen()">
                 <component :is="controller.fullscreen.value ? IconFullscreenExit : IconFullscreen" />
@@ -186,12 +188,11 @@ function handleMaskClick() {
   justify-content: center;
 }
 
+/* 遮罩层：仅半透明遮罩，不模糊背景内容 */
 .bml-modal-overlay__mask {
   position: absolute;
   inset: 0;
-  background: rgba(15, 23, 42, 0.45);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  background: rgba(15, 23, 42, 0.35);
 }
 
 /* ── 弹窗主体 ── */
@@ -416,5 +417,68 @@ function handleMaskClick() {
 .bml-modal__body :deep(.arco-form .arco-picker),
 .bml-modal__body :deep(.arco-form .arco-input-number) {
   border-radius: 8px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+ * 标题栏表单操作按钮区域
+ * ═══════════════════════════════════════════════════════════════
+ * 用途：将弹窗表单的操作按钮（取消/确定等）提升到标题栏右侧，
+ * 节省底部空间，操作更直观。与窗口控制按钮（全屏/关闭）之间
+ * 用竖线分隔，视觉层次分明。
+ * ═══════════════════════════════════════════════════════════════ */
+.bml-modal__header-form-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  /* 右侧竖线分隔符：与窗口控制按钮（全屏/关闭）区分 */
+  margin-right: 6px;
+  padding-right: 10px;
+  border-right: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+/* 表单操作按钮 —— 紧凑尺寸，适配标题栏高度 */
+.bml-modal__header-form-actions .arco-btn {
+  min-width: 68px;
+  height: 28px;
+  padding: 0 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 28px;
+}
+
+/* 非主按钮（取消/关闭）—— 低调次要样式 */
+.bml-modal__header-form-actions .arco-btn:not(.arco-btn-primary):not(.arco-btn-status-danger):not(.arco-btn-status-warning) {
+  border-color: rgba(203, 213, 225, 0.9);
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+  color: #334155;
+}
+
+.bml-modal__header-form-actions .arco-btn:not(.arco-btn-primary):not(.arco-btn-status-danger):not(.arco-btn-status-warning):hover {
+  border-color: rgba(47, 109, 246, 0.4);
+  color: #1d4ed8;
+}
+
+/* 主按钮（确定/保存）—— 蓝绿渐变，与全站主色一致 */
+.bml-modal__header-form-actions .arco-btn-primary:not(.arco-btn-status-danger) {
+  border: 0;
+  background: linear-gradient(135deg, #2f6df6 0%, #1f8bff 46%, #12b8a6 100%);
+  box-shadow: 0 4px 12px rgba(47, 109, 246, 0.22);
+  color: #ffffff;
+}
+
+.bml-modal__header-form-actions .arco-btn-primary:not(.arco-btn-status-danger):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(47, 109, 246, 0.28);
+}
+
+/* 警告按钮（重置密码等） */
+.bml-modal__header-form-actions .arco-btn-status-warning {
+  font-size: 12px;
+}
+
+/* 危险按钮（删除等） */
+.bml-modal__header-form-actions .arco-btn-status-danger {
+  font-size: 12px;
 }
 </style>

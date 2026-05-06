@@ -1,0 +1,122 @@
+/**
+ * ═══════════════════════════════════════════════════════════════
+ * 授权治理分页区域 —— 与业务系统统一紧凑设计
+ * ═══════════════════════════════════════════════════════════════
+ *
+ * 文件说明：
+ *   本文件控制授权治理页面底部分页区域的视觉风格。
+ *   所有尺寸、间距、激活态色值均与前台业务系统保持一致
+ *   （参考：business-system.css 中 .biz-table-footer 和
+ *    .governance-list-stage .arco-pagination 相关规则）。
+ *
+ * 设计原则：
+ *   1. 分页容器使用顶部细线分隔，高度紧凑（padding: 10px 4px 0）
+ *   2. 分页按钮使用 Arco size="small" 默认尺寸，圆角胶囊形
+ *   3. 激活页码使用蓝绿渐变（#1769ff → #12b8a6），与全站主色一致
+ *   4. 不使用 3D 浮动、大号按钮等过度装饰，确保与业务系统视觉统一
+ *
+ * 作者：BML 前端团队
+ * 创建日期：2026-04-30
+ * 版本：v4.0.0（与业务系统统一）
+ * ═══════════════════════════════════════════════════════════════
+ */
+
+/* ═══════════════════════════════════════════════════════════════
+   1. 分页容器 —— 与业务系统 .biz-table-footer 完全一致
+   ═══════════════════════════════════════════════════════════════
+   - 底部固定，不随表格内容滚动
+   - 顶部细线分隔，右对齐分页信息
+   - 无圆角卡片、无 3D 阴影，保持简洁紧凑
+   ═══════════════════════════════════════════════════════════════ */
+.api-account-page .table-shell__footer {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    flex-shrink: 0;
+    margin-top: 8px;
+    padding: 10px 4px 0;
+    border-top: 1px solid rgba(214, 225, 239, 0.82);
+    /* 重置装饰属性，与业务系统保持一致 */
+    background: transparent;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+    border-bottom: none;
+    box-shadow: none;
+    gap: 0;
+    flex-wrap: nowrap;
+    transition: none;
+}
+
+/* 移除悬停浮动特效，保持与业务系统一致的静态分页栏 */
+.api-account-page .table-shell__footer:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   2. 分页组件 —— 右对齐，使用 Arco 默认小号尺寸
+   ═══════════════════════════════════════════════════════════════ */
+.api-account-page .table-shell__footer :deep(.arco-pagination) {
+    margin-left: auto;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   3. 分页按钮 —— 圆角胶囊形（与业务系统 .biz-table-footer 一致）
+   ═══════════════════════════════════════════════════════════════
+   重置 Ultra 大号尺寸，回退到 Arco size="small" 默认高度。
+   ═══════════════════════════════════════════════════════════════ */
+.api-account-page .table-shell__footer :deep(.arco-pagination-item),
+.api-account-page .table-shell__footer :deep(.arco-pagination-jumper-input),
+.api-account-page .table-shell__footer :deep(.arco-pagination-btn) {
+    border-radius: 999px;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   4. 激活页码 —— 蓝绿渐变（与业务系统全站主色一致）
+   ═══════════════════════════════════════════════════════════════ */
+.api-account-page .table-shell__footer :deep(.arco-pagination-item-active) {
+    background: linear-gradient(135deg, #1769ff, #12b8a6) !important;
+    border-color: transparent !important;
+    color: #ffffff !important;
+    font-weight: 700;
+    transform: none;
+    box-shadow: none;
+}
+
+/* 非激活页码悬停 */
+.api-account-page .table-shell__footer :deep(.arco-pagination-item:not(.arco-pagination-item-active):hover) {
+    border-color: rgba(23, 105, 255, 0.4) !important;
+    color: #1769ff !important;
+    transform: none;
+    box-shadow: none;
+}
+
+/* 禁用状态 */
+.api-account-page .table-shell__footer :deep(.arco-pagination-item-disabled) {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.api-account-page .table-shell__footer :deep(.arco-pagination-item-disabled:hover) {
+    transform: none;
+    box-shadow: none;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   5. 分页文本 —— 紧凑排版
+   ═══════════════════════════════════════════════════════════════ */
+.api-account-page .table-shell__footer :deep(.arco-pagination-total) {
+    font-size: 13px;
+    color: #64748b;
+    font-weight: 500;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   6. 打印样式
+   ═══════════════════════════════════════════════════════════════ */
+@media print {
+    .api-account-page .table-shell__footer {
+        display: none;
+    }
+}

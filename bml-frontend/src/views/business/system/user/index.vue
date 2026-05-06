@@ -21,27 +21,48 @@
         <a-button @click="handleReset">重置条件</a-button>
       </template>
       <a-form :model="queryParams" layout="inline" class="biz-query-form">
-        <a-form-item field="username" label="用户名">
-          <a-input v-model="queryParams.username" placeholder="请输入用户名" allow-clear @press-enter="handleSearch" />
-        </a-form-item>
-        <a-form-item field="phone" label="手机号">
-          <a-input v-model="queryParams.phone" placeholder="请输入手机号" allow-clear @press-enter="handleSearch" />
-        </a-form-item>
-        <a-form-item field="status" label="状态">
-          <a-select v-model="queryParams.status" placeholder="全部" allow-clear style="width: 120px;" @change="handleSearch">
-            <a-option :value="1">正常</a-option>
-            <a-option :value="0">停用</a-option>
-            <a-option :value="2">锁定</a-option>
-          </a-select>
-        </a-form-item>
+        <!-- 主要字段（默认显示 3 列） -->
+        <div class="biz-query-form-primary">
+          <a-form-item field="username" label="用户名">
+            <a-input v-model="queryParams.username" placeholder="请输入用户名" allow-clear @press-enter="handleSearch" />
+          </a-form-item>
+          <a-form-item field="phone" label="手机号">
+            <a-input v-model="queryParams.phone" placeholder="请输入手机号" allow-clear @press-enter="handleSearch" />
+          </a-form-item>
+          <a-form-item field="status" label="状态">
+            <a-select v-model="queryParams.status" placeholder="全部" allow-clear @change="handleSearch">
+              <a-option :value="1">正常</a-option>
+              <a-option :value="0">停用</a-option>
+              <a-option :value="2">锁定</a-option>
+            </a-select>
+          </a-form-item>
+        </div>
 
-        <!-- 次要字段（展开时显示） -->
+        <!-- 次要字段（展开时显示，4 列网格） -->
         <transition name="query-expand">
           <div v-if="queryExpanded" class="biz-query-form-extra">
+            <a-form-item field="nickname" label="昵称">
+              <a-input v-model="queryParams.nickname" placeholder="请输入昵称" allow-clear @press-enter="handleSearch" />
+            </a-form-item>
             <a-form-item field="orgId" label="所属机构">
               <a-tree-select v-model="queryParams.orgId" :data="orgTreeData"
                 :field-names="{ key: 'id', title: 'orgName', children: 'children' }"
-                placeholder="全部机构" allow-clear style="width: 180px;" @change="handleSearch" />
+                placeholder="全部机构" allow-clear @change="handleSearch" />
+            </a-form-item>
+            <a-form-item field="deptId" label="所属部门">
+              <a-tree-select v-model="queryParams.deptId" :data="deptTreeData"
+                :field-names="{ key: 'id', title: 'deptName', children: 'children' }"
+                placeholder="全部部门" allow-clear @change="handleSearch" />
+            </a-form-item>
+            <a-form-item field="email" label="邮箱">
+              <a-input v-model="queryParams.email" placeholder="请输入邮箱" allow-clear @press-enter="handleSearch" />
+            </a-form-item>
+            <a-form-item field="gender" label="性别">
+              <a-select v-model="queryParams.gender" placeholder="全部" allow-clear @change="handleSearch">
+                <a-option :value="1">男</a-option>
+                <a-option :value="2">女</a-option>
+                <a-option :value="0">未知</a-option>
+              </a-select>
             </a-form-item>
           </div>
         </transition>
@@ -54,7 +75,8 @@
           <template #icon><icon-plus /></template>
           新增用户
         </a-button>
-        <a-popover trigger="click" position="br" :content-style="{ padding: 0 }">
+        <a-popover trigger="click" position="br"
+          :content-style="{ padding: '0', background: 'transparent', boxShadow: 'none', border: 'none' }">
           <a-button class="table-column-setting-btn">
             <template #icon><icon-settings /></template>
             列设置
@@ -67,9 +89,25 @@
           </template>
         </a-popover>
       </template>
-      <a-table :data="tableData" :loading="loading" :bordered="false" :pagination="false"
-        row-key="id" stripe size="small" :scroll="{ y: '100%' }" :scrollbar="true"
-        sticky-header :columns="visibleColumns" column-resizable @column-resize="handleColumnResize">
+      <a-table :key="tableResetKey" :data="tableData" :loading="loading" :bordered="false" :pagination="false"
+        row-key="id" stripe size="small" :scroll="{ x: scrollX, y: '100%' }" :scrollbar="false"
+        sticky-header :columns="visibleColumns" column-resizable @column-resize="handleColumnResize" @row-dblclick="handleRowDblClick">
+        <!-- 自定义列头：每列标题旁加放大镜搜索图标（与授权治理一致） -->
+        <template #th-username><TableColumnSearch title="用户名" v-model="columnFilters['username']" /></template>
+        <template #th-nickname><TableColumnSearch title="昵称" v-model="columnFilters['nickname']" /></template>
+        <template #th-employeeNo><TableColumnSearch title="工号" v-model="columnFilters['employeeNo']" /></template>
+        <template #th-orgName><TableColumnSearch title="所属机构" v-model="columnFilters['orgName']" /></template>
+        <template #th-deptName><TableColumnSearch title="部门" v-model="columnFilters['deptName']" /></template>
+        <template #th-postName><TableColumnSearch title="岗位" v-model="columnFilters['postName']" /></template>
+        <template #th-phone><TableColumnSearch title="手机号" v-model="columnFilters['phone']" /></template>
+        <template #th-status><TableColumnSearch title="状态" v-model="columnFilters['status']" /></template>
+        <template #th-createTime><TableColumnSearch title="创建时间" v-model="columnFilters['createTime']" /></template>
+        <template #th-entryDate><TableColumnSearch title="入职日期" v-model="columnFilters['entryDate']" /></template>
+        <template #th-email><TableColumnSearch title="邮箱" v-model="columnFilters['email']" /></template>
+        <template #th-loginIp><TableColumnSearch title="最后登录IP" v-model="columnFilters['loginIp']" /></template>
+        <template #th-loginDate><TableColumnSearch title="最后登录时间" v-model="columnFilters['loginDate']" /></template>
+        <template #th-remark><TableColumnSearch title="备注" v-model="columnFilters['remark']" /></template>
+
         <template #employeeNo="{ record }">
           {{ record.employeeNo || '—' }}
         </template>
@@ -82,27 +120,49 @@
               <template #icon><icon-edit /></template>
               编辑
             </a-button>
+            <a-button size="mini" class="table-action-btn table-action-btn--danger" @click="confirmDelete(record.id)">
+              <template #icon><icon-delete /></template>
+              删除
+            </a-button>
             <a-dropdown trigger="click" position="br">
               <a-button size="mini" class="table-action-btn table-action-btn--more">
                 <template #icon><icon-more /></template>
               </a-button>
               <template #content>
-                <a-doption @click="openResetPwd(record)">重置密码</a-doption>
-                <a-doption class="is-danger" @click="confirmDelete(record.id)">删除用户</a-doption>
+                <a-doption @click="openResetPwd(record)">
+                  <template #icon><icon-lock /></template>
+                  重置密码
+                </a-doption>
+                <a-doption @click="openUserDataScope(record)">
+                  <template #icon><icon-safe /></template>
+                  个人数据权限
+                </a-doption>
               </template>
             </a-dropdown>
           </div>
         </template>
       </a-table>
-      <div style="display: flex; justify-content: flex-end; padding: 8px 4px 2px;">
-        <a-pagination v-model:current="pagination.current" v-model:page-size="pagination.pageSize"
-          :total="pagination.total" show-total show-page-size
-          @change="handlePageChange" @page-size-change="handlePageSizeChange" />
+      <!-- 底部统计栏：左侧统计信息 + 右侧分页 -->
+      <div class="biz-table-footer">
+        <div class="biz-table-footer__stats">
+          <span class="biz-table-footer__total">共 <b>{{ pagination.total }}</b> 条</span>
+          <a-divider direction="vertical" />
+          <span class="stat-normal">正常 <b>{{ activeCount }}</b></span>
+          <a-divider direction="vertical" />
+          <span class="stat-disabled">停用 <b>{{ disabledCount }}</b></span>
+          <a-divider direction="vertical" />
+          <span class="stat-locked">锁定 <b>{{ lockedCount }}</b></span>
+        </div>
+        <div class="biz-table-footer__actions">
+          <a-pagination v-model:current="pagination.current" v-model:page-size="pagination.pageSize"
+            :total="pagination.total" show-total show-page-size size="small"
+            @change="handlePageChange" @page-size-change="handlePageSizeChange" />
+        </div>
       </div>
     </GovernanceListStage>
 
     <BmlModal v-model:visible="dialogVisible" :title="dialogTitle" :width="740" :height="620" :min-width="560" :min-height="440">
-      <a-form :model="formData" ref="formRef" :rules="formRules" layout="vertical">
+      <a-form :model="formData" ref="formRef" :rules="formReadonly ? undefined : formRules" layout="vertical" :disabled="formReadonly">
         <a-tabs default-active-key="basic" size="small" class="form-tabs">
           <a-tab-pane key="basic" title="账号信息">
             <a-row :gutter="16">
@@ -203,6 +263,13 @@
             </a-row>
             <a-row :gutter="16">
               <a-col :span="12">
+                <a-form-item field="superiorId" label="直属上级">
+                  <a-select v-model="formData.superiorId" placeholder="请选择直属上级" allow-clear filterable>
+                    <a-option v-for="u in allUserOptions" :key="u.id" :value="u.id" :disabled="u.id === formData.id">{{ u.nickname || u.username }}{{ u.employeeNo ? ` (${u.employeeNo})` : '' }}</a-option>
+                  </a-select>
+                </a-form-item>
+              </a-col>
+              <a-col :span="12">
                 <a-form-item field="entryDate" label="入职日期">
                   <a-date-picker v-model="formData.entryDate" placeholder="请选择入职日期" style="width: 100%;" />
                 </a-form-item>
@@ -211,10 +278,10 @@
           </a-tab-pane>
         </a-tabs>
       </a-form>
-      <template #footer>
-        <a-button v-if="formData.id" status="warning" @click="resetPwdVisible = true">重置密码</a-button>
-        <a-button @click="dialogVisible = false">取消</a-button>
-        <a-button type="primary" :loading="submitting" @click="handleSubmit">确定</a-button>
+      <template #header-actions>
+        <a-button v-if="formData.id && !formReadonly" status="warning" @click="resetPwdVisible = true">重置密码</a-button>
+        <a-button @click="dialogVisible = false">{{ formReadonly ? '关闭' : '取消' }}</a-button>
+        <a-button v-if="!formReadonly" type="primary" :loading="submitting" @click="handleSubmit">确定</a-button>
       </template>
     </BmlModal>
 
@@ -226,25 +293,68 @@
         </a-form-item>
       </a-form>
     </a-modal>
+
+    <!-- 用户个人数据权限配置弹窗 -->
+    <BmlModal v-model:visible="userDsDialogVisible" :title="userDsDialogTitle" :width="560" :height="480" :min-width="440" :min-height="360">
+      <a-form :model="userDsForm" layout="vertical">
+        <a-form-item field="dataScope" label="数据范围">
+          <a-select v-model="userDsForm.dataScope" placeholder="请选择数据范围">
+            <a-option v-for="ds in USER_DS_OPTIONS" :key="ds.value" :value="ds.value">{{ ds.label }}</a-option>
+          </a-select>
+        </a-form-item>
+        <a-form-item v-if="userDsForm.dataScope === 7" field="customOrgIds" label="自定义机构范围">
+          <a-input v-model="userDsForm.customOrgIds" placeholder="机构ID，多个用英文逗号分隔" />
+        </a-form-item>
+        <a-form-item v-if="userDsForm.dataScope === 7" field="customDeptIds" label="自定义部门范围">
+          <a-input v-model="userDsForm.customDeptIds" placeholder="部门ID，多个用英文逗号分隔" />
+        </a-form-item>
+        <a-row :gutter="16">
+          <a-col :span="12">
+            <a-form-item field="status" label="状态">
+              <a-select v-model="userDsForm.status" placeholder="请选择">
+                <a-option :value="1">生效</a-option>
+                <a-option :value="0">停用</a-option>
+              </a-select>
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item field="expireTime" label="过期时间">
+              <a-date-picker v-model="userDsForm.expireTime" show-time placeholder="留空表示永不过期" style="width: 100%;" />
+            </a-form-item>
+          </a-col>
+        </a-row>
+        <a-form-item field="remark" label="备注">
+          <a-textarea v-model="userDsForm.remark" placeholder="记录授权原因" :auto-size="{ minRows: 2, maxRows: 3 }" />
+        </a-form-item>
+      </a-form>
+      <template #header-actions>
+        <a-button v-if="userDsForm.id" status="danger" @click="handleDeleteUserDs">删除配置</a-button>
+        <a-button @click="userDsDialogVisible = false">取消</a-button>
+        <a-button type="primary" :loading="userDsSubmitting" @click="handleSubmitUserDs">保存</a-button>
+      </template>
+    </BmlModal>
   </div>
 </template>
 
 <script lang="ts" setup>
 defineOptions({ name: 'SystemUser' });
 
-import { ref, reactive, onMounted } from 'vue';
+import { ref, reactive, computed, onMounted } from 'vue';
 import { Message, Modal } from '@arco-design/web-vue';
-import { IconPlus, IconEdit, IconMore, IconSettings, IconUp, IconDown } from '@arco-design/web-vue/es/icon';
+import { IconPlus, IconEdit, IconMore, IconSettings, IconUp, IconDown, IconLock, IconDelete, IconSafe } from '@arco-design/web-vue/es/icon';
 import {
   fetchUserPage, fetchUserDetail, createUser, updateUser, deleteUser, resetUserPassword,
   fetchRoleList, fetchOrgList, fetchDeptList, fetchPostList,
-  type UserVO, type UserForm, type RoleVO, type OrgVO, type DeptVO, type PostVO
+  fetchUserDataScope, saveUserDataScope, deleteUserDataScope,
+  type UserVO, type UserForm, type RoleVO, type OrgVO, type DeptVO, type PostVO, type UserDataScopeForm
 } from '../../../../api/system';
 import BmlModal from '../../../../components/BmlModal.vue';
 import GovernanceCompactQueryPanel from '../../../../components/governance/GovernanceCompactQueryPanel.vue';
 import GovernanceListStage from '../../../../components/governance/GovernanceListStage.vue';
 import BusinessTableColumnSetting from '../../../../components/business/BusinessTableColumnSetting.vue';
+import TableColumnSearch from '../../../../components/common/TableColumnSearch.vue';
 import { useBusinessTableColumns, type BusinessTableColumn } from '../../../../composables/useBusinessTableColumns';
+import { useButtonPermission } from '../../../../composables/useButtonPermission';
 
 const USER_STATUS_MAP: Record<number, { label: string; color: string }> = {
   1: { label: '正常', color: 'green' },
@@ -255,25 +365,47 @@ const USER_STATUS_MAP: Record<number, { label: string; color: string }> = {
 const textMatchMode = ref<'fuzzy' | 'exact'>('fuzzy');
 const queryExpanded = ref(false);
 
+/**
+ * 用户列默认配置（与授权治理列管理模式一致）：
+ * - 用户名：默认固定在左侧（fixed: 'left'）
+ * - 常用字段默认显示，扩展字段默认隐藏
+ */
+/** 列头搜索筛选条件 */
+const columnFilters = reactive<Record<string, string>>({
+  username: '', nickname: '', employeeNo: '', orgName: '', deptName: '', postName: '',
+  phone: '', status: '', createTime: '', entryDate: '', email: '',
+  loginIp: '', loginDate: '', remark: '',
+});
+
 const defaultColumns: BusinessTableColumn[] = [
-  { key: 'username', title: '用户名', dataIndex: 'username', width: 120, visible: true },
-  { key: 'nickname', title: '昵称', dataIndex: 'nickname', width: 110, visible: true },
-  { key: 'employeeNo', title: '工号', slotName: 'employeeNo', width: 100, visible: true },
-  { key: 'orgName', title: '所属机构', dataIndex: 'orgName', width: 140, visible: true },
-  { key: 'deptName', title: '部门', dataIndex: 'deptName', width: 120, visible: true },
-  { key: 'postName', title: '岗位', dataIndex: 'postName', width: 110, visible: true },
-  { key: 'phone', title: '手机号', dataIndex: 'phone', width: 130, visible: true },
-  { key: 'status', title: '状态', slotName: 'status', width: 80, visible: true, align: 'center' },
-  { key: 'entryDate', title: '入职日期', dataIndex: 'entryDate', width: 110, visible: true },
-  { key: 'createTime', title: '创建时间', dataIndex: 'createTime', width: 170, visible: true },
+  /* ── 核心标识（默认显示） ── */
+  { key: 'username',   title: '用户名',   dataIndex: 'username',   width: 120, visible: true, fixed: 'left', sortable: true, titleSlotName: 'th-username' },
+  { key: 'nickname',   title: '昵称',     dataIndex: 'nickname',   width: 110, visible: true, sortable: true, titleSlotName: 'th-nickname' },
+  { key: 'employeeNo', title: '工号',     slotName: 'employeeNo',  width: 100, visible: true, sortable: true, titleSlotName: 'th-employeeNo' },
+  { key: 'orgName',    title: '所属机构', dataIndex: 'orgName',    width: 140, visible: true, sortable: true, titleSlotName: 'th-orgName' },
+  { key: 'deptName',   title: '部门',     dataIndex: 'deptName',   width: 120, visible: true, sortable: true, titleSlotName: 'th-deptName' },
+  { key: 'postName',   title: '岗位',     dataIndex: 'postName',   width: 110, visible: true, sortable: true, titleSlotName: 'th-postName' },
+  { key: 'phone',      title: '手机号',   dataIndex: 'phone',      width: 130, visible: true, sortable: true, titleSlotName: 'th-phone' },
+  { key: 'status',     title: '状态',     slotName: 'status',      width: 80,  visible: true, align: 'center', sortable: true, titleSlotName: 'th-status' },
+  { key: 'createTime', title: '创建时间', dataIndex: 'createTime', width: 170, visible: true, sortable: true, titleSlotName: 'th-createTime' },
+  /* ── 扩展字段（默认隐藏） ── */
+  { key: 'entryDate', title: '入职日期', dataIndex: 'entryDate', width: 120, visible: false, sortable: true, titleSlotName: 'th-entryDate' },
+  { key: 'email',     title: '邮箱',     dataIndex: 'email',     width: 180, visible: false, sortable: true, titleSlotName: 'th-email' },
+  { key: 'loginIp',   title: '最后登录IP', dataIndex: 'loginIp', width: 140, visible: false, sortable: true, titleSlotName: 'th-loginIp' },
+  { key: 'loginDate', title: '最后登录时间', dataIndex: 'loginDate', width: 170, visible: false, sortable: true, titleSlotName: 'th-loginDate' },
+  { key: 'remark',    title: '备注',     dataIndex: 'remark',    width: 200, visible: false, ellipsis: true, sortable: true, titleSlotName: 'th-remark' },
+  /* ── 操作列（锁定） ── */
   { key: 'actions', title: '操作', slotName: 'actions', width: 140, visible: true, fixed: 'right', locked: true, align: 'center' },
 ];
 
 const {
-  visibleColumns, columnSettingItems, dragState,
+  visibleColumns, columnSettingItems, dragState, tableResetKey, scrollX,
   handleColumnResize, toggleColumnVisible, moveColumn, toggleColumnFixed,
   handleDragStart, handleDragOver, handleDrop, handleDragEnd, resetColumns,
 } = useBusinessTableColumns('system-user', defaultColumns);
+
+/** 表格列宽 CSS 绑定值（含单位，供 v-bind 使用） */
+const tableScrollWidth = computed(() => scrollX.value + 'px');
 
 const loading = ref(false);
 const tableData = ref<UserVO[]>([]);
@@ -284,12 +416,30 @@ const postOptions = ref<PostVO[]>([]);
 const dialogVisible = ref(false);
 const dialogTitle = ref('新增用户');
 const formRef = ref();
+
+/** 表单只读模式 */
+const formReadonly = ref(false);
+const { hasPermission } = useButtonPermission();
+const canEditUser = computed(() => hasPermission('system:user:edit'));
 const pagination = reactive({ current: 1, pageSize: 20, total: 0 });
-const queryParams = reactive({ username: '', phone: '', status: undefined as number | undefined, orgId: undefined as number | undefined });
+
+/** 当前页正常状态用户数量 */
+const activeCount = computed(() => tableData.value.filter(r => r.status === 1).length);
+/** 当前页停用状态用户数量 */
+const disabledCount = computed(() => tableData.value.filter(r => r.status === 0).length);
+/** 当前页锁定状态用户数量 */
+const lockedCount = computed(() => tableData.value.filter(r => r.status === 2).length);
+
+const queryParams = reactive({
+  username: '', phone: '', status: undefined as number | undefined,
+  orgId: undefined as number | undefined, nickname: '',
+  deptId: undefined as number | undefined, email: '',
+  gender: undefined as number | undefined
+});
 const defaultForm = (): UserForm => ({
   id: undefined, username: '', nickname: '', password: '', phone: '', email: '',
   gender: 0, status: 1, orgId: undefined, deptId: undefined, postId: undefined,
-  employeeNo: '', entryDate: '', roleIds: [], remark: ''
+  superiorId: undefined, employeeNo: '', entryDate: '', roleIds: [], remark: ''
 });
 const formData = reactive<UserForm>(defaultForm());
 const formRules = {
@@ -316,17 +466,36 @@ const loadDeptTree = async () => { try { const r = await fetchDeptList({}) as an
 const loadPosts = async () => { try { const r = await fetchPostList({}) as any; postOptions.value = r.data || []; } catch { postOptions.value = []; } };
 
 const handleSearch = () => { pagination.current = 1; loadData(); };
-const handleReset = () => { queryParams.username = ''; queryParams.phone = ''; queryParams.status = undefined; queryParams.orgId = undefined; pagination.current = 1; loadData(); };
+const handleReset = () => {
+  queryParams.username = ''; queryParams.phone = ''; queryParams.status = undefined;
+  queryParams.orgId = undefined; queryParams.nickname = '';
+  queryParams.deptId = undefined; queryParams.email = ''; queryParams.gender = undefined;
+  pagination.current = 1; loadData();
+};
 const handlePageChange = (page: number) => { pagination.current = page; loadData(); };
 const handlePageSizeChange = (size: number) => { pagination.pageSize = size; pagination.current = 1; loadData(); };
 
-const handleAdd = () => { dialogTitle.value = '新增用户'; Object.assign(formData, defaultForm()); dialogVisible.value = true; };
+const handleAdd = () => { formReadonly.value = false; dialogTitle.value = '新增用户'; Object.assign(formData, defaultForm()); dialogVisible.value = true; };
 
 const handleEdit = async (row: UserVO) => {
+  formReadonly.value = false;
   dialogTitle.value = '编辑用户';
   Object.assign(formData, { id: row.id, username: row.username, nickname: row.nickname, password: '', phone: row.phone, email: row.email, gender: row.gender, status: row.status, orgId: row.orgId || undefined, deptId: row.deptId || undefined, postId: row.postId || undefined, employeeNo: row.employeeNo || '', entryDate: row.entryDate || '', roleIds: row.roleIds || [], remark: row.remark });
   try { const r = await fetchUserDetail(row.id) as any; formData.roleIds = r.data?.roleIds || []; } catch { /* keep */ }
   dialogVisible.value = true;
+};
+
+/** 双击行：有编辑权限则编辑，否则查看 */
+const handleRowDblClick = async (record: UserVO) => {
+  if (canEditUser.value) {
+    await handleEdit(record);
+  } else {
+    formReadonly.value = true;
+    dialogTitle.value = '查看用户';
+    Object.assign(formData, { id: record.id, username: record.username, nickname: record.nickname, password: '', phone: record.phone, email: record.email, gender: record.gender, status: record.status, orgId: record.orgId || undefined, deptId: record.deptId || undefined, postId: record.postId || undefined, employeeNo: record.employeeNo || '', entryDate: record.entryDate || '', roleIds: record.roleIds || [], remark: record.remark });
+    try { const r = await fetchUserDetail(record.id) as any; formData.roleIds = r.data?.roleIds || []; } catch { /* keep */ }
+    dialogVisible.value = true;
+  }
 };
 
 const submitting = ref(false);
@@ -353,9 +522,102 @@ const handleResetPassword = async () => {
   try { await resetUserPassword(uid, newPassword.value); Message.success('密码重置成功'); resetPwdVisible.value = false; newPassword.value = ''; } catch { /* ignore */ }
 };
 
-onMounted(() => { loadData(); loadRoles(); loadOrgTree(); loadDeptTree(); loadPosts(); });
+// ── 用户列表（用于上级选择） ──
+const allUserOptions = ref<UserVO[]>([]);
+const loadAllUsers = async () => {
+  try {
+    const r = await fetchUserPage({ pageNum: 1, pageSize: 9999 }) as any;
+    allUserOptions.value = r.data?.records || [];
+  } catch { allUserOptions.value = []; }
+};
+
+// ── 用户个人数据权限配置 ──
+const USER_DS_OPTIONS = [
+  { value: 1, label: '全部数据' },
+  { value: 2, label: '所在机构及下级' },
+  { value: 3, label: '仅本机构' },
+  { value: 4, label: '所在部门及下级' },
+  { value: 5, label: '仅本部门' },
+  { value: 6, label: '仅本人' },
+  { value: 7, label: '自定义' },
+  { value: 8, label: '本人及下属' },
+];
+
+const userDsDialogVisible = ref(false);
+const userDsDialogTitle = ref('个人数据权限配置');
+const userDsSubmitting = ref(false);
+const currentDsUserId = ref<number | undefined>(undefined);
+const defaultUserDsForm = (): UserDataScopeForm => ({
+  id: undefined, userId: undefined, dataScope: 6, customOrgIds: '',
+  customDeptIds: '', status: 1, expireTime: undefined, remark: ''
+});
+const userDsForm = reactive<UserDataScopeForm>(defaultUserDsForm());
+
+const openUserDataScope = async (record: UserVO) => {
+  currentDsUserId.value = record.id;
+  userDsDialogTitle.value = `个人数据权限 — ${record.nickname || record.username}`;
+  Object.assign(userDsForm, defaultUserDsForm());
+  userDsForm.userId = record.id;
+  try {
+    const r = await fetchUserDataScope(record.id) as any;
+    if (r.data) {
+      Object.assign(userDsForm, {
+        id: r.data.id, userId: r.data.userId, dataScope: r.data.dataScope,
+        customOrgIds: r.data.customOrgIds || '', customDeptIds: r.data.customDeptIds || '',
+        status: r.data.status, expireTime: r.data.expireTime || undefined, remark: r.data.remark || ''
+      });
+    }
+  } catch { /* no existing config, use defaults */ }
+  userDsDialogVisible.value = true;
+};
+
+const handleSubmitUserDs = async () => {
+  try {
+    userDsSubmitting.value = true;
+    await saveUserDataScope(userDsForm);
+    Message.success('保存成功');
+    userDsDialogVisible.value = false;
+  } catch { /* keep dialog */ }
+  finally { userDsSubmitting.value = false; }
+};
+
+const handleDeleteUserDs = async () => {
+  if (!currentDsUserId.value) return;
+  Modal.confirm({
+    title: '确认删除',
+    content: '确认删除该用户的个人数据权限配置吗？删除后将回退到角色数据权限。',
+    okButtonProps: { status: 'danger' },
+    onOk: async () => {
+      try {
+        await deleteUserDataScope(currentDsUserId.value!);
+        Message.success('删除成功');
+        userDsDialogVisible.value = false;
+      } catch { /* ignore */ }
+    }
+  });
+};
+
+onMounted(() => { loadData(); loadRoles(); loadOrgTree(); loadDeptTree(); loadPosts(); loadAllUsers(); });
 </script>
 
 <style scoped>
 .form-tabs :deep(.arco-tabs-content) { padding-top: 12px; }
+
+/**
+ * 修复 sticky-header 模式下表头与数据列框线不对齐
+ * 原理：sticky-header 将 header 和 body 拆为两个独立 <table>，
+ * 使用 table-layout: fixed 强制列宽按 <colgroup> 声明精确分配，
+ * 配合 scroll.x = scrollX（可见列宽之和）保证两表总宽一致。
+ */
+:deep(.arco-table-element) {
+  table-layout: fixed !important;
+  width: v-bind(tableScrollWidth) !important;
+  min-width: 0 !important;
+}
+
+:deep(.arco-table-td .arco-table-cell) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 </style>

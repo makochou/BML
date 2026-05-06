@@ -27,7 +27,7 @@
    ─────────────────────────────────────────────────────────────
    与授权治理页面的 .page.api-account-page 保持一致：
    - 纵向弹性布局，充满父容器高度
-   - 内边�?16px，组件间�?10px
+   - 内边距 16px，组件间距 8px（与中台授权治理一致）
    - 隐藏溢出，防止出现双滚动�?
    ───────────────────────────────────────────────────────────── */
 .page-wrapper {
@@ -35,143 +35,360 @@
     flex-direction: column;
     height: 100%;
     padding: 16px;
-    gap: 10px;
+    /*
+     * 查询面板与列表舞台之间的间距：0px
+     * 参考中台授权治理页面微调，
+     * 确保两个系统的查询区域与列表区域之间空白高度视觉一致。
+     */
+    gap: 0;
     overflow: hidden;
     box-sizing: border-box;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   1-b. 列表区域铺满：GovernanceListStage 在 page-wrapper 中占满剩余高度
+   ─────────────────────────────────────────────────────────────
+   让列表舞台在纵向弹性布局下自动撑满下方空间，
+   避免数据较少时列表区域底部留白。
+   ───────────────────────────────────────────────────────────── */
+.page-wrapper > .governance-list-stage {
+    flex: 1;
+    min-height: 0;
+    /*
+     * 重置 GovernanceListStage 组件自带的 margin-top（density-ultra 默认 10px）。
+     *
+     * 关键：组件内部 scoped 样式使用 margin 简写（margin: var(--stage-margin-top) auto 0），
+     * scoped 属性选择器 [data-v-xxx] 导致其优先级 ≥ 全局 margin-top，
+     * 因此直接覆写 CSS 变量 --stage-margin-top 才能确保生效。
+     *
+     * 间距统一由外层 .page-wrapper 的 gap 属性控制（8px），
+     * 修改后：gap 8px + margin 0 = 8px，与中台授权治理完全一致。
+     */
+    --stage-margin-top: 0px;
 }
 
 /* ─────────────────────────────────────────────────────────────
    2. 业务系统查询面板表单布局
    ─────────────────────────────────────────────────────────────
    目标效果：与中台授权治理查询区域完全一致
-   - 多个字段横向并排（flex 横向布局）
-   - 每个字段：标签在左（灰色小字），输入框在右
-   - 标签和输入框水平对齐，间距 8px
-   - 字段之间间距 20px
+   - 双层 CSS Grid 布局：主要字段 3 列 + 次要字段 4 列
+   - 默认 3 个常用查询字段占满全宽（每列 1/3），视觉居中
+   - 展开后次要字段 4 列满排，每列 1/4，独立网格
+   - 每个字段内部：标签在左，输入框在右（flex 行内布局）
+   - 主要/次要字段之间以虚线分割线区分
+   - 响应式降级：≤1080px 2 列、≤768px 1 列
    ───────────────────────────────────────────────────────────── */
 
-/* 查询表单容器：横向排列，自动换行，垂直居中 */
+/*
+ * 查询表单容器：纵向 Flex 布局
+ * 内部分为两层网格：
+ *   - .biz-query-form-primary：3 列网格，默认显示 3 个常用字段，占满全宽
+ *   - .biz-query-form-extra：4 列网格，展开后每行 4 个字段，与授权治理一致
+ */
 .biz-query-form {
     display: flex !important;
-    flex-wrap: wrap !important;
-    align-items: center !important;
-    gap: 8px 20px !important;
+    flex-direction: column !important;
+    gap: 2px !important;
 }
 
-/* 每个表单项：水平布局（标签在左，输入框在右） */
+/*
+ * 主要字段区：3 列网格布局，每列等宽。
+ * padding 与中台授权治理查询区域视觉间距完全一致：
+ *   - 上下 0px，由外层 --query-panel-body-padding 控制间距
+ *   - 左侧 0px，与次要字段区 .biz-query-form-extra 左侧对齐
+ *   - 列间距 16px，紧凑且信息密度高
+ */
+.biz-query-form-primary {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0 16px;
+    align-items: center;
+    padding: 0;
+}
+
+/*
+ * 每个表单项：水平布局（标签在左，输入框在右）
+ * 覆盖 Arco .arco-form-item-layout-inline 的 margin-right: 24px，
+ * 避免网格列内产生多余右侧间距。
+ * gap: 10px 与授权治理 --governance-inline-label-gap: 10px 一致。
+ */
 .biz-query-form .arco-form-item {
-    display: inline-flex !important;
+    display: flex !important;
     flex-direction: row !important;
     align-items: center !important;
-    margin-bottom: 0 !important;
-    flex: 0 0 auto !important;
-    width: auto !important;
-    gap: 8px !important;
-}
-
-/* 标签列：固定宽度，灰色小字，右对齐 */
-.biz-query-form .arco-form-item-label-col {
-    width: auto !important;
-    flex: none !important;
-    padding-bottom: 0 !important;
-    padding-right: 0 !important;
+    margin: 0 !important;
+    gap: 10px !important;
     min-width: 0 !important;
-    margin-bottom: 0 !important;
 }
 
-/* 标签文字样式：黑色字体，与截图一致 */
+/*
+ * 标签列：固定宽度 72px，右对齐。
+ * 授权治理使用 --governance-inline-label-width: 108px（适配 4-6 字标签），
+ * 业务系统标签多为 2-4 字，用 72px 即可。
+ * 固定宽度让每列内部留白一致，视觉上字段间有明显间距。
+ * 覆盖 Arco .arco-form-item-label-col 的 padding-right: 16px。
+ */
+.biz-query-form .arco-form-item-label-col {
+    width: 72px !important;
+    min-width: 72px !important;
+    flex: none !important;
+    padding: 0 !important;
+    justify-content: flex-end !important;
+    text-align: right !important;
+}
+
+/*
+ * 标签文字样式：与授权治理查询区域完全一致
+ * font-size: 11px —— 匹配 GovernanceCompactQueryPanel density-ultra --query-panel-label-size
+ * font-weight: 700 —— 加粗显示，与授权治理 :deep(.arco-form-item-label-col > label) 一致
+ * letter-spacing: 0.02em —— 微小字距，提升可读性
+ */
 .biz-query-form .arco-form-item-label-col>label {
-    font-size: 12px !important;
-    font-weight: 600 !important;
+    font-size: 11px !important;
+    font-weight: 700 !important;
     color: #1e293b !important;
-    letter-spacing: 0 !important;
-    line-height: 1 !important;
+    letter-spacing: 0.02em !important;
+    line-height: 1.2 !important;
     white-space: nowrap !important;
     padding-bottom: 0 !important;
 }
 
-/* 输入框列：自适应宽度 */
+/* 输入框列：自动布满网格列剩余空间 */
 .biz-query-form .arco-form-item-wrapper-col {
+    flex: 1 !important;
     width: auto !important;
-    flex: none !important;
     min-width: 0 !important;
 }
 
-/* 查询面板内所有输入框统一高度 32px，与中台一致 */
+/*
+ * 查询面板输入框统一样式：与中台授权治理查询区域完全一致
+ * min-height: 28px —— 匹配中台 .query-panel 覆写的 --query-panel-input-min-height: 28px
+ * border-radius: 12px —— 圆角输入框，与 GovernanceCompactQueryPanel body :deep 一致
+ * border-color / background / box-shadow —— 半透明蓝色边框 + 内阴影，融入查询面板玻璃质感
+ */
 .biz-query-form .arco-input-wrapper,
 .biz-query-form .arco-select-view,
 .biz-query-form .arco-tree-select-view {
-    height: 32px !important;
-    min-height: 32px !important;
-    line-height: 30px !important;
-    border-radius: 6px !important;
+    min-height: 28px !important;
+    border-radius: 12px !important;
+    border-color: rgba(155, 183, 216, 0.76) !important;
+    background: rgba(255, 255, 255, 0.84) !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.94) !important;
+    transition: all 0.2s ease !important;
+    width: 100% !important;
 }
 
-/* 文本输入框默认宽度 */
-.biz-query-form .arco-input-wrapper {
-    min-width: 160px !important;
+/* 输入框 hover 状态：边框变深，背景变亮 */
+.biz-query-form .arco-input-wrapper:hover,
+.biz-query-form .arco-select-view:hover,
+.biz-query-form .arco-tree-select-view:hover {
+    border-color: rgba(67, 134, 220, 0.62) !important;
+    background: rgba(255, 255, 255, 0.92) !important;
 }
 
-/* 下拉选择框默认宽度 */
-.biz-query-form .arco-select-view {
-    min-width: 110px !important;
+/* 输入框 focus 状态：蓝色边框 + 外发光阴影 */
+.biz-query-form .arco-input-wrapper.arco-input-focus,
+.biz-query-form .arco-select-view.arco-select-view-focus,
+.biz-query-form .arco-tree-select-view.arco-tree-select-view-focus {
+    border-color: rgba(54, 124, 217, 0.82) !important;
+    box-shadow: 0 0 0 4px rgba(69, 138, 226, 0.13) !important;
 }
 
-/* 树形选择框默认宽度 */
-.biz-query-form .arco-tree-select-view {
-    min-width: 160px !important;
-}
-
-/* 输入框内文字大小 */
+/* 输入框内文字大小：12px，与授权治理一致 */
 .biz-query-form .arco-input,
 .biz-query-form .arco-select-view-value,
 .biz-query-form .arco-select-view-placeholder {
-    font-size: 13px !important;
+    font-size: 12px !important;
 }
 
 /* 输入框 placeholder 颜色 */
 .biz-query-form .arco-input::placeholder {
     color: #94a3b8 !important;
-    font-size: 13px !important;
+    font-size: 12px !important;
 }
 
-/* 模糊/精确查找切换按钮 */
+/* 响应式降级：小屏 2 列 */
+@media (max-width: 1080px) {
+    .biz-query-form-primary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .biz-query-form-extra {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+/* 响应式降级：窄屏 1 列 */
+@media (max-width: 768px) {
+    .biz-query-form-primary,
+    .biz-query-form-extra {
+        grid-template-columns: 1fr;
+    }
+}
+
+/*
+ * 模糊/精确查找切换按钮（与授权治理 .query-panel__mode-btn 完全一致）：
+ * 两个按钮都保持蓝绿渐变背景，非激活态仅降低透明度，
+ * 而不是切换为白色背景。
+ */
 .query-panel-mode-actions {
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    gap: 4px;
+    gap: 6px;
+    margin-right: 2px;
 }
 
 .query-panel-mode-btn.arco-btn {
-    height: 30px;
-    padding: 0 12px;
+    min-width: 84px;
+    height: 28px;
+    padding: 0 8px;
     border-radius: 999px;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 700;
-    transition: all 0.2s ease;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease, filter 0.2s ease;
+    box-shadow: 0 7px 14px rgba(22, 97, 186, 0.16);
 }
 
-/* 激活状态：蓝绿渐变 */
+.query-panel-mode-btn.arco-btn:hover {
+    transform: translateY(-1px);
+}
+
+/* 激活状态：完全不透明，微增饱和度 */
 .query-panel-mode-btn.is-active.arco-btn-primary {
-    border: 0;
-    background: linear-gradient(135deg, #1769ff, #12b8a6);
-    box-shadow: 0 4px 12px rgba(23, 105, 255, 0.28);
+    opacity: 1;
+    filter: saturate(1.03) contrast(1.02);
 }
 
-/* 非激活状态：灰色边框 */
+/* 非激活状态：保持渐变背景，降低透明度 */
 .query-panel-mode-btn.is-inactive.arco-btn-primary {
-    border: 1px solid rgba(203, 213, 225, 0.9);
-    background: rgba(255, 255, 255, 0.9);
+    opacity: 0.72;
+    box-shadow: 0 4px 8px rgba(56, 116, 181, 0.08);
+}
+
+
+/*
+ * 业务列表表格原生水平滚动条美化：
+ * 使用 :scrollbar="false" 禁用 Arco 自定义滚动条后，
+ * .arco-table-body 使用浏览器原生滚动条。
+ * 原生滚动条天然固定在容器底部（scroll.y:'100%' 撑满高度），
+ * 以下样式美化其外观，使其与授权治理风格一致。
+ */
+
+/* Webkit 浏览器（Chrome/Edge/Safari）水平滚动条 */
+.governance-list-stage .arco-table-body::-webkit-scrollbar {
+    width: 6px;
+    height: 10px;
+}
+
+.governance-list-stage .arco-table-body::-webkit-scrollbar-track {
+    background: rgba(241, 245, 249, 0.6);
+    border-radius: 10px;
+}
+
+.governance-list-stage .arco-table-body::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #cbd5e1 0%, #94a3b8 100%);
+    border-radius: 10px;
+}
+
+.governance-list-stage .arco-table-body::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #94a3b8 0%, #64748b 100%);
+}
+
+.governance-list-stage .arco-table-body::-webkit-scrollbar-thumb:active {
+    background: linear-gradient(180deg, #64748b 0%, #475569 100%);
+}
+
+/* 滚动条交叉角（水平+垂直交汇处） */
+.governance-list-stage .arco-table-body::-webkit-scrollbar-corner {
+    background: transparent;
+}
+
+/* Firefox 浏览器滚动条 */
+.governance-list-stage .arco-table-body {
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 rgba(241, 245, 249, 0.6);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   2.5 列表底部统计栏
+   ─────────────────────────────────────────────────────────────
+   与授权治理 .table-shell__footer 风格一致：
+   - 底部固定，不随表格内容滚动
+   - 顶部细线分隔，右对齐分页 / 统计信息
+   - 圆角分页按钮，小号字体
+   ───────────────────────────────────────────────────────────── */
+
+/* 底部统计栏容器：左侧统计 + 右侧操作 */
+.biz-table-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+    margin-top: 0;
+    padding: 2px 4px 0;
+    border-top: 1px solid rgba(214, 225, 239, 0.82);
+    gap: 16px;
+}
+
+/* 左侧统计信息容器 */
+.biz-table-footer__stats {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 13px;
     color: #64748b;
-    box-shadow: none;
+    white-space: nowrap;
 }
 
-.query-panel-mode-btn.is-inactive.arco-btn-primary:hover {
-    border-color: rgba(23, 105, 255, 0.4);
-    color: #1769ff;
-    background: rgba(23, 105, 255, 0.04);
+.biz-table-footer__stats b {
+    color: #334155;
+    font-weight: 600;
 }
 
+/* 总条数文字 */
+.biz-table-footer__total {
+    font-size: 13px;
+    color: #64748b;
+    font-weight: 500;
+}
+
+/* 状态统计颜色 */
+.biz-table-footer__stats .stat-normal {
+    color: #16a34a;
+}
+.biz-table-footer__stats .stat-disabled {
+    color: #ef4444;
+}
+/* 锁定状态颜色（用户管理） */
+.biz-table-footer__stats .stat-locked {
+    color: #f59e0b;
+}
+
+/* 右侧操作容器 */
+.biz-table-footer__actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+}
+
+/* 分页标签文字 */
+.biz-table-footer__actions .pagination-label {
+    font-size: 13px;
+    color: #64748b;
+    margin-right: 4px;
+}
+
+/* 分页组件：右对齐 */
+.biz-table-footer .arco-pagination {
+    margin-left: 0;
+}
+
+/* 分页按钮、输入框：圆角样式 */
+.biz-table-footer .arco-pagination-item,
+.biz-table-footer .arco-pagination-jumper-input,
+.biz-table-footer .arco-pagination-btn {
+    border-radius: 999px;
+}
 
 /* ─────────────────────────────────────────────────────────────
    3. 表格单元格样�?
@@ -226,46 +443,63 @@
 .table-row-actions {
     display: flex;
     align-items: center;
-    gap: 4px;
+    justify-content: flex-end;
+    width: 100%;
+    gap: 3px;
     flex-wrap: nowrap;
 }
 
 /* 通用操作按钮基础样式 */
 .table-action-btn.arco-btn {
-    height: 26px;
-    padding: 0 10px;
-    border-radius: 8px;
-    font-size: 12px;
-    font-weight: 600;
+    height: 22px;
+    padding: 0 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 500;
     white-space: nowrap;
+    line-height: 20px;
     transition: all 0.18s ease;
 }
 
-/* 主操作按钮（编辑、查看等�?*/
+/* 主操作按钮（编辑、查看等）*/
 .table-action-btn--primary.arco-btn-primary {
     border: 0;
-    background: linear-gradient(135deg, #1769ff, #12b8a6);
-    box-shadow: 0 4px 10px rgba(23, 105, 255, 0.22);
+    background: linear-gradient(135deg, #3b82f6, #06b6d4);
+    box-shadow: 0 1px 4px rgba(59, 130, 246, 0.18);
 }
 
 .table-action-btn--primary.arco-btn-primary:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 6px 14px rgba(23, 105, 255, 0.3);
+    transform: translateY(-0.5px);
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.28);
 }
 
-/* 更多操作按钮（下拉菜单触发器�?*/
-.table-action-btn--more.arco-btn {
-    width: 26px;
-    padding: 0;
-    border-color: rgba(203, 213, 225, 0.9);
+/* 危险操作常驻按钮（删除等） */
+.table-action-btn--danger.arco-btn {
+    border: 1px solid rgba(239, 68, 68, 0.35);
     background: rgba(255, 255, 255, 0.9);
-    color: #64748b;
+    color: #ef4444;
+}
+
+.table-action-btn--danger.arco-btn:hover {
+    border-color: #ef4444;
+    background: rgba(239, 68, 68, 0.06);
+    color: #dc2626;
+}
+
+/* 更多操作按钮（下拉菜单触发器） */
+.table-action-btn--more.arco-btn {
+    width: 22px;
+    padding: 0;
+    border-color: rgba(203, 213, 225, 0.8);
+    background: rgba(255, 255, 255, 0.9);
+    color: #94a3b8;
+    font-size: 12px;
 }
 
 .table-action-btn--more.arco-btn:hover {
-    border-color: rgba(23, 105, 255, 0.4);
-    color: #1769ff;
-    background: rgba(23, 105, 255, 0.04);
+    border-color: rgba(59, 130, 246, 0.4);
+    color: #3b82f6;
+    background: rgba(59, 130, 246, 0.04);
 }
 
 /* 危险操作（删除等�?*/
@@ -701,13 +935,15 @@
    而不是只占数据行的高度�?
    ───────────────────────────────────────────────────────────── */
 
-/* 表格容器铺满 */
+/* 表格容器铺满（flex: 1 代替 height: 100%，确保同级 footer 不被挤出可视区） */
 .governance-list-stage--body-fill .governance-list-stage__body .arco-table-container {
-    height: 100%;
+    flex: 1;
+    min-height: 0;
 }
 
 .governance-list-stage--body-fill .governance-list-stage__body .arco-table {
-    height: 100%;
+    flex: 1;
+    min-height: 0;
     display: flex;
     flex-direction: column;
 }
@@ -723,40 +959,224 @@
 }
 
 /* ─────────────────────────────────────────────────────────────
-   22. 下拉菜单（Dropdown）样�?
+   22. 弹出下拉菜单（Dropdown）—— 精致毛玻璃风格
    ─────────────────────────────────────────────────────────────
-   统一操作�?更多"下拉菜单的视觉风格�?
+   统一所有弹出式下拉菜单的视觉风格（用户菜单、标签页右键菜单、
+   操作「更多」菜单等），采用与系统整体一致的 Vision Pro 毛玻璃
+   设计语言。
+   特点：
+     1. 毛玻璃背景 + 多层柔光阴影
+     2. 精致圆角 + 微妙边框
+     3. 丝滑 hover 过渡动画
+     4. 图标 + 文字双排版支持
+     5. 危险操作红色标识
+     6. 用户信息头部区域
+     7. 暗色主题适配
    ───────────────────────────────────────────────────────────── */
-.arco-dropdown-list {
-    border-radius: 10px !important;
-    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.1) !important;
-    border: 1px solid rgba(226, 232, 240, 0.8) !important;
-    padding: 4px !important;
-    min-width: 100px !important;
+
+/* ═══ 下拉菜单容器 — 毛玻璃效果 ═══ */
+.arco-dropdown {
+    background: rgba(255, 255, 255, 0.92) !important;
+    backdrop-filter: blur(24px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+    border-radius: 8px !important;
+    border: 1px solid rgba(255, 255, 255, 0.65) !important;
+    box-shadow:
+        0 8px 28px rgba(0, 0, 0, 0.08),
+        0 2px 8px rgba(0, 0, 0, 0.04),
+        inset 0 0 0 0.5px rgba(255, 255, 255, 0.5) !important;
+    overflow: hidden !important;
+    padding: 0 !important;
+    animation: bml-dropdown-appear 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
 }
 
+/* 下拉菜单弹出动画 — 轻盈的缩放+位移 */
+@keyframes bml-dropdown-appear {
+    from {
+        opacity: 0;
+        transform: translateY(-6px) scale(0.96);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* ═══ 下拉列表内边距 ═══ */
+.arco-dropdown-list {
+    padding: 4px !important;
+    min-width: unset !important;
+    border-radius: 8px !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+}
+
+/* ═══ 下拉选项 — 圆角 + 丝滑过渡 ═══ */
 .arco-dropdown-option {
     border-radius: 6px !important;
     font-size: 12px !important;
     font-weight: 500 !important;
-    padding: 6px 12px !important;
-    color: #334155 !important;
-    transition: all 0.15s ease !important;
+    padding: 5px 8px !important;
+    margin: 1px 0 !important;
+    color: #1d2129 !important;
+    transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 5px !important;
+    white-space: nowrap !important;
+    position: relative !important;
+    line-height: 1.3 !important;
+    letter-spacing: 0.01em !important;
 }
 
-.arco-dropdown-option:hover {
-    background: rgba(23, 105, 255, 0.06) !important;
-    color: #1769ff !important;
+/* 选项 hover 效果 — 渐变背景 + 微位移 */
+.arco-dropdown-option:hover:not(.arco-dropdown-option-disabled) {
+    background: linear-gradient(135deg, rgba(22, 93, 255, 0.07), rgba(60, 126, 255, 0.04)) !important;
+    color: var(--bml-primary, #165dff) !important;
+    transform: translateX(2px) !important;
 }
 
-/* 危险操作选项（删除等�?*/
-.arco-dropdown-option.is-danger {
-    color: #ef4444 !important;
+/* 选项图标样式 — 居中对齐 + 过渡 */
+.arco-dropdown-option .arco-dropdown-option-icon {
+    font-size: 14px !important;
+    width: 16px !important;
+    height: 16px !important;
+    color: #86909c !important;
+    transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-shrink: 0 !important;
 }
 
-.arco-dropdown-option.is-danger:hover {
-    background: rgba(239, 68, 68, 0.06) !important;
-    color: #ef4444 !important;
+/* 图标 hover 变色 + 缩放 */
+.arco-dropdown-option:hover:not(.arco-dropdown-option-disabled) .arco-dropdown-option-icon {
+    color: var(--bml-primary, #165dff) !important;
+    transform: scale(1.15) !important;
+}
+
+/* 禁用选项 — 降低不透明度 + 禁止交互 */
+.arco-dropdown-option.arco-dropdown-option-disabled {
+    opacity: 0.4 !important;
+    cursor: not-allowed !important;
+    color: #c9cdd4 !important;
+    transform: none !important;
+}
+
+/* ═══ 危险操作选项（删除、退出登录等） ═══ */
+.arco-dropdown-option.is-danger:not(.arco-dropdown-option-disabled),
+.arco-dropdown-option.bml-dropdown-item-danger:not(.arco-dropdown-option-disabled) {
+    color: #f53f3f !important;
+}
+
+.arco-dropdown-option.is-danger:not(.arco-dropdown-option-disabled) .arco-dropdown-option-icon,
+.arco-dropdown-option.bml-dropdown-item-danger:not(.arco-dropdown-option-disabled) .arco-dropdown-option-icon {
+    color: #f53f3f !important;
+}
+
+.arco-dropdown-option.is-danger:hover:not(.arco-dropdown-option-disabled),
+.arco-dropdown-option.bml-dropdown-item-danger:hover:not(.arco-dropdown-option-disabled) {
+    background: linear-gradient(135deg, rgba(245, 63, 63, 0.08), rgba(245, 63, 63, 0.04)) !important;
+    color: #cb2634 !important;
+    transform: translateX(2px) !important;
+}
+
+.arco-dropdown-option.is-danger:hover:not(.arco-dropdown-option-disabled) .arco-dropdown-option-icon,
+.arco-dropdown-option.bml-dropdown-item-danger:hover:not(.arco-dropdown-option-disabled) .arco-dropdown-option-icon {
+    color: #cb2634 !important;
+}
+
+/* ═══ 下拉菜单分割线 — 渐变淡出效果 ═══ */
+.bml-dropdown-divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent 5%, rgba(0, 0, 0, 0.06) 30%, rgba(0, 0, 0, 0.06) 70%, transparent 95%);
+    margin: 3px 8px;
+    flex-shrink: 0;
+}
+
+/* ═══ 用户下拉菜单 — 头部用户信息区域 ═══ */
+.bml-dropdown-user-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 10px 8px;
+    cursor: default;
+    user-select: none;
+}
+
+/* 用户头像 — 渐变背景 + 光晕阴影 */
+.bml-dropdown-user-avatar {
+    flex-shrink: 0;
+}
+
+.bml-dropdown-user-avatar .arco-avatar {
+    background: linear-gradient(135deg, #165dff 0%, #722ed1 100%) !important;
+    box-shadow: 0 3px 10px rgba(22, 93, 255, 0.25) !important;
+    color: #fff !important;
+    font-size: 14px !important;
+}
+
+/* 用户名称 + 角色描述 */
+.bml-dropdown-user-info {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+    flex: 1;
+}
+
+.bml-dropdown-user-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: #1d2129;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.3;
+    letter-spacing: 0.02em;
+}
+
+.bml-dropdown-user-role {
+    font-size: 10px;
+    color: #86909c;
+    font-weight: 400;
+    line-height: 1.2;
+}
+
+/* ═══ 暗色主题适配 ═══ */
+body[arco-theme='dark'] .arco-dropdown {
+    background: rgba(40, 40, 42, 0.92) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    box-shadow:
+        0 12px 40px rgba(0, 0, 0, 0.3),
+        0 4px 12px rgba(0, 0, 0, 0.2),
+        inset 0 0 0 0.5px rgba(255, 255, 255, 0.05) !important;
+}
+
+body[arco-theme='dark'] .arco-dropdown-option {
+    color: #e5e6eb !important;
+}
+
+body[arco-theme='dark'] .arco-dropdown-option:hover:not(.arco-dropdown-option-disabled) {
+    background: rgba(255, 255, 255, 0.08) !important;
+    color: #fff !important;
+}
+
+body[arco-theme='dark'] .arco-dropdown-option .arco-dropdown-option-icon {
+    color: #86909c !important;
+}
+
+body[arco-theme='dark'] .bml-dropdown-divider {
+    background: linear-gradient(90deg, transparent 5%, rgba(255, 255, 255, 0.08) 30%, rgba(255, 255, 255, 0.08) 70%, transparent 95%);
+}
+
+body[arco-theme='dark'] .bml-dropdown-user-name {
+    color: #f2f3f5;
+}
+
+body[arco-theme='dark'] .bml-dropdown-user-role {
+    color: #86909c;
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -765,9 +1185,21 @@
    次要查询字段的展开/收起动画和布局。
    ───────────────────────────────────────────────────────────── */
 
-/* 次要字段容器：与主要字段同行排列 */
+/*
+ * 次要字段容器：独立的 4 列网格布局
+ * 与主要字段区（3 列）分离，展开后每行 4 个字段满排，
+ * 与授权治理查询区域布局完全一致。
+ * 顶部虚线分割线区分主要/次要字段。
+ * padding 左侧 0px 与主要字段区对齐（左对齐），
+ * 顶部 4px 间距 + 虚线与授权治理 .query-panel__advanced 一致。
+ */
 .biz-query-form-extra {
-    display: contents;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0 16px;
+    align-items: center;
+    padding: 4px 0 0 0;
+    border-top: 1px dashed rgba(159, 187, 217, 0.56);
 }
 
 /* 展开/收起过渡动画 */
@@ -782,20 +1214,28 @@
     transform: translateY(-4px);
 }
 
-/* "更多条件"切换按钮样式 */
+/*
+ * "更多条件"切换按钮样式（与授权治理 .query-panel__toggle-btn 完全一致）：
+ * 半透明玻璃质感背景，蓝灰色文字，悬浮微抬效果。
+ */
 .query-panel-toggle-btn.arco-btn {
+    min-width: 96px;
     height: 28px;
-    padding: 0 10px;
+    padding: 0 8px;
     border-radius: 999px;
-    font-size: 12px;
-    font-weight: 600;
-    color: #1769ff;
-    border-color: rgba(23, 105, 255, 0.3);
-    background: rgba(23, 105, 255, 0.04);
+    border-color: rgba(153, 186, 219, 0.72);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(242, 248, 255, 0.9));
+    color: #39597b;
+    font-weight: 700;
+    font-size: 11px;
     transition: all 0.2s ease;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.94),
+        0 6px 12px rgba(35, 100, 167, 0.08);
 }
 
 .query-panel-toggle-btn.arco-btn:hover {
-    background: rgba(23, 105, 255, 0.08);
-    border-color: rgba(23, 105, 255, 0.5);
+    border-color: rgba(96, 146, 205, 0.76);
+    color: #2d4d71;
+    transform: translateY(-1px);
 }

@@ -1,6 +1,7 @@
 package com.bml.module.system.controller;
 
 import com.bml.core.base.controller.BaseController;
+import com.bml.core.common.result.PageResult;
 import com.bml.core.common.result.Result;
 import com.bml.module.system.dto.SysUserDTO;
 import com.bml.module.system.entity.SysUser;
@@ -61,7 +62,7 @@ public class SysUserController extends BaseController {
     private SysUserService userService;
 
     /**
-     * 获取用户列表
+     * 获取用户列表（不分页，保留兼容）
      *
      * @param dto 查询条件（用户名、手机号、状态等）
      * @return 用户列表
@@ -71,6 +72,23 @@ public class SysUserController extends BaseController {
     @GetMapping("/list")
     public Result<List<SysUserVO>> list(SysUserDTO dto) {
         return Result.ok(userService.selectUserList(dto));
+    }
+
+    /**
+     * 分页查询用户列表
+     *
+     * @param dto      查询条件（用户名、手机号、状态等）
+     * @param pageNum  当前页码（默认 1）
+     * @param pageSize 每页条数（默认 20）
+     * @return 分页结果（含 records、total 等字段）
+     */
+    @Operation(summary = "分页查询用户列表")
+    @PreAuthorize("@ss.hasPermi('system:user:list')")
+    @GetMapping("/page")
+    public Result<PageResult<SysUserVO>> page(SysUserDTO dto,
+            @RequestParam(defaultValue = "1") int pageNum,
+            @RequestParam(defaultValue = "20") int pageSize) {
+        return Result.ok(userService.selectUserPage(dto, pageNum, pageSize));
     }
 
     /**

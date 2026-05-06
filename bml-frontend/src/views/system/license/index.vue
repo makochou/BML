@@ -473,7 +473,7 @@
  */
 defineOptions({ name: 'LicenseManagement' });
 
-import { computed, onMounted, ref } from 'vue';
+import { computed, h, onMounted, ref } from 'vue';
 import { Message, Notification } from '@arco-design/web-vue';
 import BmlModal from '../../../components/BmlModal.vue';
 import type { FileItem } from '@arco-design/web-vue';
@@ -506,6 +506,48 @@ import {
   type LicenseStatus
 } from '../../../api/license';
 import { resetLicenseCache } from '../../../router';
+
+/**
+ * 构建许可证变更通知内容的富文本 VNode。
+ *
+ * 将纯文本变更条目渲染为带图标、色彩标记的结构化列表，
+ * 每条变更独占一行，升级/降级/功能新增/移除/过期分别用不同图标区分。
+ *
+ * @param lines  变更条目文本数组（支持 ↑ ↓ ✚ ✖ ⚠ ⛔ 📅 前缀自动识别）
+ * @returns      渲染后的 VNode
+ */
+function renderChangeItems(lines: string[]) {
+  return h('div', { class: 'bml-notify-items' }, lines.map(line => {
+    // 根据条目前缀自动选择图标和颜色类名
+    let iconClass = 'item-info';
+    if (line.startsWith('↑')) iconClass = 'item-up';
+    else if (line.startsWith('↓') || line.startsWith('⚠')) iconClass = 'item-down';
+    else if (line.startsWith('✚')) iconClass = 'item-add';
+    else if (line.startsWith('✖')) iconClass = 'item-remove';
+    else if (line.startsWith('⛔')) iconClass = 'item-expired';
+    else if (line.startsWith('📅')) iconClass = 'item-date';
+
+    return h('div', { class: `bml-notify-item ${iconClass}` }, [
+      h('span', { class: 'item-dot' }),
+      h('span', { class: 'item-text' }, line),
+    ]);
+  }));
+}
+
+/**
+ * 构建首次激活通知内容的富文本 VNode。
+ *
+ * @param lines  授权概要条目数组
+ * @returns      渲染后的 VNode
+ */
+function renderSummaryItems(lines: string[]) {
+  return h('div', { class: 'bml-notify-summary' }, lines.map(line =>
+    h('div', { class: 'bml-notify-summary-row' }, [
+      h('span', { class: 'summary-dot' }),
+      h('span', { class: 'summary-text' }, line),
+    ])
+  ));
+}
 
 /**
  * 页面数据结构定义。
@@ -1246,9 +1288,44 @@ const handleUpload = async () => {
   try {
     const response = await uploadLicense(selectedFile.value);
     licenseData.value = response.data;
-    Message.success(isLicenseCheckDisabled.value ? '许可证上传成功，已完成开发模式预演' : '许可证上传成功，系统已激活');
     resetLicenseCache();
     resetActivationSelection();
+
+    // ── 右上角弹出激活成功通知（包含授权概要信息） ──
+    const data = response.data;
+    const summaryLines: string[] = [];
+
+    if (data?.customerName) {
+      summaryLines.push(`客户：${data.customerName}`);
+    }
+    if (data?.maxApiAccounts !== undefined && data?.maxApiAccounts !== null) {
+      summaryLines.push(`API 账号上限：${data.maxApiAccounts === 0 ? '不限' : data.maxApiAccounts}`);
+    }
+    if (data?.maxTotalUsers !== undefined && data?.maxTotalUsers !== null) {
+      summaryLines.push(`业务用户上限：${data.maxTotalUsers === 0 ? '不限' : data.maxTotalUsers}`);
+    }
+    if (data?.expireDate) {
+      summaryLines.push(`有效期至：${data.expireDate}`);
+    }
+    if (data?.features && data.features.length > 0) {
+      summaryLines.push(`授权模块：${data.features.map(formatFeatureLabel).join('、')}`);
+    }
+
+    Notification.success({
+      id: 'license-activate-notify',
+      title: isLicenseCheckDisabled.value
+        ? '许可证上传成功（开发模式预演）'
+        : '系统授权激活成功',
+      content: () => summaryLines.length > 0
+        ? renderSummaryItems(summaryLines)
+        : h('span', { style: 'color: #64748b; font-size: 13px;' }, '许可证已成功加载'),
+      position: 'topRight',
+      duration: isLicenseCheckDisabled.value ? 8000 : 3000,
+      closable: true,
+      class: 'bml-license-notify',
+    });
+
+    Message.success(isLicenseCheckDisabled.value ? '许可证上传成功，已完成开发模式预演' : '许可证上传成功，系统已激活');
 
     if (!isLicenseCheckDisabled.value) {
       window.setTimeout(() => {
@@ -1310,21 +1387,30 @@ const confirmUpdate = async () => {
 
   uploading.value = true;
   try {
+    /**
+     * ══ 关键：先快照对比数据，再覆盖 licenseData ══
+     *
+     * compareQuotaRows / compareBasicRows / addedFeatures / removedFeatures
+     * 均为 computed，内部比较 licenseData（当前）vs previewData（新）。
+     * 如果先执行 `licenseData.value = response.data`，计算属性会立即重算，
+     * 变成"新 vs 新"，所有 changed 都为 false，导致右上角通知永远不弹出。
+     *
+     * 因此必须在覆盖 licenseData 之前，先将对比结果快照到局部变量。
+     */
+    const snapshotQuotaRows = compareQuotaRows.value.map(r => ({ ...r }));
+    const snapshotBasicRows = compareBasicRows.value.map(r => ({ ...r }));
+    const snapshotAddedFeatures = [...addedFeatures.value];
+    const snapshotRemovedFeatures = [...removedFeatures.value];
+
     const response = await updateLicense(pendingFile.value);
+
+    // 现在安全地更新当前许可证数据
     licenseData.value = response.data;
     resetLicenseCache();
 
-    /**
-     * 全量变更通知构建。
-     * 利用更新前已计算好的 compareBasicRows / compareQuotaRows /
-     * addedFeatures / removedFeatures 计算属性，枚举所有变更维度。
-     *
-     * 注意：resetCompareSelection() 会清空 previewData，
-     * 因此必须在读取计算属性之后再调用。
-     */
     const data = response.data;
 
-    // ── 收集所有变更条目 ──
+    // ── 收集所有变更条目（使用快照数据，不再依赖 computed） ──
     const changeLines: string[] = [];
 
     // 1. 配额降级 + 资源被自动冻结（后端执行结果，优先展示）
@@ -1338,8 +1424,8 @@ const confirmUpdate = async () => {
       changeLines.push(`⚠ API 来源用户上限降级：已自动停用 ${data.frozenApiUserCount} 个最近由 API 创建的用户`);
     }
 
-    // 2. 配额变更（升级 / 降级，基于对比面板数据）
-    compareQuotaRows.value.forEach(row => {
+    // 2. 配额变更（升级 / 降级，基于快照数据）
+    snapshotQuotaRows.forEach(row => {
       if (row.changed) {
         const arrow = row.direction === 'up' ? '↑' : row.direction === 'down' ? '↓' : '→';
         const tag = row.direction === 'up' ? '升级' : row.direction === 'down' ? '降级' : '变更';
@@ -1348,19 +1434,19 @@ const confirmUpdate = async () => {
     });
 
     // 3. 到期日变更
-    const expireRow = compareBasicRows.value.find(r => r.key === 'expireDate');
+    const expireRow = snapshotBasicRows.find(r => r.key === 'expireDate');
     if (expireRow?.changed) {
       changeLines.push(`📅 有效期变更：${expireRow.current} → ${expireRow.next}`);
     }
 
     // 4. 功能模块新增
-    if (addedFeatures.value.length > 0) {
-      changeLines.push(`✚ 新增授权模块：${addedFeatures.value.map(formatFeatureLabel).join('、')}`);
+    if (snapshotAddedFeatures.length > 0) {
+      changeLines.push(`✚ 新增授权模块：${snapshotAddedFeatures.map(formatFeatureLabel).join('、')}`);
     }
 
     // 5. 功能模块移除
-    if (removedFeatures.value.length > 0) {
-      changeLines.push(`✖ 移除授权模块：${removedFeatures.value.map(formatFeatureLabel).join('、')}`);
+    if (snapshotRemovedFeatures.length > 0) {
+      changeLines.push(`✖ 移除授权模块：${snapshotRemovedFeatures.map(formatFeatureLabel).join('、')}`);
     }
 
     // 6. 许可证已过期
@@ -1368,34 +1454,50 @@ const confirmUpdate = async () => {
       changeLines.push('⛔ 注意：新许可证已过期，系统功能将受限');
     }
 
-    // ── 弹出右上角通知 ──
+    // ── 弹出右上角通知（富文本渲染） ──
     if (changeLines.length > 0) {
       /**
-       * 有任何变更时，在右上角弹出通知。
+       * 有任何变更时，在右上角弹出 Notification。
        * 包含降级时用 warning 类型（橙色），纯升级时用 info 类型（蓝色）。
        * 判断依据：是否有资源被冻结或模块被移除。
+       * 使用 renderChangeItems() 将变更条目渲染为带图标的结构化列表。
        */
       const hasDowngrade =
         (data?.frozenUserCount ?? 0) > 0 ||
         (data?.frozenApiAccountCount ?? 0) > 0 ||
         (data?.frozenApiUserCount ?? 0) > 0 ||
-        removedFeatures.value.length > 0 ||
+        snapshotRemovedFeatures.length > 0 ||
         data?.expired;
 
       const notifyType = hasDowngrade ? 'warning' : 'info';
 
       Notification[notifyType]({
         id: 'license-change-notify',
-        title: `🔔 许可证已更新（${changeLines.length} 项变更）`,
-        content: changeLines.join('\n'),
+        title: `许可证已更新（${changeLines.length} 项变更）`,
+        content: () => renderChangeItems(changeLines),
         position: 'topRight',
-        duration: 10000,
+        duration: 12000,
+        closable: true,
+        class: 'bml-license-notify',
+      });
+    } else {
+      // 即使没有检测到具体变更项，也弹出成功通知（保底）
+      const fallbackLines = [
+        `客户：${data?.customerName || '-'}`,
+        `有效期至：${data?.expireDate || '-'}`,
+      ];
+      Notification.success({
+        id: 'license-change-notify',
+        title: '许可证已更新',
+        content: () => renderSummaryItems(fallbackLines),
+        position: 'topRight',
+        duration: 6000,
         closable: true,
         class: 'bml-license-notify',
       });
     }
 
-    // 清空对比面板数据（必须在读取计算属性之后）
+    // 清空对比面板数据
     resetCompareSelection();
 
     Message.success('许可证更新成功，旧许可证已自动备份');
@@ -2999,68 +3101,181 @@ onMounted(() => {
   ══════════════════════════════════════════════════════════════════════
 -->
 <style>
+/*
+ * ══════════════════════════════════════════════════════════════
+ *  BML 许可证变更通知 — 全局样式（Premium 卡片风格）
+ * ══════════════════════════════════════════════════════════════
+ *
+ *  Arco Notification 挂载在 document.body 下，不在当前组件 DOM 树内，
+ *  必须使用不带 scoped 的 <style> 块覆盖样式。
+ *  所有选择器以 .bml-license-notify 为命名空间前缀，避免污染全局。
+ *
+ *  设计特点：
+ *  - 毛玻璃背景 + 大圆角 + 悬浮阴影（与系统整体设计语言一致）
+ *  - 左侧 4px 色条区分通知类型（success/info/warning）
+ *  - 变更条目使用彩色圆点 + 分行列表，升级/降级/新增/移除一目了然
+ *  - 流畅的入场动画（从右上角滑入）
+ */
+
 /* ── 通知容器整体 ── */
 .bml-license-notify.arco-notification {
-  /* 最小宽度保证多条降级信息不被压缩 */
-  min-width: 340px;
-  max-width: 420px;
-  /* 圆角、阴影与授权页卡片风格统一 */
+  min-width: 380px;
+  max-width: 460px;
   border-radius: 16px !important;
+  background: rgba(255, 255, 255, 0.96) !important;
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
   box-shadow:
-    0 8px 32px rgba(15, 23, 42, 0.14),
-    0 2px 8px rgba(15, 23, 42, 0.08) !important;
-  border: 1px solid rgba(226, 232, 240, 0.9) !important;
+    0 12px 40px -8px rgba(15, 23, 42, 0.18),
+    0 4px 12px rgba(15, 23, 42, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8) !important;
+  border: 1px solid rgba(226, 232, 240, 0.7) !important;
   overflow: hidden;
-  /* 入场动画：从右上角向下滑入 */
-  animation: bmlLicenseNotifySlideIn 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  padding: 20px 22px 18px !important;
+  animation: bmlLicenseNotifySlideIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 
-/* ── warning 类型（配额降级）：左侧橙色竖条 ── */
+/* ── success 类型：左侧翠绿色条 ── */
+.bml-license-notify.arco-notification-success {
+  border-left: 4px solid #00b42a !important;
+}
+/* ── info 类型：左侧品牌蓝色条 ── */
+.bml-license-notify.arco-notification-info {
+  border-left: 4px solid #165dff !important;
+}
+/* ── warning 类型：左侧琥珀橙色条 ── */
 .bml-license-notify.arco-notification-warning {
   border-left: 4px solid #ff7d00 !important;
 }
 
-/* ── 通知标题 ── */
-.bml-license-notify .arco-notification-title {
-  font-size: 14px !important;
-  font-weight: 800 !important;
-  color: #0f172a !important;
-  line-height: 1.4;
+/* ── 隐藏 Arco 默认的左侧类型图标（由彩色竖条替代） ── */
+.bml-license-notify .arco-notification-icon {
+  display: none !important;
 }
 
-/* ── 通知正文：保留换行符，展示多条降级详情 ── */
+/* ── 通知标题 ── */
+.bml-license-notify .arco-notification-title {
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  color: #0f172a !important;
+  line-height: 1.5;
+  letter-spacing: 0.02em;
+  margin-left: 0 !important;
+}
+
+/* ── 通知正文容器 ── */
 .bml-license-notify .arco-notification-content {
-  font-size: 12px !important;
-  color: #475569 !important;
-  line-height: 1.8 !important;
-  /* 保留 \n 换行，让每条降级信息独占一行 */
-  white-space: pre-line;
-  margin-top: 6px !important;
-  /* 超长内容最多显示 10 行，超出省略（全量变更可能有多条） */
-  display: -webkit-box;
-  -webkit-line-clamp: 10;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  margin-top: 10px !important;
+  margin-left: 0 !important;
 }
 
 /* ── 关闭按钮 ── */
 .bml-license-notify .arco-notification-close-btn {
   color: #94a3b8 !important;
-  transition: color 0.15s;
+  top: 16px !important;
+  right: 16px !important;
+  transition: all 0.2s;
 }
 .bml-license-notify .arco-notification-close-btn:hover {
   color: #334155 !important;
+  transform: rotate(90deg);
 }
 
-/* ── 入场动画：从右上角向下滑入 ── */
+/* ══════════════════════════════════════════════════════════════
+ *  变更条目列表（confirmUpdate 使用 renderChangeItems 渲染）
+ * ══════════════════════════════════════════════════════════════ */
+
+.bml-notify-items {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.bml-notify-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 7px 12px;
+  border-radius: 8px;
+  background: rgba(241, 245, 249, 0.6);
+  transition: background 0.15s;
+}
+.bml-notify-item:hover {
+  background: rgba(226, 232, 240, 0.5);
+}
+
+/* 圆点指示器 */
+.bml-notify-item .item-dot {
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  margin-top: 6px;
+}
+
+/* 文字 */
+.bml-notify-item .item-text {
+  font-size: 13px;
+  line-height: 1.6;
+  color: #334155;
+  word-break: break-all;
+}
+
+/* ── 各类型圆点颜色 ── */
+.bml-notify-item.item-up .item-dot { background: #00b42a; box-shadow: 0 0 6px rgba(0, 180, 42, 0.4); }
+.bml-notify-item.item-down .item-dot { background: #f53f3f; box-shadow: 0 0 6px rgba(245, 63, 63, 0.4); }
+.bml-notify-item.item-add .item-dot { background: #165dff; box-shadow: 0 0 6px rgba(22, 93, 255, 0.4); }
+.bml-notify-item.item-remove .item-dot { background: #ff7d00; box-shadow: 0 0 6px rgba(255, 125, 0, 0.4); }
+.bml-notify-item.item-expired .item-dot { background: #f53f3f; box-shadow: 0 0 6px rgba(245, 63, 63, 0.5); }
+.bml-notify-item.item-date .item-dot { background: #722ed1; box-shadow: 0 0 6px rgba(114, 46, 209, 0.4); }
+.bml-notify-item.item-info .item-dot { background: #86909c; }
+
+/* ── 各类型文字颜色微调 ── */
+.bml-notify-item.item-up .item-text { color: #0e7a2e; }
+.bml-notify-item.item-down .item-text { color: #cb2634; }
+.bml-notify-item.item-expired .item-text { color: #cb2634; font-weight: 600; }
+
+/* ══════════════════════════════════════════════════════════════
+ *  概要列表（handleUpload 使用 renderSummaryItems 渲染）
+ * ══════════════════════════════════════════════════════════════ */
+
+.bml-notify-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.bml-notify-summary-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 0;
+}
+
+.bml-notify-summary-row .summary-dot {
+  flex-shrink: 0;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #00b42a;
+  opacity: 0.7;
+}
+
+.bml-notify-summary-row .summary-text {
+  font-size: 13px;
+  color: #475569;
+  line-height: 1.5;
+}
+
+/* ── 入场动画 ── */
 @keyframes bmlLicenseNotifySlideIn {
   from {
     opacity: 0;
-    transform: translateY(-16px) scale(0.96);
+    transform: translateX(20px) translateY(-8px) scale(0.96);
   }
   to {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translateX(0) translateY(0) scale(1);
   }
 }
 </style>

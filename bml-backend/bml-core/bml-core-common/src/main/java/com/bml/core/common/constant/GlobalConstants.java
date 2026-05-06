@@ -61,6 +61,28 @@ public interface GlobalConstants {
      */
     String SUPER_ADMIN_ROLE_CODE = "admin";
 
+    // ======================== 业务系统菜单 ========================
+
+    /**
+     * 业务系统菜单根目录路径标识
+     * <p>
+     * 业务系统（ip:port/）的所有功能菜单均挂载在此顶级目录下。
+     * 该常量对应 sys_menu 表中 path='system' 的顶级 M 类型目录。
+     * </p>
+     * <p>
+     * <b>架构背景：</b>
+     * <ul>
+     *   <li>中台管理（ip:port/admin）的菜单为顶级非 system 路径的菜单
+     *       （如工作台、资产目录、授权治理等），与业务系统完全解耦</li>
+     *   <li>业务系统角色授权时，仅授权此目录下的菜单（机构管理、部门管理、
+     *       用户管理、角色管理等），不涉及中台管理菜单</li>
+     * </ul>
+     * </p>
+     *
+     * @see com.bml.module.system.service.impl.SysMenuServiceImpl#selectPermissionMenuList()
+     */
+    String BUSINESS_SYSTEM_MENU_PATH = "system";
+
     // ======================== 树形结构 ========================
 
     /**

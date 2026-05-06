@@ -1,6 +1,7 @@
 package com.bml.module.system.controller;
 
 import com.bml.core.base.controller.BaseController;
+import com.bml.core.common.result.PageResult;
 import com.bml.core.common.result.Result;
 import com.bml.module.system.converter.RoleConverter;
 import com.bml.module.system.dto.SysRoleDTO;
@@ -75,6 +76,23 @@ public class SysRoleController extends BaseController {
     }
 
     /**
+     * 分页查询角色列表
+     *
+     * @param dto      查询条件（角色名称、角色编码、状态等）
+     * @param pageNum  当前页码（默认 1）
+     * @param pageSize 每页条数（默认 20）
+     * @return 分页结果（含 records、total 等字段）
+     */
+    @Operation(summary = "分页查询角色列表")
+    @PreAuthorize("@ss.hasPermi('system:role:list')")
+    @GetMapping("/page")
+    public Result<PageResult<SysRoleVO>> page(SysRoleDTO dto,
+            @RequestParam(defaultValue = "1") int pageNum,
+            @RequestParam(defaultValue = "20") int pageSize) {
+        return Result.ok(roleService.selectRolePage(dto, pageNum, pageSize));
+    }
+
+    /**
      * 根据角色编号获取详细信息
      *
      * @param roleId 角色ID
@@ -87,6 +105,9 @@ public class SysRoleController extends BaseController {
         SysRoleVO vo = RoleConverter.INSTANCE.toVO(roleService.getById(roleId));
         if (vo != null) {
             vo.setMenuIds(roleService.selectMenuIdsByRoleId(roleId));
+            vo.setHalfCheckMenuIds(roleService.selectHalfCheckMenuIdsByRoleId(roleId));
+            vo.setCustomOrgIds(roleService.selectCustomOrgIdsByRoleId(roleId));
+            vo.setCustomDeptIds(roleService.selectCustomDeptIdsByRoleId(roleId));
         }
         return Result.ok(vo);
     }

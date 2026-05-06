@@ -1,69 +1,15 @@
 <template>
   <div class="api-list-page">
-    <!-- 顶部统计卡片区域 -->
-    <div class="stats-cards-wrapper">
-      <div class="stats-card stats-card-modules">
-        <div class="stats-card-icon">
-          <icon-apps />
-        </div>
-        <div class="stats-card-content">
-          <div class="stats-card-value">{{ moduleCount }}</div>
-          <div class="stats-card-label">业务模块</div>
-        </div>
-        <div class="stats-card-bg-icon">
-          <icon-apps />
-        </div>
-      </div>
-      
-      <div class="stats-card stats-card-resources">
-        <div class="stats-card-icon">
-          <icon-folder />
-        </div>
-        <div class="stats-card-content">
-          <div class="stats-card-value">{{ resourceCount }}</div>
-          <div class="stats-card-label">业务分组</div>
-        </div>
-        <div class="stats-card-bg-icon">
-          <icon-folder />
-        </div>
-      </div>
-      
-      <div class="stats-card stats-card-apis">
-        <div class="stats-card-icon">
-          <icon-code-block />
-        </div>
-        <div class="stats-card-content">
-          <div class="stats-card-value">{{ apiCount }}</div>
-          <div class="stats-card-label">API 接口</div>
-        </div>
-        <div class="stats-card-bg-icon">
-          <icon-code-block />
-        </div>
-      </div>
-      
-      <div class="stats-card stats-card-status">
-        <div class="stats-card-icon">
-          <icon-check-circle />
-        </div>
-        <div class="stats-card-content">
-          <div class="stats-card-value">{{ openTabs.length }}</div>
-          <div class="stats-card-label">已打开标签</div>
-        </div>
-        <div class="stats-card-bg-icon">
-          <icon-check-circle />
-        </div>
-      </div>
-    </div>
-
-    <!-- 筛选与操作栏 -->
+    <!-- 筛选与操作栏（包含统计信息） -->
     <div class="api-list-toolbar">
       <div class="toolbar-left">
+        <!-- 搜索框 - 用于搜索接口名称、路径或描述 -->
         <a-input-search
           v-model="filterKeyword"
-          placeholder="🔍 搜索接口名称、路径或描述..."
+          placeholder="搜索接口..."
           allow-clear
-          size="large"
-          style="width: 360px"
+          size="medium"
+          style="width: 240px"
           @search="loadTree"
           @press-enter="loadTree"
         >
@@ -71,12 +17,14 @@
             <icon-search />
           </template>
         </a-input-search>
+        
+        <!-- HTTP 方法筛选下拉框 -->
         <a-select
           v-model="filterMethod"
-          placeholder="HTTP 方法"
+          placeholder="方法"
           allow-clear
-          size="large"
-          style="width: 140px"
+          size="medium"
+          style="width: 100px"
           :options="methodOptions"
           @change="loadTree"
         >
@@ -84,16 +32,57 @@
             <icon-filter />
           </template>
         </a-select>
-      </div>
-      <div class="toolbar-right">
-        <a-button type="primary" size="large" :loading="loading" @click="loadTree">
+        
+        <!-- 刷新数据按钮 - 重新加载接口列表 -->
+        <a-button type="primary" size="medium" :loading="loading" @click="loadTree">
           <template #icon><icon-refresh /></template>
-          刷新数据
+          刷新
         </a-button>
-        <a-button size="large" :loading="syncingRegistry" @click="handleSyncRegistry">
+        
+        <!-- 同步接口按钮 - 从 OpenAPI 注册中心同步接口 -->
+        <a-button size="medium" :loading="syncingRegistry" @click="handleSyncRegistry">
           <template #icon><icon-sync /></template>
-          同步接口
+          同步
         </a-button>
+      </div>
+      
+      <!-- 统计信息区域 - 紧凑显示在右侧 -->
+      <div class="toolbar-stats">
+        <!-- 业务模块统计 -->
+        <div class="stat-item stat-item-modules">
+          <icon-apps class="stat-icon" />
+          <div class="stat-content">
+            <span class="stat-value">{{ moduleCount }}</span>
+            <span class="stat-label">模块</span>
+          </div>
+        </div>
+        
+        <!-- 业务分组统计 -->
+        <div class="stat-item stat-item-resources">
+          <icon-folder class="stat-icon" />
+          <div class="stat-content">
+            <span class="stat-value">{{ resourceCount }}</span>
+            <span class="stat-label">分组</span>
+          </div>
+        </div>
+        
+        <!-- API 接口统计 -->
+        <div class="stat-item stat-item-apis">
+          <icon-code-block class="stat-icon" />
+          <div class="stat-content">
+            <span class="stat-value">{{ apiCount }}</span>
+            <span class="stat-label">接口</span>
+          </div>
+        </div>
+        
+        <!-- 已打开标签统计 -->
+        <div class="stat-item stat-item-tabs">
+          <icon-check-circle class="stat-icon" />
+          <div class="stat-content">
+            <span class="stat-value">{{ openTabs.length }}</span>
+            <span class="stat-label">标签</span>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -175,9 +164,20 @@
                             {{ tab.title }}
                           </div>
                           <template #content>
-                            <a-doption value="current">关闭当前标签</a-doption>
-                            <a-doption value="others" :disabled="openTabs.length <= 1">关闭其他标签页</a-doption>
-                            <a-doption value="all" class="danger-option">关闭所有标签页</a-doption>
+                            <a-doption value="current">
+                              <template #icon><icon-close /></template>
+                              关闭当前标签
+                            </a-doption>
+                            <a-doption value="others" :disabled="openTabs.length <= 1">
+                              <template #icon><icon-minus-circle /></template>
+                              关闭其他标签页
+                            </a-doption>
+                            <!-- 分割线 -->
+                            <div class="bml-dropdown-divider"></div>
+                            <a-doption value="all" class="bml-dropdown-item-danger">
+                              <template #icon><icon-delete /></template>
+                              关闭所有标签页
+                            </a-doption>
                           </template>
                         </a-dropdown>
                       </template>
@@ -225,7 +225,7 @@ defineOptions({ name: 'ApiList' });
 
 import { ref, computed, onMounted } from 'vue';
 import { Message } from '@arco-design/web-vue';
-import { IconRefresh, IconRight, IconExpand, IconShrink, IconSend, IconLeft, IconSync, IconApps, IconFolder, IconCodeBlock, IconCheckCircle, IconSearch, IconFilter } from '@arco-design/web-vue/es/icon';
+import { IconRefresh, IconRight, IconExpand, IconShrink, IconSend, IconLeft, IconSync, IconApps, IconFolder, IconCodeBlock, IconCheckCircle, IconSearch, IconFilter, IconClose, IconMinusCircle, IconDelete } from '@arco-design/web-vue/es/icon';
 import { fetchApiListTree } from '../../api/apiList';
 import { syncOpenApiRegistry } from '../../api/apiAccount';
 import type { ApiCatalogTreeNode } from '../../types/apiList';
@@ -643,9 +643,10 @@ onMounted(() => {
 
 <style scoped>
 /**
- * 整页铺满：作为 Layout .page-container 的 flex 子项，占满除标签栏外的可用高度；
- * 一页显示不全时，在「模块 / 业务分组 / 接口列表」各列内分别上下滚动。
- * 终极设计：深色主题 + 霓虹色彩 + 粒子动画背景
+ * 资产目录页面样式
+ * 设计理念：简洁、现代、与系统其他页面保持统一的浅色风格
+ * 采用卡片式布局，清晰的层次结构，优雅的交互效果
+ * 统计信息紧凑显示在工具栏右侧，节省垂直空间
  */
 .api-list-page {
   display: flex;
@@ -653,417 +654,257 @@ onMounted(() => {
   flex: 1;
   height: 100%;
   min-height: 0;
-  padding: 24px;
-  /* 深色渐变背景 */
-  background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
-  background-attachment: fixed;
+  padding: 16px 20px;
+  /* 浅色背景，与系统其他页面保持一致 */
+  background: #f0f2f5;
   position: relative;
   overflow: hidden;
 }
 
-/* 粒子背景动画 */
-.api-list-page::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: 
-    radial-gradient(circle at 20% 50%, rgba(0, 245, 255, 0.15) 0%, transparent 50%),
-    radial-gradient(circle at 80% 20%, rgba(181, 55, 242, 0.15) 0%, transparent 50%),
-    radial-gradient(circle at 40% 80%, rgba(255, 46, 151, 0.15) 0%, transparent 50%);
-  animation: particle-float 20s infinite ease-in-out;
-  pointer-events: none;
-}
-
-@keyframes particle-float {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  33% { transform: translate(30px, -30px) scale(1.1); }
-  66% { transform: translate(-20px, 20px) scale(0.9); }
-}
-
-/* 网格线背景 */
-.api-list-page::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image: 
-    linear-gradient(rgba(0, 245, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 245, 255, 0.03) 1px, transparent 1px);
-  background-size: 50px 50px;
-  animation: grid-move 20s linear infinite;
-  pointer-events: none;
-}
-
-@keyframes grid-move {
-  0% { transform: translate(0, 0); }
-  100% { transform: translate(50px, 50px); }
-}
-
-/* 统计卡片容器 */
-.stats-cards-wrapper {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 24px;
-  margin-bottom: 24px;
-  position: relative;
-  z-index: 1;
-}
-
-/* 3D 统计卡片 */
-.stats-card {
-  position: relative;
-  height: 180px;
-  perspective: 1000px;
-  transform-style: preserve-3d;
-  transition: all 0.6s cubic-bezier(0.23, 1, 0.32, 1);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
-  gap: 12px;
-  overflow: hidden;
-}
-
-.stats-card:hover {
-  transform: translateY(-12px) rotateX(5deg) scale(1.03);
-}
-
-/* 玻璃拟态背景 */
-.stats-card::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(20px);
-  border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 
-    0 8px 32px rgba(0, 0, 0, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
-  transition: all 0.3s;
-}
-
-.stats-card:hover::before {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(0, 245, 255, 0.3);
-}
-
-/* 霓虹发光边框 */
-.stats-card::after {
-  content: '';
-  position: absolute;
-  inset: -2px;
-  background: linear-gradient(135deg, #00f5ff 0%, #b537f2 100%);
-  border-radius: 20px;
-  opacity: 0;
-  filter: blur(15px);
-  transition: opacity 0.3s;
-  z-index: -1;
-}
-
-.stats-card:hover::after {
-  opacity: 0.6;
-  animation: neon-pulse 2s infinite;
-}
-
-@keyframes neon-pulse {
-  0%, 100% { opacity: 0.6; filter: blur(15px); }
-  50% { opacity: 1; filter: blur(20px); }
-}
-
-/* 图标区域 */
-.stats-card-icon {
-  position: relative;
-  width: 64px;
-  height: 64px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 32px;
-  transition: all 0.4s;
-  z-index: 1;
-}
-
-.stats-card:hover .stats-card-icon {
-  transform: rotate(10deg) scale(1.15);
-}
-
-/* 图标发光效果 */
-.stats-card-icon::before {
-  content: '';
-  position: absolute;
-  inset: -15px;
-  border-radius: 50%;
-  opacity: 0.5;
-  filter: blur(20px);
-  animation: icon-glow 3s infinite;
-  z-index: -1;
-}
-
-@keyframes icon-glow {
-  0%, 100% { transform: scale(1); opacity: 0.5; }
-  50% { transform: scale(1.3); opacity: 0.8; }
-}
-
-/* 不同卡片的图标颜色 */
-.stats-card-modules .stats-card-icon {
-  color: #00f5ff;
-}
-
-.stats-card-modules .stats-card-icon::before {
-  background: #00f5ff;
-}
-
-.stats-card-resources .stats-card-icon {
-  color: #b537f2;
-}
-
-.stats-card-resources .stats-card-icon::before {
-  background: #b537f2;
-}
-
-.stats-card-apis .stats-card-icon {
-  color: #ff2e97;
-}
-
-.stats-card-apis .stats-card-icon::before {
-  background: #ff2e97;
-}
-
-.stats-card-status .stats-card-icon {
-  color: #ffd700;
-}
-
-.stats-card-status .stats-card-icon::before {
-  background: #ffd700;
-}
-
-/* 卡片内容区域 */
-.stats-card-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  z-index: 1;
-}
-
-/* 数值显示 */
-.stats-card-value {
-  font-size: 42px;
-  font-weight: 800;
-  line-height: 1;
-  font-family: 'Orbitron', 'Rajdhani', 'Inter', sans-serif;
-  background: linear-gradient(135deg, #00f5ff 0%, #b537f2 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  text-shadow: 0 0 30px rgba(0, 245, 255, 0.5);
-  animation: number-glow 3s infinite;
-}
-
-@keyframes number-glow {
-  0%, 100% { filter: brightness(1); }
-  50% { filter: brightness(1.3); }
-}
-
-/* 标签文字 */
-.stats-card-label {
-  font-size: 13px;
-  color: rgba(255, 255, 255, 0.6);
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-
-/* 隐藏背景图标（简化设计） */
-.stats-card-bg-icon {
-  display: none;
-}
-
+/* ==================== 工具栏区域 ==================== */
 .api-list-toolbar {
   flex-shrink: 0;
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap; /* 不换行，强制在同一行显示 */
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
-  padding: 20px 28px;
-  background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(20px);
-  border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 
-    0 8px 32px rgba(0, 0, 0, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
-  margin-bottom: 24px;
+  gap: 10px; /* 减小间距，从 16px 改为 10px */
+  padding: 12px 16px; /* 减小内边距，从 16px 20px 改为 12px 16px */
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid #e5e6eb;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  margin-bottom: 16px;
   position: relative;
   z-index: 1;
+  overflow: hidden; /* 隐藏滚动条 */
 }
 
-/* 霓虹滚动条样式 */
-.api-list-page :deep(::-webkit-scrollbar) {
-  width: 8px;
-  height: 8px;
-}
-
-.api-list-page :deep(::-webkit-scrollbar-track) {
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 10px;
-}
-
-.api-list-page :deep(::-webkit-scrollbar-thumb) {
-  background: linear-gradient(135deg, #00f5ff 0%, #b537f2 100%);
-  border-radius: 10px;
-  box-shadow: 0 0 10px rgba(0, 245, 255, 0.5);
-}
-
-.api-list-page :deep(::-webkit-scrollbar-thumb:hover) {
-  background: linear-gradient(135deg, #00f5ff 0%, #ff2e97 100%);
-  box-shadow: 0 0 20px rgba(0, 245, 255, 0.8);
-}
-
+/* 工具栏左侧区域 - 包含所有筛选和操作按钮 */
 .toolbar-left {
   display: flex;
   align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
+  gap: 8px; /* 减小间距，从 12px 改为 8px */
+  flex-wrap: nowrap; /* 不换行 */
+  flex-shrink: 0; /* 不收缩 */
 }
 
-.toolbar-right {
+/* 工具栏右侧统计区域 - 紧凑显示统计信息 */
+.toolbar-stats {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px; /* 减小间距，从 12px 改为 8px */
+  flex-wrap: nowrap; /* 不换行 */
+  flex-shrink: 0; /* 不收缩 */
+  margin-left: auto; /* 自动推到右侧 */
 }
 
-/* 霓虹搜索框 */
+/* 统计项 - 超紧凑的横向布局，纯展示无交互 */
+.stat-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: #f7f8fa;
+  border-radius: 6px;
+  border: 1px solid #e5e6eb;
+  white-space: nowrap; /* 不换行 */
+  flex-shrink: 0; /* 不收缩 */
+  cursor: default; /* 默认鼠标样式，表示不可点击 */
+}
+
+/* 统计图标 - 固定样式，无动画 */
+.stat-icon {
+  font-size: 16px;
+  color: var(--stat-color, #165dff);
+  flex-shrink: 0; /* 不收缩 */
+}
+
+/* 统计内容 */
+.stat-content {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+  white-space: nowrap; /* 不换行 */
+}
+
+/* 统计数值 */
+.stat-value {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
+  color: #1d2129;
+  font-family: 'DIN Alternate', 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* 统计标签 */
+.stat-label {
+  font-size: 11px;
+  color: #86909c;
+  font-weight: 500;
+}
+
+/* 不同统计项的主题色 */
+.stat-item-modules {
+  --stat-color: #165dff;
+  --stat-shadow: rgba(22, 93, 255, 0.15);
+}
+
+.stat-item-resources {
+  --stat-color: #722ed1;
+  --stat-shadow: rgba(114, 46, 209, 0.15);
+}
+
+.stat-item-apis {
+  --stat-color: #00b42a;
+  --stat-shadow: rgba(0, 180, 42, 0.15);
+}
+
+.stat-item-tabs {
+  --stat-color: #ff7d00;
+  --stat-shadow: rgba(255, 125, 0, 0.15);
+}
+
+/* 搜索框样式优化 - 紧凑尺寸 */
 .toolbar-left :deep(.arco-input-wrapper) {
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(0, 245, 255, 0.2);
-  border-radius: 12px;
+  background: #f7f8fa;
+  border: 1px solid #e5e6eb;
+  border-radius: 6px; /* 减小圆角，从 8px 改为 6px */
   transition: all 0.3s;
+  height: 32px; /* 固定高度 */
 }
 
 .toolbar-left :deep(.arco-input-wrapper:hover) {
-  border-color: rgba(0, 245, 255, 0.5);
-  box-shadow: 0 0 20px rgba(0, 245, 255, 0.3);
+  border-color: #c9cdd4;
+  background: #fff;
 }
 
 .toolbar-left :deep(.arco-input-wrapper.arco-input-focus) {
-  border-color: #00f5ff;
-  box-shadow: 
-    0 0 20px rgba(0, 245, 255, 0.5),
-    0 0 40px rgba(0, 245, 255, 0.3);
+  border-color: #165dff;
+  background: #fff;
+  box-shadow: 0 0 0 2px rgba(22, 93, 255, 0.1); /* 减小外发光 */
 }
 
 .toolbar-left :deep(.arco-input) {
-  color: #fff;
-  font-size: 14px;
+  color: #1d2129;
+  font-size: 13px; /* 减小字号，从 14px 改为 13px */
+  padding: 0 8px; /* 减小内边距 */
 }
 
 .toolbar-left :deep(.arco-input::placeholder) {
-  color: rgba(255, 255, 255, 0.3);
+  color: #86909c;
+  font-size: 13px; /* 减小字号 */
 }
 
 .toolbar-left :deep(.arco-input-prefix) {
-  color: #00f5ff;
+  color: #4e5969;
+  font-size: 14px; /* 减小图标尺寸 */
+  margin-right: 4px; /* 减小间距 */
 }
 
-/* 霓虹下拉框 */
+/* 下拉框样式优化 - 紧凑尺寸 */
 .toolbar-left :deep(.arco-select-view) {
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(181, 55, 242, 0.2);
-  border-radius: 12px;
-  color: #fff;
+  background: #f7f8fa;
+  border: 1px solid #e5e6eb;
+  border-radius: 6px; /* 减小圆角 */
+  color: #1d2129;
   transition: all 0.3s;
+  height: 32px; /* 固定高度 */
+  font-size: 13px; /* 减小字号 */
+  padding: 0 8px; /* 减小内边距 */
 }
 
 .toolbar-left :deep(.arco-select-view:hover) {
-  border-color: rgba(181, 55, 242, 0.5);
-  box-shadow: 0 0 20px rgba(181, 55, 242, 0.3);
+  border-color: #c9cdd4;
+  background: #fff;
 }
 
-/* 霓虹按钮 - 主按钮 */
-.toolbar-right :deep(.arco-btn-primary) {
-  background: linear-gradient(135deg, #00f5ff 0%, #b537f2 100%);
+.toolbar-left :deep(.arco-select-view-focus) {
+  border-color: #165dff;
+  background: #fff;
+  box-shadow: 0 0 0 2px rgba(22, 93, 255, 0.1); /* 减小外发光 */
+}
+
+/* 主按钮样式 - 紧凑尺寸，简洁效果 */
+.toolbar-left :deep(.arco-btn-primary) {
+  background: linear-gradient(135deg, #165dff 0%, #4a8dff 100%);
   border: none;
-  border-radius: 12px;
-  padding: 0 24px;
-  height: 40px;
-  font-weight: 600;
+  border-radius: 6px;
+  padding: 0 12px;
+  height: 32px;
+  font-weight: 500;
+  font-size: 13px;
   color: #fff;
-  box-shadow: 
-    0 4px 16px rgba(0, 245, 255, 0.4),
-    0 0 20px rgba(0, 245, 255, 0.3);
-  transition: all 0.3s;
-  position: relative;
-  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(22, 93, 255, 0.3);
+  transition: all 0.2s; /* 缩短过渡时间 */
 }
 
-.toolbar-right :deep(.arco-btn-primary::before) {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(255, 255, 255, 0.3) 50%,
-    transparent 100%
-  );
-  transform: translateX(-100%);
-  transition: transform 0.6s;
+.toolbar-left :deep(.arco-btn-primary:hover) {
+  box-shadow: 0 4px 12px rgba(22, 93, 255, 0.4); /* 仅加深阴影，不上浮 */
 }
 
-.toolbar-right :deep(.arco-btn-primary:hover::before) {
-  transform: translateX(100%);
+/* 按钮图标尺寸 */
+.toolbar-left :deep(.arco-btn .arco-icon) {
+  font-size: 14px;
+  margin-right: 4px;
 }
 
-.toolbar-right :deep(.arco-btn-primary:hover) {
-  transform: translateY(-2px);
-  box-shadow: 
-    0 6px 24px rgba(0, 245, 255, 0.6),
-    0 0 40px rgba(0, 245, 255, 0.4);
+/* 次按钮样式 - 紧凑尺寸，简洁效果 */
+.toolbar-left :deep(.arco-btn:not(.arco-btn-primary)) {
+  background: #fff;
+  border: 1px solid #e5e6eb;
+  border-radius: 6px;
+  padding: 0 12px;
+  height: 32px;
+  font-weight: 500;
+  font-size: 13px;
+  color: #4e5969;
+  transition: all 0.2s; /* 缩短过渡时间 */
 }
 
-/* 霓虹按钮 - 次按钮 */
-.toolbar-right :deep(.arco-btn:not(.arco-btn-primary)) {
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 46, 151, 0.3);
-  border-radius: 12px;
-  padding: 0 24px;
-  height: 40px;
-  font-weight: 600;
-  color: #ff2e97;
-  transition: all 0.3s;
+.toolbar-left :deep(.arco-btn:not(.arco-btn-primary):hover) {
+  border-color: #165dff;
+  color: #165dff;
+  background: rgba(22, 93, 255, 0.05);
+  box-shadow: 0 2px 8px rgba(22, 93, 255, 0.15); /* 仅加深阴影，不上浮 */
 }
 
-.toolbar-right :deep(.arco-btn:not(.arco-btn-primary):hover) {
-  border-color: #ff2e97;
-  color: #fff;
-  background: rgba(255, 46, 151, 0.1);
-  transform: translateY(-2px);
-  box-shadow: 0 0 20px rgba(255, 46, 151, 0.4);
-}
-
+/* ==================== 主体内容区域 ==================== */
 /* 卡片区域：占据剩余高度，内容超出时在列内上下滚动 */
 .api-list-body {
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
-  background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(20px);
-  border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 
-    0 8px 32px rgba(0, 0, 0, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid #e5e6eb;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
   padding: 0;
   overflow: hidden;
   position: relative;
   z-index: 1;
+}
+
+/* 滚动条样式 - 简洁现代 */
+.api-list-page :deep(::-webkit-scrollbar) {
+  width: 6px;
+  height: 6px;
+}
+
+.api-list-page :deep(::-webkit-scrollbar-track) {
+  background: #f7f8fa;
+  border-radius: 3px;
+}
+
+.api-list-page :deep(::-webkit-scrollbar-thumb) {
+  background: #c9cdd4;
+  border-radius: 3px;
+  transition: background 0.3s;
+}
+
+.api-list-page :deep(::-webkit-scrollbar-thumb:hover) {
+  background: #86909c;
 }
 
 .api-list-spin {
@@ -1113,8 +954,8 @@ onMounted(() => {
 .hierarchy-col-catalog {
   width: 360px;
   flex-shrink: 0;
-  background: rgba(0, 0, 0, 0.2);
-  border-right: 1px solid rgba(0, 245, 255, 0.1);
+  background: #f7f8fa;
+  border-right: 1px solid #e5e6eb;
 }
 
 /* 右栏：API 调试面板，占满剩余宽度 */
@@ -1124,7 +965,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  background: rgba(0, 0, 0, 0.1);
+  background: #fff;
 }
 
 .col-debug-content {
@@ -1207,10 +1048,7 @@ onMounted(() => {
   border-bottom: 1px solid #e5e6eb;
 }
 
-/* 右键危险按钮变红 */
-.danger-option {
-  color: #c53434 !important;
-}
+/* 右键危险按钮样式已由全局 .bml-dropdown-item-danger 统一管理（business-system.css） */
 
 /* 补充在标签栏右侧增加的“向左向右操作栏”样式 */
 .tabs-nav-actions {
@@ -1299,34 +1137,26 @@ onMounted(() => {
 }
 
 .empty-icon-wrapper {
-  width: 80px;
-  height: 80px;
+  width: 72px;
+  height: 72px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #00f5ff 0%, #b537f2 100%);
+  background: linear-gradient(135deg, #165dff 0%, #4a8dff 100%);
   color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 36px;
-  margin: 0 auto 20px;
-  box-shadow: 
-    0 8px 24px rgba(0, 245, 255, 0.4),
-    0 0 40px rgba(0, 245, 255, 0.3);
-  animation: empty-icon-float 3s infinite;
-}
-
-@keyframes empty-icon-float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
+  font-size: 32px;
+  margin: 0 auto 16px;
+  box-shadow: 0 4px 16px rgba(22, 93, 255, 0.3);
 }
 
 .col-title {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 20px;
-  background: rgba(0, 245, 255, 0.05);
-  border-bottom: 1px solid rgba(0, 245, 255, 0.2);
+  padding: 14px 16px;
+  background: #fff;
+  border-bottom: 1px solid #e5e6eb;
   position: relative;
 }
 
@@ -1336,21 +1166,17 @@ onMounted(() => {
   left: 0;
   top: 50%;
   transform: translateY(-50%);
-  width: 4px;
-  height: 20px;
-  background: linear-gradient(135deg, #00f5ff 0%, #b537f2 100%);
-  border-radius: 0 4px 4px 0;
-  box-shadow: 0 0 10px rgba(0, 245, 255, 0.6);
+  width: 3px;
+  height: 16px;
+  background: linear-gradient(135deg, #165dff 0%, #4a8dff 100%);
+  border-radius: 0 2px 2px 0;
 }
 
 .title-text {
-  font-size: 13px;
-  font-weight: 700;
-  color: #00f5ff;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  margin-left: 8px;
-  text-shadow: 0 0 10px rgba(0, 245, 255, 0.5);
+  font-size: 14px;
+  font-weight: 600;
+  color: #1d2129;
+  margin-left: 12px;
 }
 
 .title-actions {
@@ -1364,16 +1190,16 @@ onMounted(() => {
 }
 
 .action-btn {
-  padding: 0 4px;
+  padding: 0 8px;
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.6);
+  color: #4e5969;
   border-radius: 4px;
   transition: all 0.2s ease;
 }
 
 .action-btn:hover {
-  background-color: rgba(0, 245, 255, 0.1);
-  color: #00f5ff;
+  background-color: #f0f2f5;
+  color: #165dff;
 }
 
 /* 列内列表 */

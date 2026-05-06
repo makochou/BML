@@ -4,6 +4,7 @@ import com.bml.core.framework.security.model.LoginUser;
 import com.bml.module.system.entity.SysRole;
 import com.bml.module.system.entity.SysUser;
 import com.bml.module.system.service.SysRoleService;
+import com.bml.module.system.service.SysUserDataScopeService;
 import com.bml.module.system.service.SysUserService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -25,6 +26,7 @@ class DataScopeAspectTest {
 
     private SysRoleService roleService;
     private SysUserService userService;
+    private SysUserDataScopeService userDataScopeService;
     private DataScopeAspect dataScopeAspect;
     private DataScope dataScope;
 
@@ -32,7 +34,8 @@ class DataScopeAspectTest {
     void setUp() throws NoSuchMethodException {
         roleService = Mockito.mock(SysRoleService.class);
         userService = Mockito.mock(SysUserService.class);
-        dataScopeAspect = new DataScopeAspect(roleService, userService);
+        userDataScopeService = Mockito.mock(SysUserDataScopeService.class);
+        dataScopeAspect = new DataScopeAspect(roleService, userService, userDataScopeService);
         Method method = DummyService.class.getDeclaredMethod("query");
         dataScope = method.getAnnotation(DataScope.class);
     }

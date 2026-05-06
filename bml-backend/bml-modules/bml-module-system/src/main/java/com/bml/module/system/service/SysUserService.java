@@ -1,6 +1,7 @@
 package com.bml.module.system.service;
 
 import com.bml.core.base.service.BaseService;
+import com.bml.core.common.result.PageResult;
 import com.bml.module.system.dto.SysUserDTO;
 import com.bml.module.system.entity.SysUser;
 import com.bml.module.system.vo.SysUserVO;
@@ -18,6 +19,16 @@ public interface SysUserService extends BaseService<SysUser> {
      * 根据条件查询用户列表（含机构/部门/岗位/角色关联名称）
      */
     List<SysUserVO> selectUserList(SysUserDTO user);
+
+    /**
+     * 分页查询用户列表（含机构/部门/岗位/角色关联名称 + 数据权限过滤）
+     *
+     * @param dto      查询条件
+     * @param pageNum  当前页码
+     * @param pageSize 每页条数
+     * @return 分页结果
+     */
+    PageResult<SysUserVO> selectUserPage(SysUserDTO dto, int pageNum, int pageSize);
 
     /**
      * 根据用户名查询用户

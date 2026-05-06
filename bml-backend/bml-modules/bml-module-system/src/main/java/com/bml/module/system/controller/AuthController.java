@@ -226,6 +226,24 @@ public class AuthController {
     }
 
     /**
+     * 获取中台管理员配置
+     * <p>
+     * 返回中台管理员相关的配置信息，包括会话超时时长等。
+     * 无需认证即可调用，用于前端初始化空闲超时检测。
+     * </p>
+     *
+     * @return 管理员配置信息
+     */
+    @Operation(summary = "获取中台管理员配置", description = "返回中台管理员的会话超时时长等配置")
+    @GetMapping("/admin/config")
+    public Result<java.util.Map<String, Object>> adminConfig() {
+        java.util.Map<String, Object> config = new java.util.HashMap<>();
+        // 返回会话超时时长（分钟）
+        config.put("sessionTimeoutMinutes", adminProperties.getSessionTimeoutMinutes());
+        return Result.ok(config);
+    }
+
+    /**
      * 刷新 AccessToken
      * <p>
      * 当 AccessToken 过期时，前端使用 RefreshToken 获取新的 AccessToken。

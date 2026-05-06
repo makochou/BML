@@ -90,6 +90,13 @@
                     <component :is="isFullscreen ? IconFullscreenExit : IconFullscreen" />
                 </div>
 
+                <!-- 通知铃铛（带未读徽标） -->
+                <a-badge :count="notificationStore.unreadCount" :max-count="99" dot :offset="[-2, 2]">
+                    <div class="dock-item" @click="notificationStore.openDrawer()" title="通知中心">
+                        <icon-notification />
+                    </div>
+                </a-badge>
+
                 <div class="dock-divider"></div>
 
                 <!-- 用户 -->
@@ -100,9 +107,23 @@
                         </a-avatar>
                         <icon-down class="user-arrow" />
                     </div>
-                     <template #content>
-                        <a-doption @click="handleLogout" style="color: #f53f3f;">
-                            <template #icon><icon-export /></template>退出登录
+                    <template #content>
+                        <!-- 用户信息头部 -->
+                        <div class="bml-dropdown-user-header">
+                            <div class="bml-dropdown-user-avatar">
+                                <a-avatar :size="32"><icon-user /></a-avatar>
+                            </div>
+                            <div class="bml-dropdown-user-info">
+                                <span class="bml-dropdown-user-name">管理员</span>
+                                <span class="bml-dropdown-user-role">中台管理员</span>
+                            </div>
+                        </div>
+                        <!-- 分割线 -->
+                        <div class="bml-dropdown-divider"></div>
+                        <!-- 退出登录 -->
+                        <a-doption @click="handleLogout" class="bml-dropdown-item-danger">
+                            <template #icon><icon-export /></template>
+                            退出登录
                         </a-doption>
                     </template>
                 </a-dropdown>
@@ -129,11 +150,27 @@
       </a-layout-content>
     </a-layout>
     <ThemeSettings />
+
+    <!-- 右上角告警弹窗（新告警自动弹出） -->
+    <AlertToast />
+
+    <!-- 通知中心侧边抽屉 -->
+    <a-drawer
+      :visible="notificationStore.drawerVisible"
+      :width="960"
+      :footer="false"
+      :header="false"
+      :mask-closable="true"
+      unmount-on-close
+      @cancel="notificationStore.closeDrawer()"
+    >
+      <NotificationPanel />
+    </a-drawer>
   </a-layout>
 </template>
 
 <script lang="ts" setup>
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { Message } from '@arco-design/web-vue';
 import {
@@ -144,11 +181,15 @@ import {
 import request from '../utils/request';
 import TagsView from '../components/TagsView.vue';
 import ThemeSettings from '../components/ThemeSettings.vue';
+import AlertToast from '../components/AlertToast.vue';
+import NotificationPanel from '../components/NotificationPanel.vue';
 import { useTagsViewStore } from '../store/tagsView';
 import { useAppStore } from '../store/app';
+import { useNotificationStore } from '../store/notification';
 import { usePermissionStore, type SidebarMenuItem } from '../store/permission';
 import { clearAuthTokens } from '../utils/auth';
 import { resetDynamicRoutes } from '../router';
+import { useAdminIdleTimeout } from '../composables/useAdminIdleTimeout';
 
 const router = useRouter();
 const route = useRoute();
@@ -157,6 +198,7 @@ const isFullscreen = ref(false);
 
 const tagsViewStore = useTagsViewStore();
 const appStore = useAppStore();
+const notificationStore = useNotificationStore();
 const permissionStore = usePermissionStore();
 const cachedViews = computed(() => tagsViewStore.cachedViews);
 const sidebarMenus = computed(() => permissionStore.sidebarMenus);
@@ -262,10 +304,31 @@ const handleLogout = async () => {
 };
 
 /**
- * 生命周期：恢复主题
+ * 中台管理员空闲超时检测
+ * 从配置文件读取超时时长，超时后自动登出
+ */
+const { start: startIdleWatch, stop: stopIdleWatch } = useAdminIdleTimeout({
+  onIdle: () => {
+    Message.warning('您已长时间未操作，系统已自动退出登录');
+    handleLogout();
+  }
+});
+
+/**
+ * 生命周期：恢复主题并启动空闲检测
  */
 onMounted(() => {
     appStore.initTheme();
+    // 启动中台管理员空闲超时检测
+    startIdleWatch();
+    // 启动告警通知轮询（每 30 秒拉取增量告警，驱动铃铛 Badge 和 Toast 弹窗）
+    notificationStore.startPolling();
+});
+
+onUnmounted(() => {
+    stopIdleWatch();
+    // 停止告警通知轮询
+    notificationStore.stopPolling();
 });
 
 </script>
