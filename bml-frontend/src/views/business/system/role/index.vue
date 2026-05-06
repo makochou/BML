@@ -254,7 +254,7 @@ const defaultColumns: BusinessTableColumn[] = [
   /* ── 扩展字段（默认隐藏） ── */
   { key: 'remark', title: '备注', dataIndex: 'remark', width: 240, visible: true, ellipsis: true, sortable: true, titleSlotName: 'th-remark' },
   /* ── 操作列（锁定） ── */
-  { key: 'actions', title: '操作', slotName: 'actions', width: 160, visible: true, fixed: 'right', locked: true, align: 'center' },
+  { key: 'actions', title: '操作', slotName: 'actions', width: 170, visible: true, fixed: 'right', locked: true, align: 'center' },
 ];
 
 const { visibleColumns, columnSettingItems, dragState, tableResetKey, scrollX, handleColumnResize, toggleColumnVisible, moveColumn, toggleColumnFixed, handleDragStart, handleDragOver, handleDrop, handleDragEnd, resetColumns } = useBusinessTableColumns('system-role', defaultColumns);

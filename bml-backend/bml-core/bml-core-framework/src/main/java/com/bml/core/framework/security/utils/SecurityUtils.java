@@ -33,9 +33,9 @@ public class SecurityUtils {
     private static final BCryptPasswordEncoder PASSWORD_ENCODER = new BCryptPasswordEncoder();
 
     /**
-     * 获取当前登录用户的用户名
+     * 获取当前登录用户的账号
      *
-     * @return 用户名
+     * @return 账号
      * @throws BusinessException 当未认证或认证信息异常时抛出
      */
     public static String getUsername() {
@@ -64,7 +64,7 @@ public class SecurityUtils {
      * 获取当前登录用户信息
      * <p>
      * 从 Spring Security 的 {@link SecurityContextHolder} 中获取 {@link LoginUser} 对象。
-     * 该对象包含用户ID、用户名、权限列表等完整信息。
+     * 该对象包含用户ID、账号、权限列表等完整信息。
      * </p>
      *
      * @return 当前登录用户

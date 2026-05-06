@@ -285,4 +285,63 @@ public class SysUserServiceImpl extends BaseServiceImpl<SysUserMapper, SysUser> 
                 .eq(SysUser::getId, userId)
                 .set(SysUser::getPassword, encrypted));
     }
+
+    /**
+     * 修改当前用户的个人信息（账号、用户名）
+     * <p>
+     * 校验逻辑：
+     * <ol>
+     *   <li>用户必须存在</li>
+     *   <li>若修改了账号，新账号不能与其他用户重复</li>
+     * </ol>
+     * </p>
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean updateProfile(Long userId, String newUsername, String newNickname) {
+        SysUser existingUser = baseMapper.selectById(userId);
+        if (existingUser == null) {
+            throw new RuntimeException("用户不存在");
+        }
+        // 如果账号发生了变化，校验新账号是否已被其他用户占用
+        if (!existingUser.getUsername().equals(newUsername)) {
+            SysUser sameNameUser = selectUserByUserName(newUsername);
+            if (sameNameUser != null && !sameNameUser.getId().equals(userId)) {
+                throw new RuntimeException("账号'" + newUsername + "'已被占用");
+            }
+        }
+        return baseMapper.update(null, new LambdaUpdateWrapper<SysUser>()
+                .eq(SysUser::getId, userId)
+                .set(SysUser::getUsername, newUsername)
+                .set(SysUser::getNickname, newNickname)) > 0;
+    }
+
+    /**
+     * 修改当前用户密码
+     * <p>
+     * 校验逻辑：
+     * <ol>
+     *   <li>用户必须存在</li>
+     *   <li>旧密码必须匹配当前密码</li>
+     *   <li>新密码不能与旧密码相同</li>
+     * </ol>
+     * </p>
+     */
+    @Override
+    public void changePassword(Long userId, String oldPassword, String newPassword) {
+        SysUser user = baseMapper.selectById(userId);
+        if (user == null) {
+            throw new RuntimeException("用户不存在");
+        }
+        if (!SecurityUtils.matchesPassword(oldPassword, user.getPassword())) {
+            throw new RuntimeException("旧密码不正确");
+        }
+        if (SecurityUtils.matchesPassword(newPassword, user.getPassword())) {
+            throw new RuntimeException("新密码不能与旧密码相同");
+        }
+        String encrypted = SecurityUtils.encryptPassword(newPassword);
+        baseMapper.update(null, new LambdaUpdateWrapper<SysUser>()
+                .eq(SysUser::getId, userId)
+                .set(SysUser::getPassword, encrypted));
+    }
 }

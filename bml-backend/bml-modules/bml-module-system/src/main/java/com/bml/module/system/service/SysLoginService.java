@@ -55,14 +55,14 @@ public class SysLoginService {
      * <p>
      * 执行流程：
      * <ol>
-     * <li>调用 {@code authenticationManager.authenticate()} 进行用户名密码验证</li>
+     * <li>调用 {@code authenticationManager.authenticate()} 进行账号密码验证</li>
      * <li>该方法内部会调用 {@code UserDetailsServiceImpl.loadUserByUsername()}</li>
      * <li>验证通过后获取 {@link LoginUser} 对象（包含用户信息和权限列表）</li>
      * <li>调用 {@code tokenService.createToken()} 生成双令牌并缓存用户信息到 Redis</li>
      * </ol>
      * </p>
      *
-     * @param username 用户名
+     * @param username 账号
      * @param password 密码（明文，由 BCrypt 比对）
      * @return Token 响应对象，包含 accessToken、refreshToken、expiresIn
      * @throws BusinessException 登录失败时抛出，包含具体错误信息
@@ -87,7 +87,7 @@ public class SysLoginService {
         } catch (BadCredentialsException e) {
             // 密码错误
             log.warn("登录失败：用户[{}]密码错误", username);
-            throw new BusinessException("用户名或密码错误");
+            throw new BusinessException("账号或密码错误");
         } catch (Exception e) {
             // 其他未预期的认证异常
             log.error("登录失败：认证异常", e);

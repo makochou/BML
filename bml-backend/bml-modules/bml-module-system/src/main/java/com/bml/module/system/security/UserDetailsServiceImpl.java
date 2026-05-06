@@ -70,12 +70,12 @@ public class UserDetailsServiceImpl implements UserDetailsService {
     }
 
     /**
-     * 根据用户名加载用户详情。
+     * 根据账号加载用户详情。
      * <p>
      * 优先匹配配置管理员（中台管理平台），不匹配则查询数据库（前台业务系统）。
      * </p>
      *
-     * @param username 登录用户名
+     * @param username 登录账号
      * @return LoginUser 对象
      * @throws UsernameNotFoundException 用户不存在或状态异常时抛出
      */
@@ -94,9 +94,9 @@ public class UserDetailsServiceImpl implements UserDetailsService {
      * 仅匹配 application.yml 中配置的管理员账号，不查询数据库。
      * </p>
      *
-     * @param username 登录用户名
+     * @param username 登录账号
      * @return 配置管理员的 LoginUser
-     * @throws UsernameNotFoundException 用户名不匹配时抛出
+     * @throws UsernameNotFoundException 账号不匹配时抛出
      */
     private UserDetails loadAdminUser(String username) {
         if (adminProperties.getUsername() != null && adminProperties.getUsername().equals(username)) {
@@ -110,8 +110,8 @@ public class UserDetailsServiceImpl implements UserDetailsService {
                     SUPER_ADMIN_PERMISSIONS
             );
         }
-        log.info("中台登录失败：用户名 [{}] 不是配置管理员", username);
-        throw new UsernameNotFoundException("用户名或密码错误");
+        log.info("中台登录失败：账号 [{}] 不是配置管理员", username);
+        throw new UsernameNotFoundException("账号或密码错误");
     }
 
     /**
@@ -126,7 +126,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
      * 超级管理员也能正常访问所有接口。
      * </p>
      *
-     * @param username 登录用户名
+     * @param username 登录账号
      * @return 数据库用户的 LoginUser
      * @throws UsernameNotFoundException 用户不存在或状态异常时抛出
      */
@@ -135,7 +135,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         SysUser user = userService.selectUserByUserName(username);
         if (user == null) {
             log.info("登录用户：{} 不存在", username);
-            throw new UsernameNotFoundException("用户名或密码错误");
+            throw new UsernameNotFoundException("账号或密码错误");
         }
         if (user.getDeleted() != null && user.getDeleted() == 1) {
             log.info("登录用户：{} 已被删除", username);

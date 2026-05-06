@@ -118,6 +118,18 @@
                 </div>
                 <!-- 分割线 -->
                 <div class="bml-dropdown-divider"></div>
+                <!-- 个人信息 -->
+                <a-doption @click="goProfile">
+                  <template #icon><icon-idcard /></template>
+                  个人信息
+                </a-doption>
+                <!-- 修改密码 -->
+                <a-doption @click="goProfile">
+                  <template #icon><icon-lock /></template>
+                  修改密码
+                </a-doption>
+                <!-- 分割线 -->
+                <div class="bml-dropdown-divider"></div>
                 <!-- 退出登录 -->
                 <a-doption @click="handleLogout" class="bml-dropdown-item-danger">
                   <template #icon><icon-export /></template>
@@ -167,7 +179,7 @@ import {
   IconSettings, IconUser, IconSafe, IconMenu, IconBranch,
   IconLeft, IconRight, IconDown, IconExport,
   IconFullscreen, IconFullscreenExit, IconPalette,
-  IconApps, IconIdcard
+  IconApps, IconIdcard, IconLock
 } from '@arco-design/web-vue/es/icon';
 import request from '../utils/request';
 import { clearAuthTokens, getAccessToken } from '../utils/auth';
@@ -216,6 +228,9 @@ const onMenuClick = (key: string) => { router.push({ name: key }); };
 
 /** 点击 Logo 返回业务系统工作台首页 */
 const goHome = () => { router.push('/dashboard'); };
+
+/** 跳转个人中心页面 */
+const goProfile = () => { router.push({ name: 'BusinessProfile' }); };
 
 /** 全屏切换 */
 const toggleFullscreen = () => {

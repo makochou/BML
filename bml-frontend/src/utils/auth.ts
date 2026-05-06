@@ -145,7 +145,7 @@ const resolveUserIdentityFromJwt = (token: string): string => {
 
 /**
  * 返回当前登录用户标识：
- * 1) 优先使用登录时缓存的用户名/账号；
+ * 1) 优先使用登录时缓存的账号；
  * 2) 其次尝试从 accessToken 的 JWT payload 提取；
  * 3) 都失败则返回空字符串，由业务侧走匿名兜底键。
  */
@@ -216,7 +216,7 @@ export const setAuthTokens = (payload: { accessToken: string; refreshToken?: str
 
     /**
      * 用户标识用于列表布局等"按账号隔离"的前端本地配置。
-     * - 登录时优先落入传入的 userIdentity（通常为用户名）；
+     * - 登录时优先落入传入的 userIdentity（通常为账号）；
      * - 刷新 token 时若未传入，优先沿用当前标识；仅在缺失时才从新 token 提取。
      */
     persistUserIdentity(payload);

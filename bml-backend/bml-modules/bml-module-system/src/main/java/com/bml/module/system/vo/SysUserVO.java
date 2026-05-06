@@ -22,10 +22,10 @@ public class SysUserVO implements Serializable {
     @Schema(description = "用户ID")
     private Long id;
 
-    @Schema(description = "用户名")
+    @Schema(description = "账号")
     private String username;
 
-    @Schema(description = "用户昵称")
+    @Schema(description = "用户名")
     private String nickname;
 
     @Schema(description = "用户邮箱")

@@ -7,7 +7,7 @@ import lombok.Data;
 /**
  * 登录请求体
  * <p>
- * 包含用户名、密码以及可选的图形验证码参数。
+ * 包含账号、密码以及可选的图形验证码参数。
  * 当系统开启验证码功能时，captchaKey 和 captchaCode 为必填项。
  * </p>
  *
@@ -17,7 +17,7 @@ import lombok.Data;
 @Schema(description = "登录请求体")
 public class LoginBody {
 
-    @Schema(description = "用户名", requiredMode = RequiredMode.REQUIRED)
+    @Schema(description = "账号", requiredMode = RequiredMode.REQUIRED)
     private String username;
 
     @Schema(description = "密码", requiredMode = RequiredMode.REQUIRED)

@@ -64,7 +64,7 @@ public class SysUserController extends BaseController {
     /**
      * 获取用户列表（不分页，保留兼容）
      *
-     * @param dto 查询条件（用户名、手机号、状态等）
+     * @param dto 查询条件（账号、手机号、状态等）
      * @return 用户列表
      */
     @Operation(summary = "获取用户列表")
@@ -77,7 +77,7 @@ public class SysUserController extends BaseController {
     /**
      * 分页查询用户列表
      *
-     * @param dto      查询条件（用户名、手机号、状态等）
+     * @param dto      查询条件（账号、手机号、状态等）
      * @param pageNum  当前页码（默认 1）
      * @param pageSize 每页条数（默认 20）
      * @return 分页结果（含 records、total 等字段）

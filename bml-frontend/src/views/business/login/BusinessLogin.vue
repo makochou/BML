@@ -62,7 +62,7 @@
         <!-- 登录表单 -->
         <a-form :model="form" @submit="handleSubmit" layout="vertical" class="bl-form">
           <a-form-item field="username" hide-label>
-            <a-input v-model="form.username" placeholder="用户名" allow-clear size="large">
+            <a-input v-model="form.username" placeholder="账号" allow-clear size="large">
               <template #prefix><icon-user /></template>
             </a-input>
           </a-form-item>
@@ -231,7 +231,7 @@ const handleSubmit = async ({ errors }: { errors?: unknown }) => {
   if (loading.value) return;
 
   if (!form.username || !form.password) {
-    Message.warning('请输入用户名和密码');
+    Message.warning('请输入账号和密码');
     return;
   }
   if (captchaEnabled.value && !form.captchaCode) {

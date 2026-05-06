@@ -312,7 +312,7 @@ const defaultColumns: BusinessTableColumn[] = [
   { key: 'remark',    title: '备注',       dataIndex: 'remark',    width: 200, visible: false, ellipsis: true, sortable: true, titleSlotName: 'th-remark' },
   { key: 'createTime', title: '创建时间', dataIndex: 'createTime', width: 170, visible: false, sortable: true, titleSlotName: 'th-createTime' },
   /* ── 操作列（锁定） ── */
-  { key: 'actions', title: '操作', slotName: 'actions', width: 140, visible: true, fixed: 'right', locked: true, align: 'center' },
+  { key: 'actions', title: '操作', slotName: 'actions', width: 170, visible: true, fixed: 'right', locked: true, align: 'center' },
 ];
 
 const { visibleColumns, columnSettingItems, dragState, tableResetKey, scrollX, handleColumnResize, toggleColumnVisible, moveColumn, toggleColumnFixed, handleDragStart, handleDragOver, handleDrop, handleDragEnd, resetColumns } = useBusinessTableColumns('system-menu', defaultColumns);

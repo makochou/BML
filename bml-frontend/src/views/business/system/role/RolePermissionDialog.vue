@@ -3,9 +3,9 @@
     角色权限分配弹窗
     ==================
     三面板联动设计：
-      左面板 — 模块菜单（M 目录 + C 菜单），树形勾选
-      中面板 — 功能按钮（B），按所属菜单分组的复选框列表
-      右面板 — 表单字段（F），按所属菜单分组的复选框列表
+      左面板 — 模块菜单（M 目录 + C 菜单），树形勾选，仅显示菜单名称，不展示类型标签
+      中面板 — 功能按钮（B），按所属菜单分组，仅显示按钮名称（隐藏权限标识），每组带独立全选
+      右面板 — 表单字段（F），按所属菜单分组，仅显示字段名称（隐藏权限标识），每组带独立全选
 
     联动规则：
       1. 勾选 / 取消左面板的 C 菜单时，中面板与右面板自动刷新只显示已勾选模块下的 B / F 项
@@ -61,11 +61,7 @@
             block-node
           >
             <template #title="nodeData">
-              <span class="perm-node">
-                <a-tag v-if="nodeData.menuType === 'M'" size="small" color="arcoblue">目录</a-tag>
-                <a-tag v-else size="small" color="green">菜单</a-tag>
-                <span>{{ nodeData.menuName }}</span>
-              </span>
+              <span class="perm-node">{{ nodeData.menuName }}</span>
             </template>
           </a-tree>
         </div>
@@ -86,12 +82,20 @@
               :key="group.menuId"
               class="perm-group"
             >
-              <div class="perm-group__title">{{ group.menuName }}</div>
+              <div class="perm-group__title">
+                <span>{{ group.menuName }}</span>
+                <a-checkbox
+                  :model-value="isGroupAllChecked('button', group.menuId)"
+                  :indeterminate="isGroupIndeterminate('button', group.menuId)"
+                  @change="(val: boolean | (string | number | boolean)[]) => onGroupCheckAll('button', group.menuId, val)"
+                >
+                  <span class="perm-group__check-text">全选</span>
+                </a-checkbox>
+              </div>
               <a-checkbox-group v-model="checkedButtonIds" class="perm-group__items">
                 <a-checkbox v-for="btn in group.items" :key="btn.id" :value="btn.id">
                   <span class="perm-item">
                     <span class="perm-item__name">{{ btn.menuName }}</span>
-                    <span v-if="btn.perms" class="perm-item__perms">{{ btn.perms }}</span>
                   </span>
                 </a-checkbox>
               </a-checkbox-group>
@@ -116,12 +120,20 @@
               :key="group.menuId"
               class="perm-group"
             >
-              <div class="perm-group__title">{{ group.menuName }}</div>
+              <div class="perm-group__title">
+                <span>{{ group.menuName }}</span>
+                <a-checkbox
+                  :model-value="isGroupAllChecked('field', group.menuId)"
+                  :indeterminate="isGroupIndeterminate('field', group.menuId)"
+                  @change="(val: boolean | (string | number | boolean)[]) => onGroupCheckAll('field', group.menuId, val)"
+                >
+                  <span class="perm-group__check-text">全选</span>
+                </a-checkbox>
+              </div>
               <a-checkbox-group v-model="checkedFieldIds" class="perm-group__items">
                 <a-checkbox v-for="field in group.items" :key="field.id" :value="field.id">
                   <span class="perm-item">
                     <span class="perm-item__name">{{ field.menuName }}</span>
-                    <span v-if="field.perms" class="perm-item__perms">{{ field.perms }}</span>
                   </span>
                 </a-checkbox>
               </a-checkbox-group>
@@ -417,6 +429,74 @@ const onCheckAllFields = (val: boolean | (string | number | boolean)[]) => {
   }
 };
 
+/* ──────────────────────── 分组全选辅助 ──────────────────────── */
+
+/**
+ * 判断指定分组下的项是否全部勾选
+ * @param type - 'button' | 'field'，对应中面板 / 右面板
+ * @param menuId - 分组所属的父菜单 ID
+ */
+const isGroupAllChecked = (type: 'button' | 'field', menuId: number): boolean => {
+  const groups = type === 'button' ? allButtonGroups.value : allFieldGroups.value;
+  const checkedIds = type === 'button' ? checkedButtonIds.value : checkedFieldIds.value;
+  const group = groups.find(g => g.menuId === menuId);
+  if (!group || group.items.length === 0) return false;
+  const checkedSet = new Set(checkedIds);
+  return group.items.every(item => checkedSet.has(item.id));
+};
+
+/**
+ * 判断指定分组是否处于半选（部分勾选）状态
+ * @param type - 'button' | 'field'
+ * @param menuId - 分组所属的父菜单 ID
+ */
+const isGroupIndeterminate = (type: 'button' | 'field', menuId: number): boolean => {
+  const groups = type === 'button' ? allButtonGroups.value : allFieldGroups.value;
+  const checkedIds = type === 'button' ? checkedButtonIds.value : checkedFieldIds.value;
+  const group = groups.find(g => g.menuId === menuId);
+  if (!group || group.items.length === 0) return false;
+  const checkedSet = new Set(checkedIds);
+  const checkedCount = group.items.filter(item => checkedSet.has(item.id)).length;
+  return checkedCount > 0 && checkedCount < group.items.length;
+};
+
+/**
+ * 分组全选 / 全不选切换
+ * @param type - 'button' | 'field'
+ * @param menuId - 分组所属的父菜单 ID
+ * @param val - checkbox 变更值
+ */
+const onGroupCheckAll = (
+  type: 'button' | 'field',
+  menuId: number,
+  val: boolean | (string | number | boolean)[]
+) => {
+  const check = val === true || (Array.isArray(val) && val.includes(true));
+  const groups = type === 'button' ? allButtonGroups.value : allFieldGroups.value;
+  const group = groups.find(g => g.menuId === menuId);
+  if (!group) return;
+
+  const groupItemIds = new Set(group.items.map(i => i.id));
+
+  if (type === 'button') {
+    if (check) {
+      // 合并：保留已有 + 加入当前分组全部
+      const existing = checkedButtonIds.value.filter(id => !groupItemIds.has(id));
+      checkedButtonIds.value = [...existing, ...groupItemIds];
+    } else {
+      // 移除当前分组的全部
+      checkedButtonIds.value = checkedButtonIds.value.filter(id => !groupItemIds.has(id));
+    }
+  } else {
+    if (check) {
+      const existing = checkedFieldIds.value.filter(id => !groupItemIds.has(id));
+      checkedFieldIds.value = [...existing, ...groupItemIds];
+    } else {
+      checkedFieldIds.value = checkedFieldIds.value.filter(id => !groupItemIds.has(id));
+    }
+  }
+};
+
 /* ──────────────────────────── 保存 ──────────────────────────── */
 
 /**
@@ -558,6 +638,9 @@ watch(() => props.visible, (val) => {
   margin-bottom: 0;
 }
 .perm-group__title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   font-size: 12px;
   font-weight: 600;
   color: var(--color-text-2);
@@ -565,6 +648,10 @@ watch(() => props.visible, (val) => {
   margin-bottom: 4px;
   background: var(--color-fill-1);
   border-radius: 4px;
+}
+.perm-group__check-text {
+  font-size: 11px;
+  font-weight: 400;
 }
 .perm-group__items {
   display: flex;
@@ -590,10 +677,5 @@ watch(() => props.visible, (val) => {
 .perm-item__name {
   font-size: 13px;
   color: var(--color-text-1);
-}
-.perm-item__perms {
-  font-size: 11px;
-  color: var(--color-text-3);
-  font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
 }
 </style>

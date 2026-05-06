@@ -23,8 +23,8 @@
       <a-form :model="queryParams" layout="inline" class="biz-query-form">
         <!-- 主要字段（默认显示 3 列） -->
         <div class="biz-query-form-primary">
-          <a-form-item field="username" label="用户名">
-            <a-input v-model="queryParams.username" placeholder="请输入用户名" allow-clear @press-enter="handleSearch" />
+          <a-form-item field="username" label="账号">
+            <a-input v-model="queryParams.username" placeholder="请输入账号" allow-clear @press-enter="handleSearch" />
           </a-form-item>
           <a-form-item field="phone" label="手机号">
             <a-input v-model="queryParams.phone" placeholder="请输入手机号" allow-clear @press-enter="handleSearch" />
@@ -41,8 +41,8 @@
         <!-- 次要字段（展开时显示，4 列网格） -->
         <transition name="query-expand">
           <div v-if="queryExpanded" class="biz-query-form-extra">
-            <a-form-item field="nickname" label="昵称">
-              <a-input v-model="queryParams.nickname" placeholder="请输入昵称" allow-clear @press-enter="handleSearch" />
+            <a-form-item field="nickname" label="用户名">
+              <a-input v-model="queryParams.nickname" placeholder="请输入用户名" allow-clear @press-enter="handleSearch" />
             </a-form-item>
             <a-form-item field="orgId" label="所属机构">
               <a-tree-select v-model="queryParams.orgId" :data="orgTreeData"
@@ -93,8 +93,8 @@
         row-key="id" stripe size="small" :scroll="{ x: scrollX, y: '100%' }" :scrollbar="false"
         sticky-header :columns="visibleColumns" column-resizable @column-resize="handleColumnResize" @row-dblclick="handleRowDblClick">
         <!-- 自定义列头：每列标题旁加放大镜搜索图标（与授权治理一致） -->
-        <template #th-username><TableColumnSearch title="用户名" v-model="columnFilters['username']" /></template>
-        <template #th-nickname><TableColumnSearch title="昵称" v-model="columnFilters['nickname']" /></template>
+        <template #th-username><TableColumnSearch title="账号" v-model="columnFilters['username']" /></template>
+        <template #th-nickname><TableColumnSearch title="用户名" v-model="columnFilters['nickname']" /></template>
         <template #th-employeeNo><TableColumnSearch title="工号" v-model="columnFilters['employeeNo']" /></template>
         <template #th-orgName><TableColumnSearch title="所属机构" v-model="columnFilters['orgName']" /></template>
         <template #th-deptName><TableColumnSearch title="部门" v-model="columnFilters['deptName']" /></template>
@@ -167,13 +167,13 @@
           <a-tab-pane key="basic" title="账号信息">
             <a-row :gutter="16">
               <a-col :span="12">
-                <a-form-item field="username" label="用户名">
-                  <a-input v-model="formData.username" placeholder="请输入用户名" :disabled="!!formData.id" />
+                <a-form-item field="username" label="账号">
+                  <a-input v-model="formData.username" placeholder="请输入账号（至少5个字符）" />
                 </a-form-item>
               </a-col>
               <a-col :span="12">
-                <a-form-item field="nickname" label="昵称">
-                  <a-input v-model="formData.nickname" placeholder="请输入昵称" />
+                <a-form-item field="nickname" label="用户名">
+                  <a-input v-model="formData.nickname" placeholder="请输入用户名" />
                 </a-form-item>
               </a-col>
             </a-row>
@@ -367,7 +367,7 @@ const queryExpanded = ref(false);
 
 /**
  * 用户列默认配置（与授权治理列管理模式一致）：
- * - 用户名：默认固定在左侧（fixed: 'left'）
+ * - 账号：默认固定在左侧（fixed: 'left'）
  * - 常用字段默认显示，扩展字段默认隐藏
  */
 /** 列头搜索筛选条件 */
@@ -379,8 +379,8 @@ const columnFilters = reactive<Record<string, string>>({
 
 const defaultColumns: BusinessTableColumn[] = [
   /* ── 核心标识（默认显示） ── */
-  { key: 'username',   title: '用户名',   dataIndex: 'username',   width: 120, visible: true, fixed: 'left', sortable: true, titleSlotName: 'th-username' },
-  { key: 'nickname',   title: '昵称',     dataIndex: 'nickname',   width: 110, visible: true, sortable: true, titleSlotName: 'th-nickname' },
+  { key: 'username',   title: '账号',     dataIndex: 'username',   width: 120, visible: true, fixed: 'left', sortable: true, titleSlotName: 'th-username' },
+  { key: 'nickname',   title: '用户名',   dataIndex: 'nickname',   width: 110, visible: true, sortable: true, titleSlotName: 'th-nickname' },
   { key: 'employeeNo', title: '工号',     slotName: 'employeeNo',  width: 100, visible: true, sortable: true, titleSlotName: 'th-employeeNo' },
   { key: 'orgName',    title: '所属机构', dataIndex: 'orgName',    width: 140, visible: true, sortable: true, titleSlotName: 'th-orgName' },
   { key: 'deptName',   title: '部门',     dataIndex: 'deptName',   width: 120, visible: true, sortable: true, titleSlotName: 'th-deptName' },
@@ -395,7 +395,7 @@ const defaultColumns: BusinessTableColumn[] = [
   { key: 'loginDate', title: '最后登录时间', dataIndex: 'loginDate', width: 170, visible: false, sortable: true, titleSlotName: 'th-loginDate' },
   { key: 'remark',    title: '备注',     dataIndex: 'remark',    width: 200, visible: false, ellipsis: true, sortable: true, titleSlotName: 'th-remark' },
   /* ── 操作列（锁定） ── */
-  { key: 'actions', title: '操作', slotName: 'actions', width: 140, visible: true, fixed: 'right', locked: true, align: 'center' },
+  { key: 'actions', title: '操作', slotName: 'actions', width: 170, visible: true, fixed: 'right', locked: true, align: 'center' },
 ];
 
 const {
@@ -443,8 +443,12 @@ const defaultForm = (): UserForm => ({
 });
 const formData = reactive<UserForm>(defaultForm());
 const formRules = {
-  username: [{ required: true, message: '请输入用户名' }],
-  nickname: [{ required: true, message: '请输入昵称' }],
+  username: [
+    { required: true, message: '请输入账号' },
+    { minLength: 5, message: '账号长度不能少于5个字符' },
+    { maxLength: 30, message: '账号长度不能超过30个字符' },
+  ],
+  nickname: [{ required: true, message: '请输入用户名' }],
   password: [{ required: true, message: '请输入密码' }],
 };
 const resetPwdVisible = ref(false);

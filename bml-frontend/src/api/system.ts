@@ -552,3 +552,35 @@ export const saveUserDataScope = (data: UserDataScopeForm) =>
 /** 删除用户个人数据权限 */
 export const deleteUserDataScope = (userId: number) =>
   request.delete(`/system/user/datascope/${userId}`);
+
+/* ═════════════════════════════════════════════════════════
+   个人中心 API（当前登录用户操作自己的信息）
+   ═════════════════════════════════════════════════════════ */
+
+/** 个人信息修改参数 */
+export interface UpdateProfileForm {
+  /** 新账号（5~30 字符） */
+  username: string;
+  /** 新用户名（2~30 字符） */
+  nickname: string;
+}
+
+/** 修改密码参数 */
+export interface ChangePasswordForm {
+  /** 旧密码（当前密码） */
+  oldPassword: string;
+  /** 新密码（6~30 字符） */
+  newPassword: string;
+}
+
+/** 获取当前登录用户详细信息（含机构、部门、岗位、角色等） */
+export const fetchProfile = () =>
+  request.get<UserVO>('/auth/profile');
+
+/** 修改当前登录用户个人信息（账号、用户名） */
+export const updateProfile = (data: UpdateProfileForm) =>
+  request.put('/auth/profile', data);
+
+/** 修改当前登录用户密码 */
+export const changePassword = (data: ChangePasswordForm) =>
+  request.put('/auth/password', data);

@@ -31,7 +31,7 @@ public interface SysUserService extends BaseService<SysUser> {
     PageResult<SysUserVO> selectUserPage(SysUserDTO dto, int pageNum, int pageSize);
 
     /**
-     * 根据用户名查询用户
+     * 根据账号查询用户
      */
     SysUser selectUserByUserName(String userName);
 
@@ -59,4 +59,23 @@ public interface SysUserService extends BaseService<SysUser> {
      * 重置用户密码
      */
     void resetUserPassword(Long userId, String newPassword);
+
+    /**
+     * 修改当前用户的个人信息（账号、用户名）
+     *
+     * @param userId      当前登录用户ID
+     * @param newUsername  新账号
+     * @param newNickname 新用户名
+     * @return 是否修改成功
+     */
+    boolean updateProfile(Long userId, String newUsername, String newNickname);
+
+    /**
+     * 修改当前用户密码
+     *
+     * @param userId      当前登录用户ID
+     * @param oldPassword 旧密码（明文）
+     * @param newPassword 新密码（明文）
+     */
+    void changePassword(Long userId, String oldPassword, String newPassword);
 }

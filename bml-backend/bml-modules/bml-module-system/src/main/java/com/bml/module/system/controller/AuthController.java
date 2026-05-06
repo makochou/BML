@@ -9,8 +9,10 @@ import com.bml.core.framework.security.model.TokenVO;
 import com.bml.core.framework.security.service.TokenService;
 import com.bml.core.framework.security.utils.SecurityUtils;
 import com.bml.module.system.converter.UserConverter;
+import com.bml.module.system.dto.ChangePasswordDTO;
 import com.bml.module.system.dto.LoginBody;
 import com.bml.module.system.dto.RefreshTokenDTO;
+import com.bml.module.system.dto.UpdateProfileDTO;
 import com.bml.module.system.entity.SysMenu;
 import com.bml.module.system.entity.SysUser;
 import com.bml.module.system.service.CaptchaService;
@@ -115,7 +117,7 @@ public class AuthController {
     /**
      * 用户登录
      * <p>
-     * 验证用户名和密码，认证通过后返回双令牌（AccessToken + RefreshToken）。
+     * 验证账号和密码，认证通过后返回双令牌（AccessToken + RefreshToken）。
      * </p>
      *
      * <h4>请求示例：</h4>
@@ -144,7 +146,7 @@ public class AuthController {
      * }
      * </pre>
      *
-     * @param loginBody 登录参数（用户名、密码）
+     * @param loginBody 登录参数（账号、密码）
      * @return 包含双令牌的统一响应
      */
     @Operation(summary = "前台业务系统登录", description = "使用数据库用户（sys_user 表）进行认证，返回 AccessToken 和 RefreshToken")
@@ -209,7 +211,7 @@ public class AuthController {
      * 中台管理平台有且仅有一个管理员用户。
      * </p>
      *
-     * @param loginBody 登录参数（用户名、密码）
+     * @param loginBody 登录参数（账号、密码）
      * @return 包含双令牌的统一响应
      */
     @Operation(summary = "中台管理平台登录", description = "使用配置管理员（application.yml）进行认证，返回 AccessToken 和 RefreshToken")
@@ -454,5 +456,102 @@ public class AuthController {
             menus = menuService.selectMenuTreeByUserId(userId);
         }
         return Result.ok(menuService.buildMenus(menus));
+    }
+
+    /**
+     * 获取当前登录用户详细信息（个人中心使用）
+     * <p>
+     * 与 {@link #getInfo()} 不同，此接口返回更详细的用户信息，
+     * 包括所属机构名称、部门名称、岗位名称、角色列表等，用于个人信息页面展示。
+     * </p>
+     *
+     * @return 当前用户详细信息 VO（含关联名称）
+     */
+    @Operation(summary = "获取当前用户详细信息", description = "返回当前登录用户的完整信息，用于个人中心页面")
+    @GetMapping("/profile")
+    public Result<SysUserVO> getProfile() {
+        LoginUser loginUser = SecurityUtils.getLoginUser();
+        if (loginUser == null || GlobalConstants.ADMIN_USER_ID.equals(loginUser.getUserId())) {
+            return Result.badRequest("中台管理员不支持此操作");
+        }
+        SysUserVO userVO = userService.selectUserById(loginUser.getUserId());
+        if (userVO == null) {
+            return Result.badRequest("用户不存在");
+        }
+        return Result.ok(userVO);
+    }
+
+    /**
+     * 修改当前用户个人信息（账号、用户名）
+     * <p>
+     * 仅允许已登录的前台业务用户修改自己的账号和用户名。
+     * 修改账号时会校验新账号是否已被其他用户占用。
+     * </p>
+     *
+     * <h4>请求示例：</h4>
+     * <pre>
+     * PUT /api/auth/profile
+     * Authorization: Bearer {accessToken}
+     * Content-Type: application/json
+     *
+     * {
+     *   "username": "newuser",
+     *   "nickname": "新用户名"
+     * }
+     * </pre>
+     *
+     * @param dto 个人信息修改参数
+     * @return 操作结果
+     */
+    @Operation(summary = "修改个人信息", description = "当前登录用户修改自己的账号和用户名")
+    @PutMapping("/profile")
+    public Result<Void> updateProfile(@Validated @RequestBody UpdateProfileDTO dto) {
+        LoginUser loginUser = SecurityUtils.getLoginUser();
+        if (loginUser == null || GlobalConstants.ADMIN_USER_ID.equals(loginUser.getUserId())) {
+            return Result.badRequest("中台管理员不支持此操作");
+        }
+        try {
+            userService.updateProfile(loginUser.getUserId(), dto.getUsername(), dto.getNickname());
+            return Result.ok();
+        } catch (RuntimeException e) {
+            return Result.badRequest(e.getMessage());
+        }
+    }
+
+    /**
+     * 修改当前用户密码
+     * <p>
+     * 需要提供旧密码进行身份验证。新密码需满足 6~30 个字符长度要求。
+     * 新密码不能与旧密码相同。
+     * </p>
+     *
+     * <h4>请求示例：</h4>
+     * <pre>
+     * PUT /api/auth/password
+     * Authorization: Bearer {accessToken}
+     * Content-Type: application/json
+     *
+     * {
+     *   "oldPassword": "current-password",
+     *   "newPassword": "new-password-123"
+     * }
+     * </pre>
+     *
+     * @param dto 修改密码参数（旧密码 + 新密码）
+     * @return 操作结果
+     */
+    @Operation(summary = "修改密码", description = "当前登录用户修改自己的密码，需验证旧密码")
+    @PutMapping("/password")
+    public Result<Void> changePassword(@Validated @RequestBody ChangePasswordDTO dto) {
+        LoginUser loginUser = SecurityUtils.getLoginUser();
+        if (loginUser == null || GlobalConstants.ADMIN_USER_ID.equals(loginUser.getUserId())) {
+            return Result.badRequest("中台管理员不支持此操作");
+        }
+        try {
+            userService.changePassword(loginUser.getUserId(), dto.getOldPassword(), dto.getNewPassword());
+            return Result.ok();
+        } catch (RuntimeException e) {
+            return Result.badRequest(e.getMessage());
+        }
     }
 }

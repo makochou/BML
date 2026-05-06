@@ -24,7 +24,7 @@ import java.util.stream.Collectors;
  * <li>{@code userKey} — Redis 中的唯一标识（UUID），登录时生成</li>
  * <li>{@code userId} — 数据库用户主键ID</li>
  * <li>{@code deptId} — 所属部门ID</li>
- * <li>{@code username} — 登录账号</li>
+ * <li>{@code username} — 账号（登录用）</li>
  * <li>{@code password} — 密码（仅认证时使用，序列化时忽略）</li>
  * <li>{@code permissions} — 权限标识集合（如 {@code system:user:list}）</li>
  * <li>{@code loginTime} — 登录时间戳（毫秒）</li>
@@ -58,7 +58,7 @@ public class LoginUser implements UserDetails {
     private Long deptId;
 
     /**
-     * 用户名（登录账号）
+     * 账号（登录用）
      */
     private String username;
 
@@ -111,7 +111,7 @@ public class LoginUser implements UserDetails {
      *
      * @param userId      用户ID
      * @param deptId      部门ID
-     * @param username    用户名
+     * @param username    账号
      * @param password    密码
      * @param status      状态
      * @param permissions 权限集合

@@ -28,7 +28,7 @@ import java.time.LocalDateTime;
 @Schema(description = "用户信息表")
 public class SysUser extends BaseEntity {
 
-    @Schema(description = "用户名")
+    @Schema(description = "账号")
     private String username;
 
     /**
@@ -44,7 +44,7 @@ public class SysUser extends BaseEntity {
     @Schema(description = "姓名")
     private String realName;
 
-    @Schema(description = "昵称")
+    @Schema(description = "用户名")
     private String nickname;
 
     @Schema(description = "邮箱")

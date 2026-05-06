@@ -78,7 +78,7 @@ public interface TokenConstants {
     String CLAIMS_KEY_USER_ID = "user_id";
 
     /**
-     * Claims 字段：用户名
+     * Claims 字段：账号
      */
     String CLAIMS_KEY_USERNAME = "username";
 

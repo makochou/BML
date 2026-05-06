@@ -119,8 +119,8 @@ bml:
   # 中台管理平台不使用数据库用户表，永远只有一个管理员账号
   # 生产环境必须通过环境变量覆盖默认密码
   admin:
-    username: ${BML_ADMIN_USERNAME:admin}
-    password: ${BML_ADMIN_PASSWORD:manager}
+    username: ${BML_ADMIN_USERNAME:bml}
+    password: ${BML_ADMIN_PASSWORD:bml123}
     nickname: ${BML_ADMIN_NICKNAME:无敌炫酷吊炸天}
     # 中台管理员会话超时时长（分钟），0 表示不限制，默认 30 分钟
     # 此配置仅针对中台管理平台，与业务系统的 sys.login.idleTimeout 独立

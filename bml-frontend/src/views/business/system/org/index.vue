@@ -294,7 +294,7 @@
             </template>
           </a-table-column>
           <a-table-column title="过期时间" data-index="expireTime" :width="160" />
-          <a-table-column title="操作" :width="100" align="center">
+          <a-table-column title="操作" :width="170" align="center">
             <template #cell="{ record }">
               <a-button type="text" size="mini" status="danger" @click="confirmDeleteShare(record.id)">删除</a-button>
             </template>
@@ -582,7 +582,7 @@ const defaultColumns: BusinessTableColumn[] = [
   { key: 'businessScope',    title: '经营范围',         dataIndex: 'businessScope',    width: 260, visible: false, ellipsis: true, sortable: true, titleSlotName: 'th-businessScope' },
   { key: 'remark',           title: '备注',             dataIndex: 'remark',           width: 200, visible: false, ellipsis: true, sortable: true, titleSlotName: 'th-remark' },
   /* ── 操作列（锁定） ── */
-  { key: 'actions', title: '操作', slotName: 'actions', width: 140, visible: true, fixed: 'right', locked: true, align: 'center' },
+  { key: 'actions', title: '操作', slotName: 'actions', width: 170, visible: true, fixed: 'right', locked: true, align: 'center' },
 ];
 
 const {

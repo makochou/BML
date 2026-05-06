@@ -15,7 +15,7 @@ import java.util.Set;
  * 用于 {@code GET /auth/info} 接口的响应，包含当前登录用户的完整前端所需数据：
  * </p>
  * <ul>
- * <li><b>user</b> — 用户基本信息（用户名、昵称、头像等）</li>
+ * <li><b>user</b> — 用户基本信息（账号、用户名、头像等）</li>
  * <li><b>roles</b> — 角色标识列表（如 {@code ["admin", "common"]}），用于前端角色判断</li>
  * <li><b>permissions</b> — 权限标识列表（如
  * {@code ["system:user:list", "*:*:*"]}），用于按钮级权限控制</li>
@@ -49,7 +49,7 @@ public class UserInfoVO implements Serializable {
     /**
      * 用户基本信息
      * <p>
-     * 包含用户ID、用户名、真实姓名、头像、状态等字段。
+     * 包含用户ID、账号、用户名、头像、状态等字段。
      * 前端可据此渲染用户资料卡片、头像显示等。
      * </p>
      */

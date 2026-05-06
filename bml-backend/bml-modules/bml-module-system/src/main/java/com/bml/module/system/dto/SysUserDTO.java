@@ -25,14 +25,14 @@ public class SysUserDTO implements Serializable {
     @Schema(description = "用户ID (更新时必填)")
     private Long id;
 
-    @Schema(description = "用户名")
-    @NotBlank(message = "用户名不能为空")
-    @Size(min = 4, max = 30, message = "用户名长度必须在4到30个字符之间")
+    @Schema(description = "账号")
+    @NotBlank(message = "账号不能为空")
+    @Size(min = 5, max = 30, message = "账号长度必须在5到30个字符之间")
     private String username;
 
-    @Schema(description = "用户昵称")
-    @NotBlank(message = "用户昵称不能为空")
-    @Size(min = 2, max = 30, message = "用户昵称长度必须在2到30个字符之间")
+    @Schema(description = "用户名")
+    @NotBlank(message = "用户名不能为空")
+    @Size(min = 2, max = 30, message = "用户名长度必须在2到30个字符之间")
     private String nickname;
 
     @Schema(description = "用户邮箱")

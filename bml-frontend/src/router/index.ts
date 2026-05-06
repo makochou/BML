@@ -73,6 +73,12 @@ const staticRoutes: RouteRecordRaw[] = [
                 name: 'SystemMenu',
                 component: () => import('../views/business/system/menu/index.vue'),
                 meta: { title: '菜单管理', parentTitle: '组织与权限' }
+            },
+            {
+                path: 'profile',
+                name: 'BusinessProfile',
+                component: () => import('../views/business/profile/index.vue'),
+                meta: { title: '个人中心' }
             }
         ]
     },
@@ -343,7 +349,7 @@ const ensureTokenValid = async (): Promise<boolean> => {
 };
 
 /** 前台业务系统需要认证的路径前缀 */
-const BUSINESS_AUTH_PREFIXES = ['/dashboard', '/system'];
+const BUSINESS_AUTH_PREFIXES = ['/dashboard', '/system', '/profile'];
 
 /** 判断路径是否属于前台业务系统需要认证的区域 */
 const isBusinessAuthRequired = (path: string): boolean =>
