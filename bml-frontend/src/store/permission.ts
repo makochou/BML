@@ -36,6 +36,13 @@ interface PermissionState {
      * 超级管理员为 ['*:*:*']，表示拥有全部权限。
      */
     buttonPermissions: string[];
+    /**
+     * 标记按钮权限是否已从后端加载完成。
+     * - false：权限尚未加载（首次导航 / 登录后未请求 /auth/info）
+     * - true：已调用 setButtonPermissions，即使 permissions 为空数组也表示“加载完成”
+     * 用于区分“未加载”与“加载完成但用户无 B/F 权限”两种状态。
+     */
+    buttonPermissionsLoaded: boolean;
 }
 
 const buildSidebarMenus = (routes: BackendRouteItem[]): SidebarMenuItem[] => {
@@ -81,6 +88,7 @@ export const usePermissionStore = defineStore('permission', {
         backendRoutes: [],
         sidebarMenus: [],
         buttonPermissions: [],
+        buttonPermissionsLoaded: false,
     }),
     actions: {
         setBackendRoutes(routes: BackendRouteItem[]) {
@@ -99,6 +107,7 @@ export const usePermissionStore = defineStore('permission', {
             this.backendRoutes = [];
             this.sidebarMenus = [];
             this.buttonPermissions = [];
+            this.buttonPermissionsLoaded = false;
         },
 
         /**
@@ -108,6 +117,7 @@ export const usePermissionStore = defineStore('permission', {
          */
         setButtonPermissions(perms: string[]) {
             this.buttonPermissions = perms || [];
+            this.buttonPermissionsLoaded = true;
         },
 
         /**

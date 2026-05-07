@@ -58,7 +58,7 @@
 
     <GovernanceListStage density="ultra" body-fill>
       <template #actions>
-        <a-button type="primary" @click="handleAdd">
+        <a-button v-if="hasPermission('system:post:add')" type="primary" @click="handleAdd">
           <template #icon><icon-plus /></template>
           新增岗位
         </a-button>
@@ -97,11 +97,11 @@
         </template>
         <template #actions="{ record }">
           <div class="table-row-actions" @click.stop @dblclick.stop>
-            <a-button type="primary" size="mini" class="table-action-btn table-action-btn--primary" @click="handleEdit(record)">
+            <a-button v-if="hasPermission('system:post:edit')" type="primary" size="mini" class="table-action-btn table-action-btn--primary" @click="handleEdit(record)">
               <template #icon><icon-edit /></template>
               编辑
             </a-button>
-            <a-button size="mini" class="table-action-btn table-action-btn--danger" @click="confirmDelete(record.id)">
+            <a-button v-if="hasPermission('system:post:remove')" size="mini" class="table-action-btn table-action-btn--danger" @click="confirmDelete(record.id)">
               <template #icon><icon-delete /></template>
               删除
             </a-button>
@@ -142,12 +142,12 @@
               </a-col>
             </a-row>
             <a-row :gutter="16">
-              <a-col :span="12">
+              <a-col v-if="hasPermission('system:post:field:orgId')" :span="12">
                 <a-form-item field="orgId" label="所属机构">
                   <a-tree-select v-model="formData.orgId" :data="orgTreeData" :field-names="{ key: 'id', title: 'orgName', children: 'children' }" placeholder="全局岗位（不限机构）" allow-clear />
                 </a-form-item>
               </a-col>
-              <a-col :span="12">
+              <a-col v-if="hasPermission('system:post:field:postCategory')" :span="12">
                 <a-form-item field="postCategory" label="岗位类别">
                   <a-select v-model="formData.postCategory" placeholder="请选择岗位类别" allow-clear>
                     <a-option v-for="cat in POST_CATEGORIES" :key="cat" :value="cat">{{ cat }}</a-option>
@@ -156,7 +156,7 @@
               </a-col>
             </a-row>
             <a-row :gutter="16">
-              <a-col :span="12">
+              <a-col v-if="hasPermission('system:post:field:postLevel')" :span="12">
                 <a-form-item field="postLevel" label="岗位级别">
                   <a-input v-model="formData.postLevel" placeholder="如 P5、M3" />
                 </a-form-item>
@@ -180,7 +180,7 @@
           </a-tab-pane>
           <a-tab-pane key="extra" title="其他信息">
             <a-row :gutter="16">
-              <a-col :span="24">
+              <a-col v-if="hasPermission('system:post:field:remark')" :span="24">
                 <a-form-item field="remark" label="备注">
                   <a-textarea v-model="formData.remark" placeholder="请输入备注" :auto-size="{ minRows: 2, maxRows: 4 }" />
                 </a-form-item>
@@ -237,14 +237,14 @@ const defaultColumns: BusinessTableColumn[] = [
   /* ── 核心标识（默认显示） ── */
   { key: 'postName',     title: '岗位名称', dataIndex: 'postName',     width: 160, visible: true, fixed: 'left', sortable: true, titleSlotName: 'th-postName' },
   { key: 'postCode',     title: '岗位编码', dataIndex: 'postCode',     width: 120, visible: true, sortable: true, titleSlotName: 'th-postCode' },
-  { key: 'orgName',      title: '所属机构', dataIndex: 'orgName',      width: 160, visible: true, sortable: true, titleSlotName: 'th-orgName' },
-  { key: 'postCategory', title: '岗位类别', slotName: 'postCategory',  width: 110, visible: true, align: 'center', sortable: true, titleSlotName: 'th-postCategory' },
-  { key: 'postLevel',    title: '岗位级别', slotName: 'postLevel',     width: 100, visible: true, align: 'center', sortable: true, titleSlotName: 'th-postLevel' },
+  { key: 'orgName',      title: '所属机构', dataIndex: 'orgName',      width: 160, visible: true, sortable: true, titleSlotName: 'th-orgName', permission: 'system:post:field:orgId' },
+  { key: 'postCategory', title: '岗位类别', slotName: 'postCategory',  width: 110, visible: true, align: 'center', sortable: true, titleSlotName: 'th-postCategory', permission: 'system:post:field:postCategory' },
+  { key: 'postLevel',    title: '岗位级别', slotName: 'postLevel',     width: 100, visible: true, align: 'center', sortable: true, titleSlotName: 'th-postLevel', permission: 'system:post:field:postLevel' },
   { key: 'sort',         title: '排序',     dataIndex: 'sort',         width: 70,  visible: true, align: 'center', sortable: true, titleSlotName: 'th-sort' },
   { key: 'status',       title: '状态',     slotName: 'status',        width: 80,  visible: true, align: 'center', sortable: true, titleSlotName: 'th-status' },
   { key: 'createTime',   title: '创建时间', dataIndex: 'createTime',   width: 170, visible: true, sortable: true, titleSlotName: 'th-createTime' },
   /* ── 扩展字段（默认隐藏） ── */
-  { key: 'remark', title: '备注', dataIndex: 'remark', width: 200, visible: true, ellipsis: true, sortable: true, titleSlotName: 'th-remark' },
+  { key: 'remark', title: '备注', dataIndex: 'remark', width: 200, visible: true, ellipsis: true, sortable: true, titleSlotName: 'th-remark', permission: 'system:post:field:remark' },
   /* ── 操作列（锁定） ── */
   { key: 'actions', title: '操作', slotName: 'actions', width: 170, visible: true, fixed: 'right', locked: true, align: 'center' },
 ];

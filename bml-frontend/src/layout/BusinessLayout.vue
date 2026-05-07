@@ -24,35 +24,40 @@
         </template>
       </div>
 
-      <!-- 展开状态：使用 Arco 标准菜单 -->
+      <!-- 展开状态：使用 Arco 标准菜单（动态渲染，仅显示当前用户有权限的菜单项） -->
       <a-menu
         v-if="!collapsed"
         :selected-keys="selectedKeys"
-        :default-open-keys="openKeys"
+        :default-open-keys="visibleMenuGroups.length > 0 ? visibleMenuGroups.map(g => g.key) : []"
         :auto-open-selected="true"
         @menu-item-click="onMenuClick"
       >
-        <a-sub-menu key="system">
-          <template #icon><icon-settings /></template>
-          <template #title>组织与权限</template>
-          <a-menu-item key="SystemOrg"><template #icon><icon-apps /></template>机构管理</a-menu-item>
-          <a-menu-item key="SystemDept"><template #icon><icon-branch /></template>部门管理</a-menu-item>
-          <a-menu-item key="SystemPost"><template #icon><icon-idcard /></template>岗位管理</a-menu-item>
-          <a-menu-item key="SystemUser"><template #icon><icon-user /></template>用户管理</a-menu-item>
-          <a-menu-item key="SystemRole"><template #icon><icon-safe /></template>角色与权限</a-menu-item>
-          <a-menu-item key="SystemMenu"><template #icon><icon-menu /></template>菜单管理</a-menu-item>
-        </a-sub-menu>
+        <template v-for="group in visibleMenuGroups" :key="group.key">
+          <a-sub-menu>
+            <template #icon><component :is="group.icon" /></template>
+            <template #title>{{ group.title }}</template>
+            <a-menu-item
+              v-for="item in group.children"
+              :key="item.routeName"
+            >
+              <template #icon><component :is="item.icon" /></template>
+              {{ item.title }}
+            </a-menu-item>
+          </a-sub-menu>
+        </template>
       </a-menu>
 
-      <!-- 收起状态：Mini Dock 图标导航 -->
+      <!-- 收起状态：Mini Dock 图标导航（仅显示有权限的菜单组） -->
       <div v-else class="mini-menu">
         <div
+          v-for="group in visibleMenuGroups"
+          :key="group.key"
           class="mini-item"
-          :class="{ active: selectedKeys.some(k => ['SystemOrg','SystemDept','SystemPost','SystemUser','SystemRole','SystemMenu'].includes(k)) }"
-          @click="onMenuClick('SystemOrg')"
-          title="组织与权限"
+          :class="{ active: selectedKeys.some(k => group.children.some(c => c.routeName === k)) }"
+          @click="onMenuClick(group.children[0]?.routeName)"
+          :title="group.title"
         >
-          <icon-settings />
+          <component :is="group.icon" />
         </div>
       </div>
 
@@ -183,6 +188,7 @@ import {
 } from '@arco-design/web-vue/es/icon';
 import request from '../utils/request';
 import { clearAuthTokens, getAccessToken } from '../utils/auth';
+import { resetBusinessPermissionsCache } from '../router/index';
 import { fetchLoginConfig } from '../api/auth';
 import TagsView from '../components/TagsView.vue';
 import ThemeSettings from '../components/ThemeSettings.vue';
@@ -213,9 +219,66 @@ const sidebarLogoUrl = ref('');
 interface SimpleUserInfo { id: number; username: string; nickname: string; }
 const userInfo = ref<SimpleUserInfo | null>(null);
 
-/** 菜单选中 / 展开状态（自动跟随路由） */
+/** 菜单选中状态（自动跟随路由） */
 const selectedKeys = computed(() => { const name = route.name as string; return name ? [name] : []; });
-const openKeys = ref(['system']);
+
+/* ──────────────────── 侧边栏菜单配置（权限驱动动态渲染） ──────────────────── */
+
+/** 菜单子项配置（对应侧边栏的每个 C 菜单项） */
+interface SidebarChildItem {
+  /** 路由 name，对应 router 中的 name 字段 */
+  routeName: string;
+  /** 显示标题 */
+  title: string;
+  /** 图标组件 */
+  icon: any;
+  /** 对应的后端权限标识（通常为 list 权限，无此权限则不显示该菜单项） */
+  permission: string;
+}
+
+/** 菜单分组配置（对应侧边栏的一级 M 目录） */
+interface SidebarMenuGroup {
+  key: string;
+  title: string;
+  icon: any;
+  children: SidebarChildItem[];
+}
+
+/**
+ * 侧边栏菜单完整配置表
+ * ────────────────
+ * 新增模块时，只需在此处添加配置项，模板层无需任何修改。
+ * permission 字段对应 sys_menu 表中 C 类型菜单的 perms 值（通常是 list 权限）。
+ */
+const sidebarMenuConfig: SidebarMenuGroup[] = [
+  {
+    key: 'system',
+    title: '组织与权限',
+    icon: IconSettings,
+    children: [
+      { routeName: 'SystemOrg',  title: '机构管理', icon: IconApps,   permission: 'system:org:list' },
+      { routeName: 'SystemDept', title: '部门管理', icon: IconBranch, permission: 'system:dept:list' },
+      { routeName: 'SystemPost', title: '岗位管理', icon: IconIdcard, permission: 'system:post:list' },
+      { routeName: 'SystemUser', title: '用户管理', icon: IconUser,   permission: 'system:user:list' },
+      { routeName: 'SystemRole', title: '角色与权限', icon: IconSafe, permission: 'system:role:list' },
+      { routeName: 'SystemMenu', title: '菜单管理', icon: IconMenu,   permission: 'system:menu:list' },
+    ]
+  }
+];
+
+/**
+ * 根据当前用户权限过滤后的可见菜单分组
+ * - 每个分组内仅保留用户有权限的子菜单项
+ * - 若某个分组内无任何可见子项，则整个分组不显示
+ */
+const visibleMenuGroups = computed(() => {
+  return sidebarMenuConfig
+    .map(group => ({
+      ...group,
+      children: group.children.filter(item => permissionStore.hasPermission(item.permission))
+    }))
+    .filter(group => group.children.length > 0);
+});
 
 /** 当前页面标题（来自路由 meta） */
 const pageTitle = computed(() => { const t = route.meta?.title; return typeof t === 'string' ? t : ''; });
@@ -264,6 +327,8 @@ const handleLogout = async () => {
   finally {
     clearAuthTokens();
     tagsViewStore.delAllViews();
+    permissionStore.resetRoutes(); // 清空权限缓存
+    resetBusinessPermissionsCache(); // 重置路由守卫的权限加载标记
     Message.success('已退出登录');
     router.push('/login');
   }

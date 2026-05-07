@@ -22,9 +22,9 @@ public class UpdateProfileDTO implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    @Schema(description = "新账号（允许5~30个字符）")
+    @Schema(description = "新账号（允许1~30个字符）")
     @NotBlank(message = "账号不能为空")
-    @Size(min = 5, max = 30, message = "账号长度必须在5到30个字符之间")
+    @Size(min = 1, max = 30, message = "账号长度不能超过30个字符")
     private String username;
 
     @Schema(description = "用户名（允许2~30个字符）")

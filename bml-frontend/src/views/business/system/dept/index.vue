@@ -66,7 +66,7 @@
 
     <GovernanceListStage density="ultra" body-fill>
       <template #actions>
-        <a-button type="primary" @click="handleAdd()">
+        <a-button v-if="hasPermission('system:dept:add')" type="primary" @click="handleAdd()">
           <template #icon><icon-plus /></template>
           新增部门
         </a-button>
@@ -106,15 +106,15 @@
         </template>
         <template #actions="{ record }">
           <div class="table-row-actions" @click.stop @dblclick.stop>
-            <a-button type="primary" size="mini" class="table-action-btn table-action-btn--primary" @click="handleEdit(record)">
+            <a-button v-if="hasPermission('system:dept:edit')" type="primary" size="mini" class="table-action-btn table-action-btn--primary" @click="handleEdit(record)">
               <template #icon><icon-edit /></template>
               编辑
             </a-button>
-            <a-button size="mini" class="table-action-btn table-action-btn--danger" @click="confirmDelete(record.id)">
+            <a-button v-if="hasPermission('system:dept:remove')" size="mini" class="table-action-btn table-action-btn--danger" @click="confirmDelete(record.id)">
               <template #icon><icon-delete /></template>
               删除
             </a-button>
-            <a-dropdown trigger="click">
+            <a-dropdown v-if="hasPermission('system:dept:addChild')" trigger="click">
               <a-button size="mini" class="table-action-btn table-action-btn--more">
                 <template #icon><icon-more /></template>
               </a-button>
@@ -181,7 +181,7 @@
         <a-tabs default-active-key="basic" size="small" class="form-tabs">
           <a-tab-pane key="basic" title="基本信息">
             <a-row :gutter="16">
-              <a-col :span="12">
+              <a-col v-if="hasPermission('system:dept:field:orgId')" :span="12">
                 <a-form-item field="orgId" label="所属机构">
                   <a-tree-select v-model="formData.orgId" :data="orgTreeData" :field-names="{ key: 'id', title: 'orgName', children: 'children' }" placeholder="请选择所属机构" allow-clear @change="handleOrgChange" />
                 </a-form-item>
@@ -205,7 +205,7 @@
               </a-col>
             </a-row>
             <a-row :gutter="16">
-              <a-col :span="12">
+              <a-col v-if="hasPermission('system:dept:field:deptType')" :span="12">
                 <a-form-item field="deptType" label="部门类型">
                   <a-select v-model="formData.deptType" placeholder="请选择部门类型">
                     <a-option :value="1">事业部</a-option>
@@ -215,7 +215,7 @@
                   </a-select>
                 </a-form-item>
               </a-col>
-              <a-col :span="12">
+              <a-col v-if="hasPermission('system:dept:field:funcType')" :span="12">
                 <a-form-item field="funcType" label="职能分类">
                   <a-select v-model="formData.funcType" placeholder="请选择职能分类" allow-clear>
                     <a-option v-for="f in FUNC_TYPES" :key="f" :value="f">{{ f }}</a-option>
@@ -241,19 +241,19 @@
           </a-tab-pane>
           <a-tab-pane key="contact" title="联系信息">
             <a-row :gutter="16">
-              <a-col :span="12">
+              <a-col v-if="hasPermission('system:dept:field:leader')" :span="12">
                 <a-form-item field="leader" label="负责人">
                   <a-input v-model="formData.leader" placeholder="请输入负责人" />
                 </a-form-item>
               </a-col>
-              <a-col :span="12">
+              <a-col v-if="hasPermission('system:dept:field:phone')" :span="12">
                 <a-form-item field="phone" label="联系电话">
                   <a-input v-model="formData.phone" placeholder="请输入联系电话" />
                 </a-form-item>
               </a-col>
             </a-row>
             <a-row :gutter="16">
-              <a-col :span="12">
+              <a-col v-if="hasPermission('system:dept:field:email')" :span="12">
                 <a-form-item field="email" label="邮箱">
                   <a-input v-model="formData.email" placeholder="请输入邮箱" />
                 </a-form-item>
@@ -310,16 +310,16 @@ const defaultColumns: BusinessTableColumn[] = [
   /* ── 核心标识（默认显示） ── */
   { key: 'deptName', title: '部门名称', dataIndex: 'deptName', width: 240, visible: true, fixed: 'left', ellipsis: true, sortable: true, titleSlotName: 'th-deptName' },
   { key: 'deptCode', title: '部门编码', dataIndex: 'deptCode', width: 120, visible: true, sortable: true, titleSlotName: 'th-deptCode' },
-  { key: 'orgName',  title: '所属机构', dataIndex: 'orgName',  width: 150, visible: true, sortable: true, titleSlotName: 'th-orgName' },
-  { key: 'deptType', title: '部门类型', slotName: 'deptType',  width: 100, visible: true, align: 'center', sortable: true, titleSlotName: 'th-deptType' },
-  { key: 'funcType', title: '职能分类', slotName: 'funcType',  width: 100, visible: true, align: 'center', sortable: true, titleSlotName: 'th-funcType' },
-  { key: 'leader',   title: '负责人',   dataIndex: 'leader',   width: 100, visible: true, sortable: true, titleSlotName: 'th-leader' },
+  { key: 'orgName',  title: '所属机构', dataIndex: 'orgName',  width: 150, visible: true, sortable: true, titleSlotName: 'th-orgName', permission: 'system:dept:field:orgId' },
+  { key: 'deptType', title: '部门类型', slotName: 'deptType',  width: 100, visible: true, align: 'center', sortable: true, titleSlotName: 'th-deptType', permission: 'system:dept:field:deptType' },
+  { key: 'funcType', title: '职能分类', slotName: 'funcType',  width: 100, visible: true, align: 'center', sortable: true, titleSlotName: 'th-funcType', permission: 'system:dept:field:funcType' },
+  { key: 'leader',   title: '负责人',   dataIndex: 'leader',   width: 100, visible: true, sortable: true, titleSlotName: 'th-leader', permission: 'system:dept:field:leader' },
   { key: 'sort',     title: '排序',     dataIndex: 'sort',     width: 70,  visible: true, align: 'center', sortable: true, titleSlotName: 'th-sort' },
   { key: 'status',   title: '状态',     slotName: 'status',    width: 80,  visible: true, align: 'center', sortable: true, titleSlotName: 'th-status' },
   { key: 'createTime', title: '创建时间', dataIndex: 'createTime', width: 170, visible: true, sortable: true, titleSlotName: 'th-createTime' },
   /* ── 扩展字段（默认隐藏） ── */
-  { key: 'phone',  title: '联系电话', dataIndex: 'phone',  width: 130, visible: false, sortable: true, titleSlotName: 'th-phone' },
-  { key: 'email',  title: '邮箱',     dataIndex: 'email',  width: 180, visible: false, sortable: true, titleSlotName: 'th-email' },
+  { key: 'phone',  title: '联系电话', dataIndex: 'phone',  width: 130, visible: false, sortable: true, titleSlotName: 'th-phone', permission: 'system:dept:field:phone' },
+  { key: 'email',  title: '邮箱',     dataIndex: 'email',  width: 180, visible: false, sortable: true, titleSlotName: 'th-email', permission: 'system:dept:field:email' },
   /* ── 操作列（锁定） ── */
   { key: 'actions', title: '操作', slotName: 'actions', width: 170, visible: true, fixed: 'right', locked: true, align: 'center' },
 ];

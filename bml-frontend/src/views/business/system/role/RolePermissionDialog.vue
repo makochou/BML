@@ -1,11 +1,11 @@
 <template>
   <!--
-    角色权限分配弹窗
-    ==================
+    角色权限分配弹窗（V2.5.0 重新设计）
+    ════════════════════════════════════
     三面板联动设计：
-      左面板 — 模块菜单（M 目录 + C 菜单），树形勾选，仅显示菜单名称，不展示类型标签
-      中面板 — 功能按钮（B），按所属菜单分组，仅显示按钮名称（隐藏权限标识），每组带独立全选
-      右面板 — 表单字段（F），按所属菜单分组，仅显示字段名称（隐藏权限标识），每组带独立全选
+      左面板 — 模块菜单（M 目录 + C 菜单），树形勾选，按侧边栏顺序显示
+      中面板 — 功能按钮（B），按所属菜单分组，按钮名称对齐实际页面文案
+      右面板 — 表单字段（F），按所属菜单分组，覆盖所有表单标签页的字段
 
     联动规则：
       1. 勾选 / 取消左面板的 C 菜单时，中面板与右面板自动刷新只显示已勾选模块下的 B / F 项
@@ -15,40 +15,46 @@
     设计原则：
       - 组件完全解耦，通过 props / emits 与父页面通信
       - 内部不直接调用保存 API，仅通过 @save 事件抛出数据，由调用方决定如何保存
+      - 弹窗尺寸加大至 1200x720，确保三面板内容充分展示
   -->
   <BmlModal
     :visible="visible"
     :title="`权限分配 — ${roleName}`"
-    :width="960"
+    :width="1200"
+    :height="720"
+    :min-width="900"
+    :min-height="560"
     :mask-closable="false"
-    :esc-to-close="!saving"
-    @cancel="handleClose"
+    @close="handleClose"
   >
-    <!-- 弹窗底部操作栏 -->
-    <template #footer>
-      <a-space>
-        <a-button @click="handleClose" :disabled="saving">取消</a-button>
-        <a-button type="primary" :loading="saving" @click="handleSave">
-          <template #icon><IconSave /></template>
-          保存授权
-        </a-button>
-      </a-space>
+    <!-- 标题栏操作按钮 -->
+    <template #header-actions>
+      <a-button @click="handleClose" :disabled="saving">取消</a-button>
+      <a-button type="primary" :loading="saving" @click="handleSave">
+        <template #icon><IconSave /></template>
+        保存授权
+      </a-button>
     </template>
 
     <!-- 三面板主体 -->
-    <div class="perm-panels">
+    <div class="perm-container">
       <!-- ═══ 左面板：模块菜单树 ═══ -->
-      <div class="perm-panel perm-panel--left">
+      <div class="perm-panel perm-panel--modules">
         <div class="perm-panel__header">
-          <span class="perm-panel__title">模块菜单</span>
-          <a-space :size="12">
-            <a-checkbox v-model="expandAll" @change="onExpandChange">
-              <span class="perm-panel__action-text">展开</span>
+          <div class="perm-panel__header-title">
+            <span class="perm-panel__icon perm-panel__icon--modules">
+              <IconApps />
+            </span>
+            <span class="perm-panel__title">模块菜单</span>
+          </div>
+          <div class="perm-panel__header-actions">
+            <a-checkbox v-model="expandAll" @change="onExpandChange" class="perm-action-check">
+              <span class="perm-action-text">展开</span>
             </a-checkbox>
-            <a-checkbox v-model="checkAllModules" @change="onCheckAllModules">
-              <span class="perm-panel__action-text">全选</span>
+            <a-checkbox v-model="checkAllModules" @change="onCheckAllModules" class="perm-action-check">
+              <span class="perm-action-text">全选</span>
             </a-checkbox>
-          </a-space>
+          </div>
         </div>
         <div class="perm-panel__body">
           <a-tree
@@ -61,85 +67,143 @@
             block-node
           >
             <template #title="nodeData">
-              <span class="perm-node">{{ nodeData.menuName }}</span>
+              <span class="perm-tree-node">{{ nodeData.menuName }}</span>
             </template>
           </a-tree>
+        </div>
+        <!-- 底部统计 -->
+        <div class="perm-panel__footer">
+          <span class="perm-stat">已选 <b>{{ checkedModuleCount }}</b> / {{ totalModuleCount }} 个模块</span>
         </div>
       </div>
 
       <!-- ═══ 中面板：功能按钮 ═══ -->
-      <div class="perm-panel perm-panel--center">
+      <div class="perm-panel perm-panel--buttons">
         <div class="perm-panel__header">
-          <span class="perm-panel__title">功能按钮</span>
-          <a-checkbox v-model="checkAllButtons" @change="onCheckAllButtons">
-            <span class="perm-panel__action-text">全选</span>
-          </a-checkbox>
+          <div class="perm-panel__header-title">
+            <span class="perm-panel__icon perm-panel__icon--buttons">
+              <IconCommand />
+            </span>
+            <span class="perm-panel__title">功能按钮</span>
+          </div>
+          <div class="perm-panel__header-actions">
+            <a-checkbox v-model="checkAllButtons" @change="onCheckAllButtons" class="perm-action-check">
+              <span class="perm-action-text">全选</span>
+            </a-checkbox>
+          </div>
+        </div>
+        <!-- 搜索栏：输入关键词可实时过滤全部模块下的按钮权限 -->
+        <div class="perm-panel__search">
+          <a-input
+            v-model="buttonSearch"
+            placeholder="搜索按钮权限…"
+            allow-clear
+            size="small"
+          >
+            <template #prefix><IconSearch /></template>
+          </a-input>
         </div>
         <div class="perm-panel__body">
-          <template v-if="visibleButtonGroups.length > 0">
+          <template v-if="filteredButtonGroups.length > 0">
             <div
-              v-for="group in visibleButtonGroups"
+              v-for="group in filteredButtonGroups"
               :key="group.menuId"
               class="perm-group"
             >
-              <div class="perm-group__title">
-                <span>{{ group.menuName }}</span>
+              <div class="perm-group__header">
+                <span class="perm-group__name">{{ group.menuName }}</span>
                 <a-checkbox
                   :model-value="isGroupAllChecked('button', group.menuId)"
                   :indeterminate="isGroupIndeterminate('button', group.menuId)"
                   @change="(val: boolean | (string | number | boolean)[]) => onGroupCheckAll('button', group.menuId, val)"
+                  class="perm-action-check"
                 >
-                  <span class="perm-group__check-text">全选</span>
+                  <span class="perm-group__check-label">全选</span>
                 </a-checkbox>
               </div>
-              <a-checkbox-group v-model="checkedButtonIds" class="perm-group__items">
-                <a-checkbox v-for="btn in group.items" :key="btn.id" :value="btn.id">
-                  <span class="perm-item">
-                    <span class="perm-item__name">{{ btn.menuName }}</span>
-                  </span>
-                </a-checkbox>
-              </a-checkbox-group>
+              <div class="perm-group__body">
+                <a-checkbox-group v-model="checkedButtonIds" class="perm-group__grid">
+                  <a-checkbox v-for="btn in group.items" :key="btn.id" :value="btn.id" class="perm-check-item">
+                    <span class="perm-check-label">{{ btn.menuName }}</span>
+                  </a-checkbox>
+                </a-checkbox-group>
+              </div>
             </div>
           </template>
-          <a-empty v-else description="请先在左侧勾选模块菜单" />
+          <div v-else class="perm-empty">
+            <IconSearch v-if="buttonSearch.trim()" class="perm-empty__icon" />
+            <IconLeft v-else class="perm-empty__icon" />
+            <span class="perm-empty__text">{{ buttonSearch.trim() ? '无匹配的按钮权限' : '请先在左侧勾选模块菜单' }}</span>
+          </div>
+        </div>
+        <!-- 底部统计 -->
+        <div class="perm-panel__footer">
+          <span class="perm-stat">已选 <b>{{ checkedButtonIds.length }}</b> / {{ totalVisibleButtonCount }} 个按钮</span>
         </div>
       </div>
 
       <!-- ═══ 右面板：表单字段 ═══ -->
-      <div class="perm-panel perm-panel--right">
+      <div class="perm-panel perm-panel--fields">
         <div class="perm-panel__header">
-          <span class="perm-panel__title">表单字段</span>
-          <a-checkbox v-model="checkAllFields" @change="onCheckAllFields">
-            <span class="perm-panel__action-text">全选</span>
-          </a-checkbox>
+          <div class="perm-panel__header-title">
+            <span class="perm-panel__icon perm-panel__icon--fields">
+              <IconList />
+            </span>
+            <span class="perm-panel__title">表单字段</span>
+          </div>
+          <div class="perm-panel__header-actions">
+            <a-checkbox v-model="checkAllFields" @change="onCheckAllFields" class="perm-action-check">
+              <span class="perm-action-text">全选</span>
+            </a-checkbox>
+          </div>
+        </div>
+        <!-- 搜索栏：输入关键词可实时过滤全部模块下的字段权限 -->
+        <div class="perm-panel__search">
+          <a-input
+            v-model="fieldSearch"
+            placeholder="搜索字段权限…"
+            allow-clear
+            size="small"
+          >
+            <template #prefix><IconSearch /></template>
+          </a-input>
         </div>
         <div class="perm-panel__body">
-          <template v-if="visibleFieldGroups.length > 0">
+          <template v-if="filteredFieldGroups.length > 0">
             <div
-              v-for="group in visibleFieldGroups"
+              v-for="group in filteredFieldGroups"
               :key="group.menuId"
               class="perm-group"
             >
-              <div class="perm-group__title">
-                <span>{{ group.menuName }}</span>
+              <div class="perm-group__header">
+                <span class="perm-group__name">{{ group.menuName }}</span>
                 <a-checkbox
                   :model-value="isGroupAllChecked('field', group.menuId)"
                   :indeterminate="isGroupIndeterminate('field', group.menuId)"
                   @change="(val: boolean | (string | number | boolean)[]) => onGroupCheckAll('field', group.menuId, val)"
+                  class="perm-action-check"
                 >
-                  <span class="perm-group__check-text">全选</span>
+                  <span class="perm-group__check-label">全选</span>
                 </a-checkbox>
               </div>
-              <a-checkbox-group v-model="checkedFieldIds" class="perm-group__items">
-                <a-checkbox v-for="field in group.items" :key="field.id" :value="field.id">
-                  <span class="perm-item">
-                    <span class="perm-item__name">{{ field.menuName }}</span>
-                  </span>
-                </a-checkbox>
-              </a-checkbox-group>
+              <div class="perm-group__body">
+                <a-checkbox-group v-model="checkedFieldIds" class="perm-group__grid perm-group__grid--fields">
+                  <a-checkbox v-for="field in group.items" :key="field.id" :value="field.id" class="perm-check-item">
+                    <span class="perm-check-label">{{ field.menuName }}</span>
+                  </a-checkbox>
+                </a-checkbox-group>
+              </div>
             </div>
           </template>
-          <a-empty v-else description="请先在左侧勾选模块菜单" />
+          <div v-else class="perm-empty">
+            <IconSearch v-if="fieldSearch.trim()" class="perm-empty__icon" />
+            <IconLeft v-else class="perm-empty__icon" />
+            <span class="perm-empty__text">{{ fieldSearch.trim() ? '无匹配的字段权限' : '请先在左侧勾选模块菜单' }}</span>
+          </div>
+        </div>
+        <!-- 底部统计 -->
+        <div class="perm-panel__footer">
+          <span class="perm-stat">已选 <b>{{ checkedFieldIds.length }}</b> / {{ totalVisibleFieldCount }} 个字段</span>
         </div>
       </div>
     </div>
@@ -166,7 +230,7 @@
  */
 
 import { ref, computed, watch, nextTick } from 'vue';
-import { IconSave } from '@arco-design/web-vue/es/icon';
+import { IconSave, IconApps, IconCommand, IconList, IconLeft, IconSearch } from '@arco-design/web-vue/es/icon';
 import { fetchPermissionData, fetchRoleDetail, updateRole, type RoleForm } from '../../../../api/system';
 import { Message } from '@arco-design/web-vue';
 import BmlModal from '../../../../components/BmlModal.vue';
@@ -233,6 +297,12 @@ const checkAllButtons = ref(false);
 const checkAllFields = ref(false);
 /** 保存中状态 */
 const saving = ref(false);
+/** 角色完整数据缓存（保存时需携带 roleName 等必填字段，避免后端校验失败） */
+const roleDetailCache = ref<Record<string, any>>({});
+/** 功能按钮面板搜索关键词 */
+const buttonSearch = ref('');
+/** 表单字段面板搜索关键词 */
+const fieldSearch = ref('');
 
 /* ──────────────────────────── 计算属性 ──────────────────────────── */
 
@@ -250,6 +320,48 @@ const visibleButtonGroups = computed(() =>
 /** 右面板：仅显示已勾选模块下的字段分组 */
 const visibleFieldGroups = computed(() =>
   allFieldGroups.value.filter(g => checkedCMenuIds.value.has(g.menuId))
+);
+
+/** 已勾选的 C 菜单数量（左面板统计） */
+const checkedModuleCount = computed(() => checkedCMenuIds.value.size);
+
+/** 全部 C 菜单总数（左面板统计分母） */
+const totalModuleCount = computed(() =>
+  allMenus.value.filter(m => m.menuType === 'C').length
+);
+
+/**
+ * 按搜索关键词过滤后的按钮分组（中面板实际渲染用）
+ * 规则：关键词为空时返回全量可见分组；非空时按 menuName 模糊匹配，隐藏空分组
+ */
+const filteredButtonGroups = computed(() => {
+  const kw = buttonSearch.value.trim();
+  if (!kw) return visibleButtonGroups.value;
+  return visibleButtonGroups.value
+    .map(g => ({ ...g, items: g.items.filter(i => i.menuName.includes(kw)) }))
+    .filter(g => g.items.length > 0);
+});
+
+/**
+ * 按搜索关键词过滤后的字段分组（右面板实际渲染用）
+ * 规则同上
+ */
+const filteredFieldGroups = computed(() => {
+  const kw = fieldSearch.value.trim();
+  if (!kw) return visibleFieldGroups.value;
+  return visibleFieldGroups.value
+    .map(g => ({ ...g, items: g.items.filter(i => i.menuName.includes(kw)) }))
+    .filter(g => g.items.length > 0);
+});
+
+/** 当前可见按钮总数（中面板统计分母，跟随搜索过滤） */
+const totalVisibleButtonCount = computed(() =>
+  filteredButtonGroups.value.reduce((sum, g) => sum + g.items.length, 0)
+);
+
+/** 当前可见字段总数（右面板统计分母，跟随搜索过滤） */
+const totalVisibleFieldCount = computed(() =>
+  filteredFieldGroups.value.reduce((sum, g) => sum + g.items.length, 0)
 );
 
 /* ──────────────────────────── 数据加载 ──────────────────────────── */
@@ -285,6 +397,7 @@ const loadData = async () => {
     if (props.roleId) {
       const detailRes = await fetchRoleDetail(props.roleId) as any;
       const detail = detailRes.data || {};
+      roleDetailCache.value = detail;
       const savedMenuIds: number[] = detail.menuIds || [];
       const savedHalfCheckIds: number[] = detail.halfCheckMenuIds || [];
       const allSavedIds = new Set([...savedMenuIds, ...savedHalfCheckIds]);
@@ -309,7 +422,7 @@ const loadData = async () => {
   }
 };
 
-/** 构建树形结构（从扁平列表） */
+/** 构建树形结构（从扁平列表），按 sort 字段排序 */
 const buildTree = (items: MenuItem[], _rootParentId: number = 0): MenuItem[] => {
   const map = new Map<number, MenuItem>();
   const roots: MenuItem[] = [];
@@ -326,27 +439,46 @@ const buildTree = (items: MenuItem[], _rootParentId: number = 0): MenuItem[] => 
     }
   });
 
+  // 递归排序子节点（按 sort 字段升序）
+  const sortChildren = (nodes: MenuItem[]) => {
+    nodes.sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0));
+    nodes.forEach(n => { if (n.children?.length) sortChildren(n.children); });
+  };
+  sortChildren(roots);
+
   return roots;
 };
 
-/** 按 parentId 分组，生成 PermGroup[] */
+/** 按 parentId 分组，生成 PermGroup[]，按父菜单 sort 排序 */
 const buildGroups = (items: MenuItem[], parentMenus: MenuItem[]): PermGroup[] => {
-  const parentMap = new Map<number, string>();
-  parentMenus.forEach(m => parentMap.set(m.id, m.menuName));
+  const parentMap = new Map<number, MenuItem>();
+  parentMenus.forEach(m => parentMap.set(m.id, m));
 
   const groupMap = new Map<number, PermGroup>();
   items.forEach(item => {
     if (!groupMap.has(item.parentId)) {
+      const parent = parentMap.get(item.parentId);
       groupMap.set(item.parentId, {
         menuId: item.parentId,
-        menuName: parentMap.get(item.parentId) || `菜单#${item.parentId}`,
+        menuName: parent?.menuName || `菜单#${item.parentId}`,
         items: [],
       });
     }
     groupMap.get(item.parentId)!.items.push(item);
   });
 
-  return Array.from(groupMap.values());
+  // 按父菜单的 sort 字段排序分组
+  const groups = Array.from(groupMap.values());
+  groups.sort((a, b) => {
+    const sortA = parentMap.get(a.menuId)?.sort ?? 999;
+    const sortB = parentMap.get(b.menuId)?.sort ?? 999;
+    return sortA - sortB;
+  });
+
+  // 每组内的 items 也按 sort 排序
+  groups.forEach(g => g.items.sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0)));
+
+  return groups;
 };
 
 /* ──────────────────────────── 面板联动 ──────────────────────────── */
@@ -542,6 +674,14 @@ const handleSave = async () => {
 
     const formData: RoleForm = {
       id: props.roleId,
+      roleName: roleDetailCache.value.roleName,
+      roleCode: roleDetailCache.value.roleCode,
+      sort: roleDetailCache.value.sort,
+      dataScope: roleDetailCache.value.dataScope,
+      status: roleDetailCache.value.status,
+      remark: roleDetailCache.value.remark,
+      customOrgIds: roleDetailCache.value.customOrgIds,
+      customDeptIds: roleDetailCache.value.customDeptIds,
       menuIds: allCheckedIds,
       halfCheckMenuIds: halfCheckIds,
     };
@@ -569,6 +709,9 @@ const handleClose = () => {
   checkAllModules.value = false;
   checkAllButtons.value = false;
   checkAllFields.value = false;
+  buttonSearch.value = '';
+  fieldSearch.value = '';
+  roleDetailCache.value = {};
 };
 
 /* ──────────────────────────── 监听可见性 ──────────────────────────── */
@@ -581,101 +724,286 @@ watch(() => props.visible, (val) => {
 </script>
 
 <style scoped>
-/* ═══════════════════════════════════════════════════════════════
-   角色权限分配弹窗 — 三面板布局
-   ═══════════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════════════════
+ * 角色权限分配弹窗 — 三面板精美布局（V2.5.0 重新设计）
+ *
+ * 设计语言：
+ *   - 卡片化面板，圆角 + 精细边框 + 微妙投影
+ *   - 渐变色面板头部，区分三面板的视觉层次
+ *   - 网格化的按钮/字段勾选项，紧凑且美观
+ *   - 底部统计栏，实时反馈选择状态
+ * ═══════════════════════════════════════════════════════════════════════════════ */
 
-/* 三面板容器：左中右等分布局 */
-.perm-panels {
+/* ── 三面板容器 ── */
+.perm-container {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 12px;
-  min-height: 420px;
+  grid-template-columns: 260px 1fr 1fr;
+  gap: 14px;
+  height: 100%;
+  min-height: 480px;
 }
 
-/* 单个面板通用样式 */
+/* ── 单面板通用样式 ── */
 .perm-panel {
   display: flex;
   flex-direction: column;
-  border: 1px solid var(--color-border-2);
-  border-radius: 6px;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  border-radius: 12px;
   overflow: hidden;
-  background: var(--color-bg-1);
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+  transition: box-shadow 0.2s ease;
+}
+.perm-panel:hover {
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.07);
 }
 
-/* 面板头部 */
+/* ── 面板头部（渐变背景区分视觉层次） ── */
 .perm-panel__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 12px;
-  background: var(--color-fill-1);
-  border-bottom: 1px solid var(--color-border-2);
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.7);
   flex-shrink: 0;
 }
-.perm-panel__title {
-  font-weight: 600;
-  font-size: 13px;
-  color: var(--color-text-1);
+.perm-panel__header-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
-.perm-panel__action-text {
-  font-size: 12px;
+.perm-panel__header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
-/* 面板内容区（可滚动） */
+/* 面板图标圆点 */
+.perm-panel__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  font-size: 14px;
+  color: #ffffff;
+}
+.perm-panel__icon--modules {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+}
+.perm-panel__icon--buttons {
+  background: linear-gradient(135deg, #2f6df6, #1f8bff);
+}
+.perm-panel__icon--fields {
+  background: linear-gradient(135deg, #10b981, #14b8a6);
+}
+
+/* 面板标题文字 */
+.perm-panel__title {
+  font-weight: 700;
+  font-size: 14px;
+  color: #0f172a;
+}
+
+/* 头部操作 checkbox */
+.perm-action-check {
+  font-size: 12px;
+}
+.perm-action-text {
+  font-size: 12px;
+  color: #64748b;
+}
+
+/* ── 面板头部渐变色条（识别性装饰线） ── */
+.perm-panel--modules .perm-panel__header {
+  background: linear-gradient(180deg, rgba(99, 102, 241, 0.04), transparent);
+}
+.perm-panel--buttons .perm-panel__header {
+  background: linear-gradient(180deg, rgba(47, 109, 246, 0.04), transparent);
+}
+.perm-panel--fields .perm-panel__header {
+  background: linear-gradient(180deg, rgba(16, 185, 129, 0.04), transparent);
+}
+
+/* ── 面板搜索栏 ── */
+.perm-panel__search {
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(226, 232, 240, 0.6);
+  background: rgba(248, 250, 252, 0.5);
+  flex-shrink: 0;
+}
+.perm-panel__search :deep(.arco-input-wrapper) {
+  border-radius: 8px;
+  background: #ffffff;
+  border-color: rgba(226, 232, 240, 0.8);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.perm-panel__search :deep(.arco-input-wrapper:hover) {
+  border-color: rgba(47, 109, 246, 0.4);
+}
+.perm-panel__search :deep(.arco-input-wrapper.arco-input-focus) {
+  border-color: #2f6df6;
+  box-shadow: 0 0 0 2px rgba(47, 109, 246, 0.1);
+}
+.perm-panel__search :deep(.arco-input-prefix) {
+  color: #94a3b8;
+}
+
+/* ── 面板内容区 ── */
 .perm-panel__body {
   flex: 1;
   overflow-y: auto;
-  padding: 8px;
+  padding: 10px 12px;
   min-height: 0;
 }
 
-/* 分组标题 */
+/* 面板内容区滚动条 */
+.perm-panel__body::-webkit-scrollbar {
+  width: 6px;
+}
+.perm-panel__body::-webkit-scrollbar-track {
+  background: transparent;
+}
+.perm-panel__body::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.4);
+}
+.perm-panel__body::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.6);
+}
+
+/* ── 面板底部统计栏 ── */
+.perm-panel__footer {
+  display: flex;
+  align-items: center;
+  padding: 8px 14px;
+  border-top: 1px solid rgba(226, 232, 240, 0.6);
+  background: rgba(248, 250, 252, 0.8);
+  flex-shrink: 0;
+}
+.perm-stat {
+  font-size: 12px;
+  color: #64748b;
+}
+.perm-stat b {
+  color: #2f6df6;
+  font-weight: 700;
+}
+
+/* ── 分组卡片 ── */
 .perm-group {
-  margin-bottom: 12px;
+  margin-bottom: 14px;
+  border: 1px solid rgba(226, 232, 240, 0.6);
+  border-radius: 8px;
+  overflow: hidden;
 }
 .perm-group:last-child {
   margin-bottom: 0;
 }
-.perm-group__title {
+
+/* 分组头部 */
+.perm-group__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 12px;
+  padding: 7px 12px;
+  background: linear-gradient(180deg, rgba(248, 250, 252, 1), rgba(241, 245, 249, 0.8));
+  border-bottom: 1px solid rgba(226, 232, 240, 0.5);
+}
+.perm-group__name {
+  font-size: 13px;
   font-weight: 600;
-  color: var(--color-text-2);
-  padding: 4px 8px;
-  margin-bottom: 4px;
-  background: var(--color-fill-1);
-  border-radius: 4px;
+  color: #334155;
 }
-.perm-group__check-text {
+.perm-group__check-label {
   font-size: 11px;
-  font-weight: 400;
+  color: #64748b;
 }
-.perm-group__items {
+
+/* 分组内容 */
+.perm-group__body {
+  padding: 10px 12px;
+}
+
+/* 网格布局：按钮 3 列 */
+.perm-group__grid {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px 12px;
+}
+
+/* 字段面板 2 列（字段名通常较长） */
+.perm-group__grid--fields {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+/* 勾选项样式 */
+.perm-check-item {
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: background 0.15s ease;
+}
+.perm-check-item:hover {
+  background: rgba(47, 109, 246, 0.04);
+}
+.perm-check-label {
+  font-size: 13px;
+  color: #334155;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── 树节点样式 ── */
+.perm-tree-node {
+  display: inline-flex;
+  align-items: center;
+  font-size: 13px;
+  color: #334155;
+  padding: 2px 0;
+}
+
+/* ── 空状态提示 ── */
+.perm-empty {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding-left: 4px;
-}
-
-/* 树节点样式 */
-.perm-node {
-  display: inline-flex;
   align-items: center;
-  gap: 6px;
+  justify-content: center;
+  gap: 12px;
+  height: 200px;
+  color: #94a3b8;
+}
+.perm-empty__icon {
+  font-size: 28px;
+  opacity: 0.5;
+}
+.perm-empty__text {
   font-size: 13px;
 }
 
-/* 单项权限样式 */
-.perm-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+/* ── 左面板树组件微调 ── */
+.perm-panel--modules :deep(.arco-tree-node) {
+  padding: 2px 0;
 }
-.perm-item__name {
+.perm-panel--modules :deep(.arco-tree-node-title) {
   font-size: 13px;
-  color: var(--color-text-1);
+}
+.perm-panel--modules :deep(.arco-checkbox) {
+  margin-right: 2px;
+}
+
+/* ── 响应式适配 ── */
+@media (max-width: 1024px) {
+  .perm-container {
+    grid-template-columns: 220px 1fr 1fr;
+    gap: 10px;
+  }
+  .perm-group__grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .perm-group__grid--fields {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

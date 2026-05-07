@@ -71,7 +71,7 @@
 
     <GovernanceListStage density="ultra" body-fill>
       <template #actions>
-        <a-button type="primary" @click="handleAdd">
+        <a-button v-if="hasPermission('system:user:add')" type="primary" @click="handleAdd">
           <template #icon><icon-plus /></template>
           新增用户
         </a-button>
@@ -116,24 +116,24 @@
         </template>
         <template #actions="{ record }">
           <div class="table-row-actions" @click.stop @dblclick.stop>
-            <a-button type="primary" size="mini" class="table-action-btn table-action-btn--primary" @click="handleEdit(record)">
+            <a-button v-if="hasPermission('system:user:edit')" type="primary" size="mini" class="table-action-btn table-action-btn--primary" @click="handleEdit(record)">
               <template #icon><icon-edit /></template>
               编辑
             </a-button>
-            <a-button size="mini" class="table-action-btn table-action-btn--danger" @click="confirmDelete(record.id)">
+            <a-button v-if="hasPermission('system:user:remove')" size="mini" class="table-action-btn table-action-btn--danger" @click="confirmDelete(record.id)">
               <template #icon><icon-delete /></template>
               删除
             </a-button>
-            <a-dropdown trigger="click" position="br">
+            <a-dropdown v-if="hasPermission('system:user:reset') || hasPermission('system:user:dataScope')" trigger="click" position="br">
               <a-button size="mini" class="table-action-btn table-action-btn--more">
                 <template #icon><icon-more /></template>
               </a-button>
               <template #content>
-                <a-doption @click="openResetPwd(record)">
+                <a-doption v-if="hasPermission('system:user:reset')" @click="openResetPwd(record)">
                   <template #icon><icon-lock /></template>
                   重置密码
                 </a-doption>
-                <a-doption @click="openUserDataScope(record)">
+                <a-doption v-if="hasPermission('system:user:dataScope')" @click="openUserDataScope(record)">
                   <template #icon><icon-safe /></template>
                   个人数据权限
                 </a-doption>
@@ -168,7 +168,7 @@
             <a-row :gutter="16">
               <a-col :span="12">
                 <a-form-item field="username" label="账号">
-                  <a-input v-model="formData.username" placeholder="请输入账号（至少5个字符）" />
+                  <a-input v-model="formData.username" placeholder="请输入账号" />
                 </a-form-item>
               </a-col>
               <a-col :span="12">
@@ -185,19 +185,19 @@
               </a-col>
             </a-row>
             <a-row :gutter="16">
-              <a-col :span="12">
+              <a-col v-if="hasPermission('system:user:field:phone')" :span="12">
                 <a-form-item field="phone" label="手机号">
                   <a-input v-model="formData.phone" placeholder="请输入手机号" />
                 </a-form-item>
               </a-col>
-              <a-col :span="12">
+              <a-col v-if="hasPermission('system:user:field:email')" :span="12">
                 <a-form-item field="email" label="邮箱">
                   <a-input v-model="formData.email" placeholder="请输入邮箱" />
                 </a-form-item>
               </a-col>
             </a-row>
             <a-row :gutter="16">
-              <a-col :span="12">
+              <a-col v-if="hasPermission('system:user:field:gender')" :span="12">
                 <a-form-item field="gender" label="性别">
                   <a-select v-model="formData.gender" placeholder="请选择">
                     <a-option :value="0">未知</a-option>
@@ -216,7 +216,7 @@
               </a-col>
             </a-row>
             <a-row :gutter="16">
-              <a-col :span="12">
+              <a-col v-if="hasPermission('system:user:field:roleIds')" :span="12">
                 <a-form-item field="roleIds" label="角色">
                   <a-select v-model="formData.roleIds" placeholder="请选择角色" multiple allow-clear>
                     <a-option v-for="role in roleOptions" :key="role.id" :value="role.id">{{ role.roleName }}</a-option>
@@ -232,14 +232,14 @@
           </a-tab-pane>
           <a-tab-pane key="org" title="组织与岗位">
             <a-row :gutter="16">
-              <a-col :span="12">
+              <a-col v-if="hasPermission('system:user:field:orgId')" :span="12">
                 <a-form-item field="orgId" label="所属机构">
                   <a-tree-select v-model="formData.orgId" :data="orgTreeData"
                     :field-names="{ key: 'id', title: 'orgName', children: 'children' }"
                     placeholder="请选择所属机构" allow-clear />
                 </a-form-item>
               </a-col>
-              <a-col :span="12">
+              <a-col v-if="hasPermission('system:user:field:deptId')" :span="12">
                 <a-form-item field="deptId" label="所属部门">
                   <a-tree-select v-model="formData.deptId" :data="deptTreeData"
                     :field-names="{ key: 'id', title: 'deptName', children: 'children' }"
@@ -248,28 +248,28 @@
               </a-col>
             </a-row>
             <a-row :gutter="16">
-              <a-col :span="12">
+              <a-col v-if="hasPermission('system:user:field:postId')" :span="12">
                 <a-form-item field="postId" label="岗位">
                   <a-select v-model="formData.postId" placeholder="请选择岗位" allow-clear>
                     <a-option v-for="p in postOptions" :key="p.id" :value="p.id">{{ p.postName }}</a-option>
                   </a-select>
                 </a-form-item>
               </a-col>
-              <a-col :span="12">
+              <a-col v-if="hasPermission('system:user:field:employeeNo')" :span="12">
                 <a-form-item field="employeeNo" label="工号">
                   <a-input v-model="formData.employeeNo" placeholder="请输入工号" />
                 </a-form-item>
               </a-col>
             </a-row>
             <a-row :gutter="16">
-              <a-col :span="12">
+              <a-col v-if="hasPermission('system:user:field:superiorId')" :span="12">
                 <a-form-item field="superiorId" label="直属上级">
                   <a-select v-model="formData.superiorId" placeholder="请选择直属上级" allow-clear filterable>
                     <a-option v-for="u in allUserOptions" :key="u.id" :value="u.id" :disabled="u.id === formData.id">{{ u.nickname || u.username }}{{ u.employeeNo ? ` (${u.employeeNo})` : '' }}</a-option>
                   </a-select>
                 </a-form-item>
               </a-col>
-              <a-col :span="12">
+              <a-col v-if="hasPermission('system:user:field:entryDate')" :span="12">
                 <a-form-item field="entryDate" label="入职日期">
                   <a-date-picker v-model="formData.entryDate" placeholder="请选择入职日期" style="width: 100%;" />
                 </a-form-item>
@@ -381,16 +381,16 @@ const defaultColumns: BusinessTableColumn[] = [
   /* ── 核心标识（默认显示） ── */
   { key: 'username',   title: '账号',     dataIndex: 'username',   width: 120, visible: true, fixed: 'left', sortable: true, titleSlotName: 'th-username' },
   { key: 'nickname',   title: '用户名',   dataIndex: 'nickname',   width: 110, visible: true, sortable: true, titleSlotName: 'th-nickname' },
-  { key: 'employeeNo', title: '工号',     slotName: 'employeeNo',  width: 100, visible: true, sortable: true, titleSlotName: 'th-employeeNo' },
-  { key: 'orgName',    title: '所属机构', dataIndex: 'orgName',    width: 140, visible: true, sortable: true, titleSlotName: 'th-orgName' },
-  { key: 'deptName',   title: '部门',     dataIndex: 'deptName',   width: 120, visible: true, sortable: true, titleSlotName: 'th-deptName' },
-  { key: 'postName',   title: '岗位',     dataIndex: 'postName',   width: 110, visible: true, sortable: true, titleSlotName: 'th-postName' },
-  { key: 'phone',      title: '手机号',   dataIndex: 'phone',      width: 130, visible: true, sortable: true, titleSlotName: 'th-phone' },
+  { key: 'employeeNo', title: '工号',     slotName: 'employeeNo',  width: 100, visible: true, sortable: true, titleSlotName: 'th-employeeNo', permission: 'system:user:field:employeeNo' },
+  { key: 'orgName',    title: '所属机构', dataIndex: 'orgName',    width: 140, visible: true, sortable: true, titleSlotName: 'th-orgName', permission: 'system:user:field:orgId' },
+  { key: 'deptName',   title: '部门',     dataIndex: 'deptName',   width: 120, visible: true, sortable: true, titleSlotName: 'th-deptName', permission: 'system:user:field:deptId' },
+  { key: 'postName',   title: '岗位',     dataIndex: 'postName',   width: 110, visible: true, sortable: true, titleSlotName: 'th-postName', permission: 'system:user:field:postId' },
+  { key: 'phone',      title: '手机号',   dataIndex: 'phone',      width: 130, visible: true, sortable: true, titleSlotName: 'th-phone', permission: 'system:user:field:phone' },
   { key: 'status',     title: '状态',     slotName: 'status',      width: 80,  visible: true, align: 'center', sortable: true, titleSlotName: 'th-status' },
   { key: 'createTime', title: '创建时间', dataIndex: 'createTime', width: 170, visible: true, sortable: true, titleSlotName: 'th-createTime' },
   /* ── 扩展字段（默认隐藏） ── */
-  { key: 'entryDate', title: '入职日期', dataIndex: 'entryDate', width: 120, visible: false, sortable: true, titleSlotName: 'th-entryDate' },
-  { key: 'email',     title: '邮箱',     dataIndex: 'email',     width: 180, visible: false, sortable: true, titleSlotName: 'th-email' },
+  { key: 'entryDate', title: '入职日期', dataIndex: 'entryDate', width: 120, visible: false, sortable: true, titleSlotName: 'th-entryDate', permission: 'system:user:field:entryDate' },
+  { key: 'email',     title: '邮箱',     dataIndex: 'email',     width: 180, visible: false, sortable: true, titleSlotName: 'th-email', permission: 'system:user:field:email' },
   { key: 'loginIp',   title: '最后登录IP', dataIndex: 'loginIp', width: 140, visible: false, sortable: true, titleSlotName: 'th-loginIp' },
   { key: 'loginDate', title: '最后登录时间', dataIndex: 'loginDate', width: 170, visible: false, sortable: true, titleSlotName: 'th-loginDate' },
   { key: 'remark',    title: '备注',     dataIndex: 'remark',    width: 200, visible: false, ellipsis: true, sortable: true, titleSlotName: 'th-remark' },
@@ -445,7 +445,6 @@ const formData = reactive<UserForm>(defaultForm());
 const formRules = {
   username: [
     { required: true, message: '请输入账号' },
-    { minLength: 5, message: '账号长度不能少于5个字符' },
     { maxLength: 30, message: '账号长度不能超过30个字符' },
   ],
   nickname: [{ required: true, message: '请输入用户名' }],

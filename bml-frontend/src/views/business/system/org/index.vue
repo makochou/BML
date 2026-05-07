@@ -81,7 +81,7 @@
          ════════════════════════════════════════════════ -->
     <GovernanceListStage density="ultra" body-fill>
       <template #actions>
-        <a-button type="primary" @click="handleAdd()">
+        <a-button v-if="hasPermission('system:org:add')" type="primary" @click="handleAdd()">
           <template #icon><icon-plus /></template>
           新增机构
         </a-button>
@@ -194,24 +194,24 @@
         </template>
         <template #actions="{ record }">
           <div class="table-row-actions" @click.stop @dblclick.stop>
-            <a-button type="primary" size="mini" class="table-action-btn table-action-btn--primary" @click="handleEdit(record)">
+            <a-button v-if="hasPermission('system:org:edit')" type="primary" size="mini" class="table-action-btn table-action-btn--primary" @click="handleEdit(record)">
               <template #icon><icon-edit /></template>
               编辑
             </a-button>
-            <a-button size="mini" class="table-action-btn table-action-btn--danger" @click="confirmDelete(record)">
+            <a-button v-if="hasPermission('system:org:remove')" size="mini" class="table-action-btn table-action-btn--danger" @click="confirmDelete(record)">
               <template #icon><icon-delete /></template>
               删除
             </a-button>
-            <a-dropdown trigger="click" position="br">
+            <a-dropdown v-if="hasPermission('system:org:addChild') || hasPermission('system:org:share')" trigger="click" position="br">
               <a-button size="mini" class="table-action-btn table-action-btn--more">
                 <template #icon><icon-more /></template>
               </a-button>
               <template #content>
-                <a-doption @click="handleAdd(record.id)">
+                <a-doption v-if="hasPermission('system:org:addChild')" @click="handleAdd(record.id)">
                   <template #icon><icon-plus /></template>
                   新增子机构
                 </a-doption>
-                <a-doption @click="openShareDialog(record)">
+                <a-doption v-if="hasPermission('system:org:share')" @click="openShareDialog(record)">
                   <template #icon><icon-share-external /></template>
                   数据共享配置
                 </a-doption>
@@ -421,31 +421,31 @@
 
           <a-tab-pane key="business" title="工商信息">
             <a-row :gutter="16">
-              <a-col :span="12">
+              <a-col v-if="hasPermission('system:org:field:creditCode')" :span="12">
                 <a-form-item field="creditCode" label="统一社会信用代码">
                   <a-input v-model="formData.creditCode" placeholder="18位信用代码" :max-length="18" />
                 </a-form-item>
               </a-col>
-              <a-col :span="12">
+              <a-col v-if="hasPermission('system:org:field:legalPerson')" :span="12">
                 <a-form-item field="legalPerson" label="法定代表人">
                   <a-input v-model="formData.legalPerson" placeholder="请输入法定代表人" />
                 </a-form-item>
               </a-col>
             </a-row>
             <a-row :gutter="16">
-              <a-col :span="12">
+              <a-col v-if="hasPermission('system:org:field:registeredCapital')" :span="12">
                 <a-form-item field="registeredCapital" label="注册资本（万元）">
                   <a-input-number v-model="formData.registeredCapital" :min="0" :precision="2" placeholder="注册资本" style="width: 100%;" />
                 </a-form-item>
               </a-col>
-              <a-col :span="12">
+              <a-col v-if="hasPermission('system:org:field:establishDate')" :span="12">
                 <a-form-item field="establishDate" label="成立日期">
                   <a-date-picker v-model="formData.establishDate" placeholder="请选择成立日期" style="width: 100%;" />
                 </a-form-item>
               </a-col>
             </a-row>
             <a-row :gutter="16">
-              <a-col :span="24">
+              <a-col v-if="hasPermission('system:org:field:businessScope')" :span="24">
                 <a-form-item field="businessScope" label="经营范围">
                   <a-textarea v-model="formData.businessScope" placeholder="请输入经营范围" :auto-size="{ minRows: 3, maxRows: 6 }" />
                 </a-form-item>
@@ -455,36 +455,36 @@
 
           <a-tab-pane key="contact" title="联系与地址">
             <a-row :gutter="16">
-              <a-col :span="12">
+              <a-col v-if="hasPermission('system:org:field:phone')" :span="12">
                 <a-form-item field="phone" label="联系电话">
                   <a-input v-model="formData.phone" placeholder="请输入联系电话" />
                 </a-form-item>
               </a-col>
-              <a-col :span="12">
+              <a-col v-if="hasPermission('system:org:field:email')" :span="12">
                 <a-form-item field="email" label="邮箱">
                   <a-input v-model="formData.email" placeholder="请输入邮箱" />
                 </a-form-item>
               </a-col>
             </a-row>
             <a-row :gutter="16">
-              <a-col :span="8">
+              <a-col v-if="hasPermission('system:org:field:province')" :span="8">
                 <a-form-item field="province" label="省份">
                   <a-input v-model="formData.province" placeholder="省份" />
                 </a-form-item>
               </a-col>
-              <a-col :span="8">
+              <a-col v-if="hasPermission('system:org:field:city')" :span="8">
                 <a-form-item field="city" label="城市">
                   <a-input v-model="formData.city" placeholder="城市" />
                 </a-form-item>
               </a-col>
-              <a-col :span="8">
+              <a-col v-if="hasPermission('system:org:field:district')" :span="8">
                 <a-form-item field="district" label="区县">
                   <a-input v-model="formData.district" placeholder="区县" />
                 </a-form-item>
               </a-col>
             </a-row>
             <a-row :gutter="16">
-              <a-col :span="24">
+              <a-col v-if="hasPermission('system:org:field:address')" :span="24">
                 <a-form-item field="address" label="详细地址">
                   <a-input v-model="formData.address" placeholder="请输入详细地址" />
                 </a-form-item>
@@ -567,19 +567,19 @@ const defaultColumns: BusinessTableColumn[] = [
   { key: 'orgCode',       title: '机构编码',       dataIndex: 'orgCode',       width: 130, visible: true, sortable: true, titleSlotName: 'th-orgCode' },
   { key: 'orgType',       title: '机构类型',       slotName: 'orgType',        width: 100, visible: true, align: 'center', sortable: true, titleSlotName: 'th-orgType' },
   { key: 'leader',        title: '负责人',         dataIndex: 'leader',        width: 100, visible: true, sortable: true, titleSlotName: 'th-leader' },
-  { key: 'phone',         title: '联系电话',       dataIndex: 'phone',         width: 130, visible: true, sortable: true, titleSlotName: 'th-phone' },
+  { key: 'phone',         title: '联系电话',       dataIndex: 'phone',         width: 130, visible: true, sortable: true, titleSlotName: 'th-phone', permission: 'system:org:field:phone' },
   { key: 'dataIsolation', title: '数据隔离',       slotName: 'dataIsolation',  width: 110, visible: true, align: 'center', sortable: true, titleSlotName: 'th-dataIsolation' },
   { key: 'sort',          title: '排序',           dataIndex: 'sort',          width: 70,  visible: true, align: 'center', sortable: true, titleSlotName: 'th-sort' },
   { key: 'status',        title: '状态',           slotName: 'status',         width: 80,  visible: true, align: 'center', sortable: true, titleSlotName: 'th-status' },
   { key: 'createTime',    title: '创建时间',       dataIndex: 'createTime',    width: 170, visible: true, sortable: true, titleSlotName: 'th-createTime' },
   /* ── 扩展字段（默认隐藏） ── */
-  { key: 'creditCode',       title: '统一社会信用代码', dataIndex: 'creditCode',       width: 200, visible: false, sortable: true, titleSlotName: 'th-creditCode' },
-  { key: 'legalPerson',      title: '法定代表人',       dataIndex: 'legalPerson',      width: 120, visible: false, sortable: true, titleSlotName: 'th-legalPerson' },
-  { key: 'registeredCapital', title: '注册资本',        dataIndex: 'registeredCapital', width: 120, visible: false, align: 'right', sortable: true, titleSlotName: 'th-registeredCapital' },
-  { key: 'establishDate',    title: '成立日期',         dataIndex: 'establishDate',    width: 120, visible: false, sortable: true, titleSlotName: 'th-establishDate' },
-  { key: 'email',            title: '邮箱',             dataIndex: 'email',            width: 180, visible: false, sortable: true, titleSlotName: 'th-email' },
-  { key: 'address',          title: '地址',             dataIndex: 'address',          width: 260, visible: false, ellipsis: true, sortable: true, titleSlotName: 'th-address' },
-  { key: 'businessScope',    title: '经营范围',         dataIndex: 'businessScope',    width: 260, visible: false, ellipsis: true, sortable: true, titleSlotName: 'th-businessScope' },
+  { key: 'creditCode',       title: '统一社会信用代码', dataIndex: 'creditCode',       width: 200, visible: false, sortable: true, titleSlotName: 'th-creditCode', permission: 'system:org:field:creditCode' },
+  { key: 'legalPerson',      title: '法定代表人',       dataIndex: 'legalPerson',      width: 120, visible: false, sortable: true, titleSlotName: 'th-legalPerson', permission: 'system:org:field:legalPerson' },
+  { key: 'registeredCapital', title: '注册资本',        dataIndex: 'registeredCapital', width: 120, visible: false, align: 'right', sortable: true, titleSlotName: 'th-registeredCapital', permission: 'system:org:field:registeredCapital' },
+  { key: 'establishDate',    title: '成立日期',         dataIndex: 'establishDate',    width: 120, visible: false, sortable: true, titleSlotName: 'th-establishDate', permission: 'system:org:field:establishDate' },
+  { key: 'email',            title: '邮箱',             dataIndex: 'email',            width: 180, visible: false, sortable: true, titleSlotName: 'th-email', permission: 'system:org:field:email' },
+  { key: 'address',          title: '地址',             dataIndex: 'address',          width: 260, visible: false, ellipsis: true, sortable: true, titleSlotName: 'th-address', permission: 'system:org:field:address' },
+  { key: 'businessScope',    title: '经营范围',         dataIndex: 'businessScope',    width: 260, visible: false, ellipsis: true, sortable: true, titleSlotName: 'th-businessScope', permission: 'system:org:field:businessScope' },
   { key: 'remark',           title: '备注',             dataIndex: 'remark',           width: 200, visible: false, ellipsis: true, sortable: true, titleSlotName: 'th-remark' },
   /* ── 操作列（锁定） ── */
   { key: 'actions', title: '操作', slotName: 'actions', width: 170, visible: true, fixed: 'right', locked: true, align: 'center' },

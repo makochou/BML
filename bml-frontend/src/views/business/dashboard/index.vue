@@ -13,7 +13,7 @@
     </div>
 
     <div class="stat-cards">
-      <div class="stat-card" v-for="item in statItems" :key="item.label" @click="$router.push(item.route)">
+      <div class="stat-card" v-for="item in visibleStatItems" :key="item.label" @click="$router.push(item.route)">
         <div class="stat-icon" :style="{ background: item.iconBg }">
           <component :is="item.icon" :size="22" style="color: #fff;" />
         </div>
@@ -39,14 +39,27 @@
  */
 defineOptions({ name: 'BusinessDashboard' });
 
+import { computed } from 'vue';
 import { IconApps, IconUser, IconSafe, IconMenu, IconBranch, IconRight } from '@arco-design/web-vue/es/icon';
+import { usePermissionStore } from '../../../store/permission';
 
+const permissionStore = usePermissionStore();
+
+/**
+ * 工作台快捷入口配置
+ * permission 字段对应菜单的 list 权限，无权限则不显示该卡片
+ */
 const statItems = [
-  { label: '用户管理', desc: '管理系统用户账号', icon: IconUser, iconBg: 'linear-gradient(135deg, #4f46e5, #7c3aed)', route: { name: 'SystemUser' } },
-  { label: '角色管理', desc: '配置角色与权限', icon: IconSafe, iconBg: 'linear-gradient(135deg, #059669, #10b981)', route: { name: 'SystemRole' } },
-  { label: '菜单管理', desc: '维护菜单资源树', icon: IconMenu, iconBg: 'linear-gradient(135deg, #d97706, #f59e0b)', route: { name: 'SystemMenu' } },
-  { label: '部门管理', desc: '维护组织架构', icon: IconBranch, iconBg: 'linear-gradient(135deg, #dc2626, #ef4444)', route: { name: 'SystemDept' } }
+  { label: '用户管理', desc: '管理系统用户账号', icon: IconUser, iconBg: 'linear-gradient(135deg, #4f46e5, #7c3aed)', route: { name: 'SystemUser' }, permission: 'system:user:list' },
+  { label: '角色管理', desc: '配置角色与权限', icon: IconSafe, iconBg: 'linear-gradient(135deg, #059669, #10b981)', route: { name: 'SystemRole' }, permission: 'system:role:list' },
+  { label: '菜单管理', desc: '维护菜单资源树', icon: IconMenu, iconBg: 'linear-gradient(135deg, #d97706, #f59e0b)', route: { name: 'SystemMenu' }, permission: 'system:menu:list' },
+  { label: '部门管理', desc: '维护组织架构', icon: IconBranch, iconBg: 'linear-gradient(135deg, #dc2626, #ef4444)', route: { name: 'SystemDept' }, permission: 'system:dept:list' }
 ];
+
+/** 根据当前用户权限过滤后的可见快捷入口 */
+const visibleStatItems = computed(() =>
+  statItems.filter(item => permissionStore.hasPermission(item.permission))
+);
 </script>
 
 <style scoped>

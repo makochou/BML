@@ -1,6 +1,7 @@
 import { computed, reactive, ref } from 'vue';
 import { Message } from '@arco-design/web-vue';
 import type { TableColumnData } from '@arco-design/web-vue';
+import { usePermissionStore } from '../store/permission';
 
 /**
  * 业务系统通用列配置项类型（与授权治理一致）。
@@ -32,6 +33,12 @@ export interface BusinessTableColumn {
     sortable?: boolean;
     /** 自定义表头插槽名（用于搜索图标等，Arco Table 规范） */
     titleSlotName?: string;
+    /**
+     * 字段权限标识（可选）。
+     * 若配置了此字段，当前用户无对应 F 类型权限时，该列将自动隐藏且不出现在列设置面板中。
+     * 例如：'system:dept:field:leader' — 控制“负责人”列的可见性。
+     */
+    permission?: string;
 }
 
 /**
@@ -104,6 +111,21 @@ export function useBusinessTableColumns(
     const STORAGE_KEY = `bml_table_columns_${storageKey}`;
     /** 列宽拖拽最小值，与 Arco Table 内置最小宽度对齐 */
     const COLUMN_RESIZE_MIN_WIDTH = 40;
+
+    const permissionStore = usePermissionStore();
+
+    /**
+     * 权限过滤后的列配置（排除用户无字段权限的列）。
+     * - 权限尚未加载（buttonPermissionsLoaded === false）时返回全部列，避免首屏空表格闪烁。
+     * - 权限已加载后，未配置 permission 的列始终保留；配置了 permission 但用户无此权限的列将被移除。
+     */
+    const permittedColumns = computed(() => {
+        /* 权限尚未从后端加载 → 暂时放行所有列（路由守卫会在页面渲染前完成加载） */
+        if (!permissionStore.buttonPermissionsLoaded) return defaultColumns;
+        return defaultColumns.filter(col =>
+            !col.permission || permissionStore.hasPermission(col.permission)
+        );
+    });
 
     /** 锁定列集合（始终可见、不可隐藏、不可排序的列 key） */
     const lockedKeys = new Set(
@@ -197,11 +219,13 @@ export function useBusinessTableColumns(
 
     // ── 计算：实际渲染的列（仅显示可见列） ──
     const visibleColumns = computed((): TableColumnData[] => {
+        /** 权限允许的列 key 集合（每次权限变化自动重算） */
+        const permittedKeySet = new Set(permittedColumns.value.map(c => c.key));
         const allKeys = Object.keys(columnLayout)
             .sort((a, b) => columnLayout[a].order - columnLayout[b].order);
 
         return allKeys
-            .filter(key => columnLayout[key].visible)
+            .filter(key => columnLayout[key].visible && permittedKeySet.has(key))
             .map(key => {
                 const base = columnBaseMap.get(key)!;
                 const layout = columnLayout[key];
@@ -242,7 +266,10 @@ export function useBusinessTableColumns(
      * 3. 固定在右侧的锁定列（如操作）→ 最底部
      */
     const columnSettingItems = computed((): ColumnSettingItem[] => {
+        /** 权限允许的列 key 集合 */
+        const permittedKeySet = new Set(permittedColumns.value.map(c => c.key));
         const allKeys = Object.keys(columnLayout)
+            .filter(key => permittedKeySet.has(key))
             .sort((a, b) => columnLayout[a].order - columnLayout[b].order);
 
         const lockedLeftKeys = allKeys.filter(key =>

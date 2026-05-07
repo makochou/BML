@@ -42,37 +42,37 @@ const staticRoutes: RouteRecordRaw[] = [
                 path: 'system/org',
                 name: 'SystemOrg',
                 component: () => import('../views/business/system/org/index.vue'),
-                meta: { title: '机构管理', parentTitle: '组织与权限' }
+                meta: { title: '机构管理', parentTitle: '组织与权限', permission: 'system:org:list' }
             },
             {
                 path: 'system/dept',
                 name: 'SystemDept',
                 component: () => import('../views/business/system/dept/index.vue'),
-                meta: { title: '部门管理', parentTitle: '组织与权限' }
+                meta: { title: '部门管理', parentTitle: '组织与权限', permission: 'system:dept:list' }
             },
             {
                 path: 'system/post',
                 name: 'SystemPost',
                 component: () => import('../views/business/system/post/index.vue'),
-                meta: { title: '岗位管理', parentTitle: '组织与权限' }
+                meta: { title: '岗位管理', parentTitle: '组织与权限', permission: 'system:post:list' }
             },
             {
                 path: 'system/user',
                 name: 'SystemUser',
                 component: () => import('../views/business/system/user/index.vue'),
-                meta: { title: '用户管理', parentTitle: '组织与权限' }
+                meta: { title: '用户管理', parentTitle: '组织与权限', permission: 'system:user:list' }
             },
             {
                 path: 'system/role',
                 name: 'SystemRole',
                 component: () => import('../views/business/system/role/index.vue'),
-                meta: { title: '角色与权限', parentTitle: '组织与权限' }
+                meta: { title: '角色与权限', parentTitle: '组织与权限', permission: 'system:role:list' }
             },
             {
                 path: 'system/menu',
                 name: 'SystemMenu',
                 component: () => import('../views/business/system/menu/index.vue'),
-                meta: { title: '菜单管理', parentTitle: '组织与权限' }
+                meta: { title: '菜单管理', parentTitle: '组织与权限', permission: 'system:menu:list' }
             },
             {
                 path: 'profile',
@@ -355,6 +355,29 @@ const BUSINESS_AUTH_PREFIXES = ['/dashboard', '/system', '/profile'];
 const isBusinessAuthRequired = (path: string): boolean =>
     BUSINESS_AUTH_PREFIXES.some(prefix => path === prefix || path.startsWith(prefix + '/'));
 
+/** 标记业务系统权限是否已加载 */
+let businessPermissionsLoaded = false;
+
+/**
+ * 路由守卫专用：确保业务系统用户权限已加载到 permissionStore。
+ * 仅在首次导航时发起 /auth/info 请求，后续导航直接使用缓存。
+ */
+const ensureBusinessPermissionsLoaded = async (): Promise<void> => {
+    if (businessPermissionsLoaded) return;
+    try {
+        const res = await request.get('/auth/info') as any;
+        const perms: string[] = res.data?.permissions || [];
+        const permissionStore = usePermissionStore();
+        permissionStore.setButtonPermissions(perms);
+    } catch { /* 忽略，后续请求将由 BusinessLayout 重新加载 */ }
+    businessPermissionsLoaded = true;
+};
+
+/** 重置业务权限缓存（退出登录时调用） */
+export const resetBusinessPermissionsCache = () => {
+    businessPermissionsLoaded = false;
+};
+
 router.beforeEach(async (to, _from, next) => {
     const token = getAccessToken();
 
@@ -402,6 +425,20 @@ router.beforeEach(async (to, _from, next) => {
             next('/login');
             return;
         }
+
+        // 确保用户权限已加载（首次导航时从后端获取）
+        await ensureBusinessPermissionsLoaded();
+
+        // 菜单权限校验：若路由配置了 permission 且用户无此权限，重定向到工作台
+        const requiredPerm = (to.meta as any)?.permission as string | undefined;
+        if (requiredPerm) {
+            const permissionStore = usePermissionStore();
+            if (!permissionStore.hasPermission(requiredPerm)) {
+                next('/dashboard');
+                return;
+            }
+        }
+
         next();
         return;
     }

@@ -52,7 +52,7 @@
 
     <GovernanceListStage density="ultra" body-fill>
       <template #actions>
-        <a-button type="primary" @click="handleAdd">
+        <a-button v-if="hasPermission('system:role:add')" type="primary" @click="handleAdd">
           <template #icon><icon-plus /></template>
           新增角色
         </a-button>
@@ -85,15 +85,15 @@
         </template>
         <template #actions="{ record }">
           <div class="table-row-actions" @click.stop @dblclick.stop>
-            <a-button type="primary" size="mini" class="table-action-btn table-action-btn--primary" @click="handleEdit(record)">
+            <a-button v-if="hasPermission('system:role:edit')" type="primary" size="mini" class="table-action-btn table-action-btn--primary" @click="handleEdit(record)">
               <template #icon><icon-edit /></template>
               编辑
             </a-button>
-            <a-button size="mini" class="table-action-btn table-action-btn--warning" @click="handlePermAssign(record)">
+            <a-button v-if="hasPermission('system:role:assign')" size="mini" class="table-action-btn table-action-btn--warning" @click="handlePermAssign(record)">
               <template #icon><icon-safe /></template>
               授权
             </a-button>
-            <a-dropdown trigger="click" position="br">
+            <a-dropdown v-if="hasPermission('system:role:remove')" trigger="click" position="br">
               <a-button size="mini" class="table-action-btn table-action-btn--more">
                 <template #icon><icon-more /></template>
               </a-button>
@@ -155,20 +155,20 @@
                 </a-form-item>
               </a-col>
             </a-row>
-            <a-form-item field="remark" label="备注">
+            <a-form-item v-if="hasPermission('system:role:field:remark')" field="remark" label="备注">
               <a-textarea v-model="formData.remark" placeholder="请输入备注" :auto-size="{ minRows: 2, maxRows: 4 }" />
             </a-form-item>
           </a-tab-pane>
-          <a-tab-pane key="dataScope" title="数据权限">
+          <a-tab-pane v-if="hasPermission('system:role:field:dataScope')" key="dataScope" title="数据权限">
             <a-form-item field="dataScope" label="数据范围">
               <a-select v-model="formData.dataScope" placeholder="请选择数据范围">
                 <a-option v-for="ds in DATA_SCOPE_OPTIONS" :key="ds.value" :value="ds.value">{{ ds.label }}</a-option>
               </a-select>
             </a-form-item>
-            <a-form-item v-if="formData.dataScope === 7" label="自定义机构范围">
+            <a-form-item v-if="formData.dataScope === 7 && hasPermission('system:role:field:customOrgIds')" label="自定义机构范围">
               <a-tree-select v-model="formData.customOrgIds" :data="orgTreeData" :field-names="{ key: 'id', title: 'orgName', children: 'children' }" multiple tree-checkable placeholder="请选择可访问的机构范围" />
             </a-form-item>
-            <a-form-item v-if="formData.dataScope === 7" label="自定义部门范围">
+            <a-form-item v-if="formData.dataScope === 7 && hasPermission('system:role:field:customDeptIds')" label="自定义部门范围">
               <a-tree-select v-model="formData.customDeptIds" :data="deptTreeData" :field-names="{ key: 'id', title: 'deptName', children: 'children' }" multiple tree-checkable placeholder="请选择可访问的部门范围" />
             </a-form-item>
             <a-alert type="info" class="scope-hint">
@@ -247,12 +247,12 @@ const defaultColumns: BusinessTableColumn[] = [
   /* ── 核心标识（默认显示） ── */
   { key: 'roleName',   title: '角色名称', dataIndex: 'roleName',   width: 200, visible: true, fixed: 'left', sortable: true, titleSlotName: 'th-roleName' },
   { key: 'roleCode',   title: '角色编码', dataIndex: 'roleCode',   width: 200, visible: true, sortable: true, titleSlotName: 'th-roleCode' },
-  { key: 'dataScope',  title: '数据权限', slotName: 'dataScope',   width: 160, visible: true, align: 'center', sortable: true, titleSlotName: 'th-dataScope' },
+  { key: 'dataScope',  title: '数据权限', slotName: 'dataScope',   width: 160, visible: true, align: 'center', sortable: true, titleSlotName: 'th-dataScope', permission: 'system:role:field:dataScope' },
   { key: 'sort',       title: '排序',     dataIndex: 'sort',       width: 100, visible: true, align: 'center', sortable: true, titleSlotName: 'th-sort' },
   { key: 'status',     title: '状态',     slotName: 'status',      width: 100, visible: true, align: 'center', sortable: true, titleSlotName: 'th-status' },
   { key: 'createTime', title: '创建时间', dataIndex: 'createTime', width: 200, visible: true, sortable: true, titleSlotName: 'th-createTime' },
   /* ── 扩展字段（默认隐藏） ── */
-  { key: 'remark', title: '备注', dataIndex: 'remark', width: 240, visible: true, ellipsis: true, sortable: true, titleSlotName: 'th-remark' },
+  { key: 'remark', title: '备注', dataIndex: 'remark', width: 240, visible: true, ellipsis: true, sortable: true, titleSlotName: 'th-remark', permission: 'system:role:field:remark' },
   /* ── 操作列（锁定） ── */
   { key: 'actions', title: '操作', slotName: 'actions', width: 170, visible: true, fixed: 'right', locked: true, align: 'center' },
 ];

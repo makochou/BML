@@ -60,7 +60,7 @@
 
     <GovernanceListStage density="ultra" body-fill>
       <template #actions>
-        <a-button type="primary" @click="handleAdd()">
+        <a-button v-if="hasPermission('system:menu:add')" type="primary" @click="handleAdd()">
           <template #icon><icon-plus /></template>
           新增菜单
         </a-button>
@@ -105,15 +105,15 @@
         </template>
         <template #actions="{ record }">
           <div class="table-row-actions" @click.stop @dblclick.stop>
-            <a-button type="primary" size="mini" class="table-action-btn table-action-btn--primary" @click="handleEdit(record)">
+            <a-button v-if="hasPermission('system:menu:edit')" type="primary" size="mini" class="table-action-btn table-action-btn--primary" @click="handleEdit(record)">
               <template #icon><icon-edit /></template>
               编辑
             </a-button>
-            <a-button size="mini" class="table-action-btn table-action-btn--danger" @click="confirmDelete(record.id)">
+            <a-button v-if="hasPermission('system:menu:remove')" size="mini" class="table-action-btn table-action-btn--danger" @click="confirmDelete(record.id)">
               <template #icon><icon-delete /></template>
               删除
             </a-button>
-            <a-dropdown v-if="record.menuType !== 'F'" trigger="click">
+            <a-dropdown v-if="record.menuType !== 'F' && hasPermission('system:menu:addChild')" trigger="click">
               <a-button size="mini" class="table-action-btn table-action-btn--more">
                 <template #icon><icon-more /></template>
               </a-button>
@@ -206,12 +206,12 @@
               </a-col>
             </a-row>
             <a-row :gutter="16">
-              <a-col :span="12" v-if="formData.menuType !== 'M'">
+              <a-col :span="12" v-if="formData.menuType !== 'M' && hasPermission('system:menu:field:perms')">
                 <a-form-item field="perms" label="权限标识" extra="格式：模块:资源:操作，如 system:user:list">
                   <a-input v-model="formData.perms" placeholder="如：system:user:list" />
                 </a-form-item>
               </a-col>
-              <a-col :span="12" v-if="formData.menuType !== 'F'">
+              <a-col :span="12" v-if="formData.menuType !== 'F' && hasPermission('system:menu:field:icon')">
                 <a-form-item field="icon" label="菜单图标">
                   <a-input v-model="formData.icon" placeholder="请输入图标名称" />
                 </a-form-item>
@@ -238,18 +238,18 @@
           </a-tab-pane>
           <a-tab-pane key="route" title="路由配置" :disabled="formData.menuType === 'F'">
             <a-row :gutter="16">
-              <a-col :span="12">
+              <a-col v-if="hasPermission('system:menu:field:path')" :span="12">
                 <a-form-item field="path" label="路由地址">
                   <a-input v-model="formData.path" placeholder="请输入路由地址" />
                 </a-form-item>
               </a-col>
-              <a-col :span="12" v-if="formData.menuType === 'C'">
+              <a-col :span="12" v-if="formData.menuType === 'C' && hasPermission('system:menu:field:component')">
                 <a-form-item field="component" label="组件路径">
                   <a-input v-model="formData.component" placeholder="请输入组件路径" />
                 </a-form-item>
               </a-col>
             </a-row>
-            <a-form-item field="isFrame" label="是否外链">
+            <a-form-item v-if="hasPermission('system:menu:field:isFrame')" field="isFrame" label="是否外链">
               <a-radio-group v-model="formData.isFrame">
                 <a-radio :value="0">内嵌框架</a-radio>
                 <a-radio :value="1">外部链接</a-radio>
@@ -299,16 +299,16 @@ const columnFilters = reactive<Record<string, string>>({
 const defaultColumns: BusinessTableColumn[] = [
   /* ── 核心标识（默认显示） ── */
   { key: 'menuName',  title: '菜单名称', dataIndex: 'menuName',  width: 240, visible: true, fixed: 'left', ellipsis: true, sortable: true, titleSlotName: 'th-menuName' },
-  { key: 'icon',      title: '图标',     slotName: 'icon',       width: 80,  visible: true, align: 'center', sortable: true, titleSlotName: 'th-icon' },
+  { key: 'icon',      title: '图标',     slotName: 'icon',       width: 80,  visible: true, align: 'center', sortable: true, titleSlotName: 'th-icon', permission: 'system:menu:field:icon' },
   { key: 'sort',      title: '排序',     dataIndex: 'sort',      width: 80,  visible: true, align: 'center', sortable: true, titleSlotName: 'th-sort' },
   { key: 'menuType',  title: '类型',     slotName: 'menuType',   width: 100, visible: true, align: 'center', sortable: true, titleSlotName: 'th-menuType' },
-  { key: 'perms',     title: '权限标识', dataIndex: 'perms',     width: 200, visible: true, ellipsis: true, sortable: true, titleSlotName: 'th-perms' },
+  { key: 'perms',     title: '权限标识', dataIndex: 'perms',     width: 200, visible: true, ellipsis: true, sortable: true, titleSlotName: 'th-perms', permission: 'system:menu:field:perms' },
   { key: 'status',    title: '状态',     slotName: 'status',     width: 100, visible: true, align: 'center', sortable: true, titleSlotName: 'th-status' },
   /* ── 扩展字段（默认隐藏） ── */
-  { key: 'component', title: '组件路径',   dataIndex: 'component', width: 200, visible: false, ellipsis: true, sortable: true, titleSlotName: 'th-component' },
-  { key: 'path',      title: '路由地址',   dataIndex: 'path',      width: 200, visible: false, ellipsis: true, sortable: true, titleSlotName: 'th-path' },
+  { key: 'component', title: '组件路径',   dataIndex: 'component', width: 200, visible: false, ellipsis: true, sortable: true, titleSlotName: 'th-component', permission: 'system:menu:field:component' },
+  { key: 'path',      title: '路由地址',   dataIndex: 'path',      width: 200, visible: false, ellipsis: true, sortable: true, titleSlotName: 'th-path', permission: 'system:menu:field:path' },
   { key: 'visible',   title: '是否显示',   slotName: 'visible',    width: 90,  visible: false, align: 'center', sortable: true, titleSlotName: 'th-visible' },
-  { key: 'isFrame',   title: '是否外链',   slotName: 'isFrame',    width: 90,  visible: false, align: 'center', sortable: true, titleSlotName: 'th-isFrame' },
+  { key: 'isFrame',   title: '是否外链',   slotName: 'isFrame',    width: 90,  visible: false, align: 'center', sortable: true, titleSlotName: 'th-isFrame', permission: 'system:menu:field:isFrame' },
   { key: 'remark',    title: '备注',       dataIndex: 'remark',    width: 200, visible: false, ellipsis: true, sortable: true, titleSlotName: 'th-remark' },
   { key: 'createTime', title: '创建时间', dataIndex: 'createTime', width: 170, visible: false, sortable: true, titleSlotName: 'th-createTime' },
   /* ── 操作列（锁定） ── */
