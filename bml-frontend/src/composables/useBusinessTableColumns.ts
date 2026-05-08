@@ -177,7 +177,12 @@ export function useBusinessTableColumns(
             for (const key of Object.keys(columnLayout)) {
                 const stored = parsed[key];
                 if (!stored) continue;
-                if (typeof stored.width === 'number' && Number.isFinite(stored.width)) {
+                /**
+                 * 宽度恢复：锁定列（如操作列）始终使用代码中定义的默认宽度，
+                 * 避免旧缓存覆盖开发者对锁定列宽度的调整。
+                 * 非锁定列正常从缓存恢复用户自定义宽度。
+                 */
+                if (typeof stored.width === 'number' && Number.isFinite(stored.width) && !lockedKeys.has(key)) {
                     columnLayout[key].width = Math.max(COLUMN_RESIZE_MIN_WIDTH, Math.round(stored.width));
                 }
                 if (typeof stored.visible === 'boolean' && !lockedKeys.has(key)) {

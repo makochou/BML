@@ -69,12 +69,6 @@ const staticRoutes: RouteRecordRaw[] = [
                 meta: { title: '角色与权限', parentTitle: '组织与权限', permission: 'system:role:list' }
             },
             {
-                path: 'system/menu',
-                name: 'SystemMenu',
-                component: () => import('../views/business/system/menu/index.vue'),
-                meta: { title: '菜单管理', parentTitle: '组织与权限', permission: 'system:menu:list' }
-            },
-            {
                 path: 'profile',
                 name: 'BusinessProfile',
                 component: () => import('../views/business/profile/index.vue'),

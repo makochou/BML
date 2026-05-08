@@ -4,7 +4,7 @@
       <div class="welcome-content">
         <h1 class="welcome-title">欢迎使用 BML 业务管理系统</h1>
         <p class="welcome-desc">
-          统一身份认证与权限管理平台，提供用户管理、角色管理、菜单管理、部门管理等核心功能。
+          统一身份认证与权限管理平台，提供用户管理、角色管理、部门管理、机构管理等核心功能。
         </p>
       </div>
       <div class="welcome-illustration">
@@ -40,7 +40,7 @@
 defineOptions({ name: 'BusinessDashboard' });
 
 import { computed } from 'vue';
-import { IconApps, IconUser, IconSafe, IconMenu, IconBranch, IconRight } from '@arco-design/web-vue/es/icon';
+import { IconApps, IconUser, IconSafe, IconBranch, IconRight } from '@arco-design/web-vue/es/icon';
 import { usePermissionStore } from '../../../store/permission';
 
 const permissionStore = usePermissionStore();
@@ -52,7 +52,6 @@ const permissionStore = usePermissionStore();
 const statItems = [
   { label: '用户管理', desc: '管理系统用户账号', icon: IconUser, iconBg: 'linear-gradient(135deg, #4f46e5, #7c3aed)', route: { name: 'SystemUser' }, permission: 'system:user:list' },
   { label: '角色管理', desc: '配置角色与权限', icon: IconSafe, iconBg: 'linear-gradient(135deg, #059669, #10b981)', route: { name: 'SystemRole' }, permission: 'system:role:list' },
-  { label: '菜单管理', desc: '维护菜单资源树', icon: IconMenu, iconBg: 'linear-gradient(135deg, #d97706, #f59e0b)', route: { name: 'SystemMenu' }, permission: 'system:menu:list' },
   { label: '部门管理', desc: '维护组织架构', icon: IconBranch, iconBg: 'linear-gradient(135deg, #dc2626, #ef4444)', route: { name: 'SystemDept' }, permission: 'system:dept:list' }
 ];
 

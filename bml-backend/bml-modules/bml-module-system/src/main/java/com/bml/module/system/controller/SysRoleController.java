@@ -5,9 +5,9 @@ import com.bml.core.common.result.PageResult;
 import com.bml.core.common.result.Result;
 import com.bml.module.system.converter.RoleConverter;
 import com.bml.module.system.dto.SysRoleDTO;
-import com.bml.module.system.entity.SysRole;
 import com.bml.module.system.service.SysRoleService;
 import com.bml.module.system.vo.SysRoleVO;
+import com.bml.module.system.vo.SysUserVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.Resource;
@@ -49,6 +49,10 @@ import java.util.List;
  * <tr>
  * <td>删除角色</td>
  * <td>{@code system:role:remove}</td>
+ * </tr>
+ * <tr>
+ * <td>绑定用户</td>
+ * <td>{@code system:role:assignUser}</td>
  * </tr>
  * </table>
  *
@@ -155,5 +159,87 @@ public class SysRoleController extends BaseController {
     @DeleteMapping("/{roleId}")
     public Result<Void> remove(@PathVariable Long roleId) {
         return toAjax(roleService.removeById(roleId));
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       角色绑定用户（V2.5.0 新增）
+       ═══════════════════════════════════════════════════════════ */
+
+    /**
+     * 分页查询已绑定指定角色的用户列表
+     *
+     * @param roleId   角色ID
+     * @param username 用户名关键词（可选）
+     * @param phone    手机号关键词（可选）
+     * @param deptId   部门ID（可选，精确过滤）
+     * @param pageNum  当前页码（默认 1）
+     * @param pageSize 每页条数（默认 20）
+     * @return 分页用户列表
+     */
+    @Operation(summary = "查询已绑定角色的用户列表")
+    @PreAuthorize("@ss.hasPermi('system:role:assignUser')")
+    @GetMapping("/{roleId}/assignedUsers")
+    public Result<PageResult<SysUserVO>> assignedUsers(
+            @PathVariable Long roleId,
+            @RequestParam(required = false) String username,
+            @RequestParam(required = false) String phone,
+            @RequestParam(required = false) Long deptId,
+            @RequestParam(defaultValue = "1") int pageNum,
+            @RequestParam(defaultValue = "20") int pageSize) {
+        return Result.ok(roleService.selectAssignedUserPage(roleId, username, phone, deptId, pageNum, pageSize));
+    }
+
+    /**
+     * 分页查询未绑定指定角色的用户列表（用于新增绑定时选择）
+     *
+     * @param roleId   角色ID
+     * @param username 用户名关键词（可选）
+     * @param phone    手机号关键词（可选）
+     * @param deptId   部门ID（可选，精确过滤）
+     * @param pageNum  当前页码（默认 1）
+     * @param pageSize 每页条数（默认 20）
+     * @return 分页用户列表
+     */
+    @Operation(summary = "查询未绑定角色的用户列表")
+    @PreAuthorize("@ss.hasPermi('system:role:assignUser')")
+    @GetMapping("/{roleId}/unassignedUsers")
+    public Result<PageResult<SysUserVO>> unassignedUsers(
+            @PathVariable Long roleId,
+            @RequestParam(required = false) String username,
+            @RequestParam(required = false) String phone,
+            @RequestParam(required = false) Long deptId,
+            @RequestParam(defaultValue = "1") int pageNum,
+            @RequestParam(defaultValue = "20") int pageSize) {
+        return Result.ok(roleService.selectUnassignedUserPage(roleId, username, phone, deptId, pageNum, pageSize));
+    }
+
+    /**
+     * 批量绑定用户到角色
+     *
+     * @param roleId  角色ID
+     * @param userIds 用户ID列表
+     * @return 实际新增绑定的数量
+     */
+    @Operation(summary = "批量绑定用户到角色")
+    @PreAuthorize("@ss.hasPermi('system:role:assignUser')")
+    @PostMapping("/{roleId}/assignUsers")
+    public Result<Integer> assignUsers(@PathVariable Long roleId,
+                                       @RequestBody List<Long> userIds) {
+        return Result.ok(roleService.assignUsers(roleId, userIds));
+    }
+
+    /**
+     * 批量解绑角色下的用户
+     *
+     * @param roleId  角色ID
+     * @param userIds 用户ID列表
+     * @return 实际解绑的数量
+     */
+    @Operation(summary = "批量解绑角色下的用户")
+    @PreAuthorize("@ss.hasPermi('system:role:assignUser')")
+    @PostMapping("/{roleId}/unassignUsers")
+    public Result<Integer> unassignUsers(@PathVariable Long roleId,
+                                         @RequestBody List<Long> userIds) {
+        return Result.ok(roleService.unassignUsers(roleId, userIds));
     }
 }

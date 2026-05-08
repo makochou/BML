@@ -117,42 +117,6 @@ export interface RoleVO {
   customDeptIds?: number[];
 }
 
-/** 菜单表单数据 */
-export interface MenuForm {
-  id?: number;
-  parentId?: number;
-  menuName?: string;
-  menuType?: string;
-  path?: string;
-  component?: string;
-  perms?: string;
-  icon?: string;
-  sort?: number;
-  visible?: number;
-  status?: number;
-  isFrame?: number;
-  remark?: string;
-}
-
-/** 菜单 VO */
-export interface MenuVO {
-  id: number;
-  parentId: number;
-  menuName: string;
-  menuType: string;
-  path: string;
-  component: string;
-  perms: string;
-  icon: string;
-  sort: number;
-  visible: number;
-  status: number;
-  isFrame: number;
-  remark: string;
-  createTime: string;
-  children: MenuVO[];
-}
-
 /** 部门表单数据 */
 export interface DeptForm {
   id?: number;
@@ -344,13 +308,34 @@ export const updateRole = (data: RoleForm) =>
 export const deleteRole = (roleId: number) =>
   request.delete(`/system/role/${roleId}`);
 
-/* ═══════════════════════════════════════════════════════════
-   菜单管理 API
-   ═══════════════════════════════════════════════════════════ */
+/* ─── 角色绑定用户 ────────────────────────────────────────── */
 
-/** 获取菜单列表 */
-export const fetchMenuList = (params?: { menuName?: string; status?: number }) =>
-  request.get('/system/menu/list', { params });
+/** 角色绑定用户查询参数 */
+export interface RoleUserQuery {
+  username?: string;
+  phone?: string;
+  deptId?: number;
+}
+
+/** 分页查询已绑定指定角色的用户列表 */
+export const fetchAssignedUsers = (roleId: number, params?: RoleUserQuery & PageQuery) =>
+  request.get<PageResult<UserVO>>(`/system/role/${roleId}/assignedUsers`, { params });
+
+/** 分页查询未绑定指定角色的用户列表（用于新增绑定时选择） */
+export const fetchUnassignedUsers = (roleId: number, params?: RoleUserQuery & PageQuery) =>
+  request.get<PageResult<UserVO>>(`/system/role/${roleId}/unassignedUsers`, { params });
+
+/** 批量绑定用户到角色 */
+export const assignUsersToRole = (roleId: number, userIds: number[]) =>
+  request.post(`/system/role/${roleId}/assignUsers`, userIds);
+
+/** 批量解绑角色下的用户 */
+export const unassignUsersFromRole = (roleId: number, userIds: number[]) =>
+  request.post(`/system/role/${roleId}/unassignUsers`, userIds);
+
+/* ═══════════════════════════════════════════════════════════
+   菜单权限 API（角色授权专用，非菜单管理 CRUD）
+   ═══════════════════════════════════════════════════════════ */
 
 /** 获取菜单授权树（角色权限分配用，含 M/C/B/F 全部类型） */
 export const fetchMenuAuthTree = () =>
@@ -359,22 +344,6 @@ export const fetchMenuAuthTree = () =>
 /** 获取权限分配面板数据（扁平列表，角色授权三面板专用） */
 export const fetchPermissionData = () =>
   request.get('/system/menu/permissionData');
-
-/** 获取菜单详情 */
-export const fetchMenuDetail = (menuId: number) =>
-  request.get(`/system/menu/${menuId}`);
-
-/** 新增菜单 */
-export const createMenu = (data: MenuForm) =>
-  request.post('/system/menu', data);
-
-/** 修改菜单 */
-export const updateMenu = (data: MenuForm) =>
-  request.put('/system/menu', data);
-
-/** 删除菜单 */
-export const deleteMenu = (menuId: number) =>
-  request.delete(`/system/menu/${menuId}`);
 
 /* ═══════════════════════════════════════════════════════════
    部门管理 API

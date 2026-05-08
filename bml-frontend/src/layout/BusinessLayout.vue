@@ -181,7 +181,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { Message } from '@arco-design/web-vue';
 import {
-  IconSettings, IconUser, IconSafe, IconMenu, IconBranch,
+  IconSettings, IconUser, IconSafe, IconBranch,
   IconLeft, IconRight, IconDown, IconExport,
   IconFullscreen, IconFullscreenExit, IconPalette,
   IconApps, IconIdcard, IconLock
@@ -261,7 +261,6 @@ const sidebarMenuConfig: SidebarMenuGroup[] = [
       { routeName: 'SystemPost', title: '岗位管理', icon: IconIdcard, permission: 'system:post:list' },
       { routeName: 'SystemUser', title: '用户管理', icon: IconUser,   permission: 'system:user:list' },
       { routeName: 'SystemRole', title: '角色与权限', icon: IconSafe, permission: 'system:role:list' },
-      { routeName: 'SystemMenu', title: '菜单管理', icon: IconMenu,   permission: 'system:menu:list' },
     ]
   }
 ];

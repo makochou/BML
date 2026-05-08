@@ -10,16 +10,12 @@ import com.bml.module.system.converter.RoleConverter;
 import com.bml.module.system.datascope.DataScope;
 import com.bml.module.system.datascope.DataScopeContext;
 import com.bml.module.system.dto.SysRoleDTO;
-import com.bml.module.system.entity.SysRole;
-import com.bml.module.system.entity.SysRoleDept;
-import com.bml.module.system.entity.SysRoleMenu;
-import com.bml.module.system.entity.SysRoleOrg;
-import com.bml.module.system.mapper.SysRoleDeptMapper;
-import com.bml.module.system.mapper.SysRoleMapper;
-import com.bml.module.system.mapper.SysRoleMenuMapper;
-import com.bml.module.system.mapper.SysRoleOrgMapper;
+import com.bml.module.system.converter.UserConverter;
+import com.bml.module.system.entity.*;
+import com.bml.module.system.mapper.*;
 import com.bml.module.system.service.SysRoleService;
 import com.bml.module.system.vo.SysRoleVO;
+import com.bml.module.system.vo.SysUserVO;
 import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -48,6 +44,21 @@ public class SysRoleServiceImpl extends BaseServiceImpl<SysRoleMapper, SysRole> 
 
     @Resource
     private SysRoleDeptMapper roleDeptMapper;
+
+    @Resource
+    private SysUserRoleMapper userRoleMapper;
+
+    @Resource
+    private SysUserMapper userMapper;
+
+    @Resource
+    private SysOrgMapper orgMapper;
+
+    @Resource
+    private SysDeptMapper deptMapper;
+
+    @Resource
+    private SysPostMapper postMapper;
 
     /**
      * 根据用户ID查询角色列表
@@ -350,5 +361,209 @@ public class SysRoleServiceImpl extends BaseServiceImpl<SysRoleMapper, SysRole> 
                 roleMenuMapper.insert(rm);
             }
         }
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       角色绑定用户（V2.5.0 新增）
+       ═══════════════════════════════════════════════════════════ */
+
+    /**
+     * 分页查询已绑定指定角色的用户列表
+     * <p>
+     * 通过 sys_user_role 中间表关联查询出已绑定当前角色的用户，
+     * 并填充机构/部门/岗位名称，供前端绑定用户弹窗的「已绑定」列表使用。
+     * </p>
+     *
+     * @param roleId   角色ID
+     * @param username 用户名关键词（可选，模糊匹配 username 或 nickname）
+     * @param phone    手机号关键词（可选，模糊匹配）
+     * @param deptId   部门ID（可选，精确匹配）
+     * @param pageNum  当前页码
+     * @param pageSize 每页条数
+     * @return 分页结果
+     */
+    @Override
+    public PageResult<SysUserVO> selectAssignedUserPage(Long roleId, String username, String phone,
+                                                         Long deptId, int pageNum, int pageSize) {
+        // 1. 查询该角色下所有已绑定的用户ID
+        List<SysUserRole> userRoles = userRoleMapper.selectList(
+                new LambdaQueryWrapper<SysUserRole>().eq(SysUserRole::getRoleId, roleId));
+        Set<Long> assignedUserIds = userRoles.stream()
+                .map(SysUserRole::getUserId).collect(Collectors.toSet());
+
+        if (assignedUserIds.isEmpty()) {
+            return PageResult.empty(pageNum, pageSize);
+        }
+
+        // 2. 分页查询这些用户的详细信息
+        LambdaQueryWrapper<SysUser> wrapper = new LambdaQueryWrapper<>();
+        wrapper.in(SysUser::getId, assignedUserIds);
+        if (StrUtil.isNotBlank(username)) {
+            wrapper.and(w -> w.like(SysUser::getUsername, username)
+                    .or().like(SysUser::getNickname, username));
+        }
+        if (StrUtil.isNotBlank(phone)) {
+            wrapper.like(SysUser::getPhone, phone);
+        }
+        if (deptId != null) {
+            wrapper.eq(SysUser::getDeptId, deptId);
+        }
+        wrapper.orderByAsc(SysUser::getId);
+
+        Page<SysUser> page = userMapper.selectPage(new Page<>(pageNum, pageSize), wrapper);
+        List<SysUserVO> records = enrichUserVOList(page.getRecords());
+        return PageResult.of(records, page.getTotal(), pageNum, pageSize);
+    }
+
+    /**
+     * 分页查询未绑定指定角色的用户列表
+     * <p>
+     * 查询 sys_user 中不在当前角色已绑定列表中的用户，
+     * 供前端绑定用户弹窗的「待选择」穿梭列表使用。
+     * </p>
+     *
+     * @param roleId   角色ID
+     * @param username 用户名关键词（可选，模糊匹配 username 或 nickname）
+     * @param phone    手机号关键词（可选，模糊匹配）
+     * @param deptId   部门ID（可选，精确匹配）
+     * @param pageNum  当前页码
+     * @param pageSize 每页条数
+     * @return 分页结果
+     */
+    @Override
+    public PageResult<SysUserVO> selectUnassignedUserPage(Long roleId, String username, String phone,
+                                                           Long deptId, int pageNum, int pageSize) {
+        // 1. 查询该角色下已绑定的用户ID
+        List<SysUserRole> userRoles = userRoleMapper.selectList(
+                new LambdaQueryWrapper<SysUserRole>().eq(SysUserRole::getRoleId, roleId));
+        Set<Long> assignedUserIds = userRoles.stream()
+                .map(SysUserRole::getUserId).collect(Collectors.toSet());
+
+        // 2. 查询不在已绑定列表中的正常状态用户
+        LambdaQueryWrapper<SysUser> wrapper = new LambdaQueryWrapper<>();
+        if (!assignedUserIds.isEmpty()) {
+            wrapper.notIn(SysUser::getId, assignedUserIds);
+        }
+        wrapper.eq(SysUser::getStatus, 1); // 仅查询正常状态用户
+        if (StrUtil.isNotBlank(username)) {
+            wrapper.and(w -> w.like(SysUser::getUsername, username)
+                    .or().like(SysUser::getNickname, username));
+        }
+        if (StrUtil.isNotBlank(phone)) {
+            wrapper.like(SysUser::getPhone, phone);
+        }
+        if (deptId != null) {
+            wrapper.eq(SysUser::getDeptId, deptId);
+        }
+        wrapper.orderByAsc(SysUser::getId);
+
+        Page<SysUser> page = userMapper.selectPage(new Page<>(pageNum, pageSize), wrapper);
+        List<SysUserVO> records = enrichUserVOList(page.getRecords());
+        return PageResult.of(records, page.getTotal(), pageNum, pageSize);
+    }
+
+    /**
+     * 批量绑定用户到角色
+     * <p>
+     * 幂等操作：若用户已绑定该角色则跳过，不会产生重复数据。
+     * </p>
+     *
+     * @param roleId  角色ID
+     * @param userIds 用户ID列表
+     * @return 实际新增绑定的数量
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public int assignUsers(Long roleId, List<Long> userIds) {
+        if (CollUtil.isEmpty(userIds)) {
+            return 0;
+        }
+        // 查询已绑定的用户ID，避免重复插入
+        List<SysUserRole> existing = userRoleMapper.selectList(
+                new LambdaQueryWrapper<SysUserRole>()
+                        .eq(SysUserRole::getRoleId, roleId)
+                        .in(SysUserRole::getUserId, userIds));
+        Set<Long> existingUserIds = existing.stream()
+                .map(SysUserRole::getUserId).collect(Collectors.toSet());
+
+        int count = 0;
+        for (Long userId : userIds) {
+            if (!existingUserIds.contains(userId)) {
+                SysUserRole ur = new SysUserRole();
+                ur.setUserId(userId);
+                ur.setRoleId(roleId);
+                userRoleMapper.insert(ur);
+                count++;
+            }
+        }
+        return count;
+    }
+
+    /**
+     * 批量解绑角色下的用户
+     * <p>
+     * 物理删除 sys_user_role 中间表记录（中间表无逻辑删除）。
+     * </p>
+     *
+     * @param roleId  角色ID
+     * @param userIds 用户ID列表
+     * @return 实际解绑的数量
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public int unassignUsers(Long roleId, List<Long> userIds) {
+        if (CollUtil.isEmpty(userIds)) {
+            return 0;
+        }
+        return userRoleMapper.delete(
+                new LambdaQueryWrapper<SysUserRole>()
+                        .eq(SysUserRole::getRoleId, roleId)
+                        .in(SysUserRole::getUserId, userIds));
+    }
+
+    /**
+     * 将用户列表转换为 VO 并通过批量查询填充关联名称字段
+     * <p>
+     * 与 SysUserServiceImpl 中的同名方法逻辑一致，
+     * 此处独立实现以避免循环依赖（RoleService → UserService → RoleService）。
+     * </p>
+     *
+     * @param users 用户实体列表
+     * @return 填充了 orgName/deptName/postName 的用户 VO 列表
+     */
+    private List<SysUserVO> enrichUserVOList(List<SysUser> users) {
+        if (CollUtil.isEmpty(users)) {
+            return Collections.emptyList();
+        }
+
+        // 收集关联 ID
+        Set<Long> orgIds = users.stream().map(SysUser::getOrgId).filter(Objects::nonNull).collect(Collectors.toSet());
+        Set<Long> deptIds = users.stream().map(SysUser::getDeptId).filter(Objects::nonNull).collect(Collectors.toSet());
+        Set<Long> postIds = users.stream().map(SysUser::getPostId).filter(Objects::nonNull).collect(Collectors.toSet());
+
+        // 批量查询名称映射
+        Map<Long, String> orgNameMap = new HashMap<>();
+        if (!orgIds.isEmpty()) {
+            orgMapper.selectBatchIds(orgIds).forEach(o -> orgNameMap.put(o.getId(), o.getOrgName()));
+        }
+        Map<Long, String> deptNameMap = new HashMap<>();
+        if (!deptIds.isEmpty()) {
+            deptMapper.selectBatchIds(deptIds).forEach(d -> deptNameMap.put(d.getId(), d.getDeptName()));
+        }
+        Map<Long, String> postNameMap = new HashMap<>();
+        if (!postIds.isEmpty()) {
+            postMapper.selectBatchIds(postIds).forEach(p -> postNameMap.put(p.getId(), p.getPostName()));
+        }
+
+        // 组装 VO
+        List<SysUserVO> result = new ArrayList<>(users.size());
+        for (SysUser u : users) {
+            SysUserVO vo = UserConverter.INSTANCE.toVO(u);
+            vo.setOrgName(orgNameMap.get(u.getOrgId()));
+            vo.setDeptName(deptNameMap.get(u.getDeptId()));
+            vo.setPostName(postNameMap.get(u.getPostId()));
+            result.add(vo);
+        }
+        return result;
     }
 }

@@ -46,19 +46,4 @@ public interface SysMenuService extends BaseService<SysMenu> {
      * @return 扁平菜单列表（仅业务系统菜单）
      */
     List<SysMenu> selectPermissionMenuList();
-
-    /**
-     * 校验菜单名称是否唯一
-     */
-    boolean checkMenuNameUnique(SysMenuDTO menu);
-
-    /**
-     * 新增菜单
-     */
-    boolean insertMenu(SysMenuDTO menuDto);
-
-    /**
-     * 修改菜单
-     */
-    boolean updateMenu(SysMenuDTO menuDto);
 }

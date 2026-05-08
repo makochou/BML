@@ -6,6 +6,8 @@ import com.bml.module.system.dto.SysRoleDTO;
 import com.bml.module.system.entity.SysRole;
 import com.bml.module.system.vo.SysRoleVO;
 
+import com.bml.module.system.vo.SysUserVO;
+
 import java.util.List;
 import java.util.Set;
 
@@ -70,4 +72,48 @@ public interface SysRoleService extends BaseService<SysRole> {
      * 根据角色ID查询自定义数据权限的部门ID列表
      */
     List<Long> selectCustomDeptIdsByRoleId(Long roleId);
+
+    /**
+     * 分页查询已绑定指定角色的用户列表
+     *
+     * @param roleId   角色ID
+     * @param username 用户名关键词（可选，模糊匹配）
+     * @param phone    手机号关键词（可选，模糊匹配）
+     * @param deptId   部门ID（可选，精确匹配）
+     * @param pageNum  当前页码
+     * @param pageSize 每页条数
+     * @return 分页结果
+     */
+    PageResult<SysUserVO> selectAssignedUserPage(Long roleId, String username, String phone, Long deptId, int pageNum, int pageSize);
+
+    /**
+     * 分页查询未绑定指定角色的用户列表（用于新增绑定时选择）
+     *
+     * @param roleId   角色ID
+     * @param username 用户名关键词（可选，模糊匹配）
+     * @param phone    手机号关键词（可选，模糊匹配）
+     * @param deptId   部门ID（可选，精确匹配）
+     * @param pageNum  当前页码
+     * @param pageSize 每页条数
+     * @return 分页结果
+     */
+    PageResult<SysUserVO> selectUnassignedUserPage(Long roleId, String username, String phone, Long deptId, int pageNum, int pageSize);
+
+    /**
+     * 批量绑定用户到角色
+     *
+     * @param roleId  角色ID
+     * @param userIds 用户ID列表
+     * @return 实际新增绑定的数量
+     */
+    int assignUsers(Long roleId, List<Long> userIds);
+
+    /**
+     * 批量解绑角色下的用户
+     *
+     * @param roleId  角色ID
+     * @param userIds 用户ID列表
+     * @return 实际解绑的数量
+     */
+    int unassignUsers(Long roleId, List<Long> userIds);
 }

@@ -56,6 +56,10 @@
           <template #icon><icon-plus /></template>
           新增角色
         </a-button>
+        <a-button v-if="hasPermission('system:role:assignUser')" class="toolbar-btn--binduser" :disabled="!selectedRole" @click="handleUserAssignFromToolbar">
+          <template #icon><icon-user-group /></template>
+          绑定用户
+        </a-button>
         <a-popover trigger="click" position="br"
           :content-style="{ padding: '0', background: 'transparent', boxShadow: 'none', border: 'none' }">
           <a-button class="table-column-setting-btn">
@@ -67,7 +71,7 @@
           </template>
         </a-popover>
       </template>
-      <a-table :key="tableResetKey" :data="tableData" :loading="loading" :bordered="false" :pagination="false" row-key="id" stripe size="small" :scroll="{ x: scrollX, y: '100%' }" :scrollbar="false" sticky-header :columns="visibleColumns" column-resizable @column-resize="handleColumnResize" @row-dblclick="handleRowDblClick">
+      <a-table :key="tableResetKey" :data="tableData" :loading="loading" :bordered="false" :pagination="false" row-key="id" stripe size="small" :scroll="{ x: scrollX, y: '100%' }" :scrollbar="false" sticky-header :columns="visibleColumns" column-resizable :row-class="getRowClass" @row-click="handleRowClick" @column-resize="handleColumnResize" @row-dblclick="handleRowDblClick">
         <!-- 自定义列头：每列标题旁加放大镜搜索图标（与授权治理一致） -->
         <template #th-roleName><TableColumnSearch title="角色名称" v-model="columnFilters['roleName']" /></template>
         <template #th-roleCode><TableColumnSearch title="角色编码" v-model="columnFilters['roleCode']" /></template>
@@ -189,6 +193,14 @@
       </template>
     </BmlModal>
 
+    <!-- 绑定用户弹窗（独立组件） -->
+    <RoleUserDialog
+      v-model:visible="userDialogVisible"
+      :role-id="userRoleId"
+      :role-name="userRoleName"
+      @saved="loadData"
+    />
+
     <!-- 权限分配弹窗（独立组件） -->
     <RolePermissionDialog
       v-model:visible="permDialogVisible"
@@ -204,9 +216,10 @@ defineOptions({ name: 'SystemRole' });
 
 import { ref, reactive, computed, onMounted } from 'vue';
 import { Message, Modal } from '@arco-design/web-vue';
-import { IconPlus, IconEdit, IconSettings, IconUp, IconDown, IconDelete, IconSafe, IconMore } from '@arco-design/web-vue/es/icon';
+import { IconPlus, IconEdit, IconSettings, IconUp, IconDown, IconDelete, IconSafe, IconMore, IconUserGroup } from '@arco-design/web-vue/es/icon';
 import { fetchRolePage, fetchRoleDetail, createRole, updateRole, deleteRole, fetchOrgList, fetchDeptList, type RoleVO, type RoleForm, type OrgVO, type DeptVO } from '../../../../api/system';
 import RolePermissionDialog from './RolePermissionDialog.vue';
+import RoleUserDialog from './RoleUserDialog.vue';
 import BmlModal from '../../../../components/BmlModal.vue';
 import GovernanceCompactQueryPanel from '../../../../components/governance/GovernanceCompactQueryPanel.vue';
 import GovernanceListStage from '../../../../components/governance/GovernanceListStage.vue';
@@ -289,6 +302,42 @@ const defaultForm = (): RoleForm => ({ id: undefined, roleName: '', roleCode: ''
 const permDialogVisible = ref(false);
 const permRoleId = ref<number>();
 const permRoleName = ref<string>();
+
+/** 角色行单选（点击行即选中，无需单独的 radio 列） */
+const selectedRoleId = ref<number | undefined>(undefined);
+const selectedRole = computed(() => tableData.value.find(r => r.id === selectedRoleId.value));
+
+/**
+ * 行点击选中处理：单击某行即标记为当前选中角色，
+ * 再次点击同一行则取消选中（toggle 行为）。
+ */
+const handleRowClick = (record: RoleVO) => {
+  selectedRoleId.value = selectedRoleId.value === record.id ? undefined : record.id;
+};
+
+/**
+ * 根据当前选中的角色ID返回行 CSS 类名，
+ * 用于给选中行添加高亮背景色以区分。
+ */
+const getRowClass = (record: RoleVO) => {
+  return record.id === selectedRoleId.value ? 'role-row--selected' : '';
+};
+
+/** 绑定用户弹窗状态 */
+const userDialogVisible = ref(false);
+const userRoleId = ref<number>();
+const userRoleName = ref<string>();
+
+/** 从工具栏打开绑定用户弹窗（依赖行选中） */
+const handleUserAssignFromToolbar = () => {
+  if (!selectedRole.value) {
+    Message.warning('请先选择一个角色');
+    return;
+  }
+  userRoleId.value = selectedRole.value.id;
+  userRoleName.value = selectedRole.value.roleName;
+  userDialogVisible.value = true;
+};
 
 /** 打开权限分配弹窗 */
 const handlePermAssign = (row: RoleVO) => {
@@ -424,6 +473,34 @@ onMounted(() => { loadData(); loadOrgTree(); loadDeptTree(); });
   background: var(--color-warning-6) !important;
 }
 
+/**
+ * 工具栏「绑定用户」按钮
+ * ──────────────────
+ * 采用橙色系填充背景（与绿色"新增角色"区分），
+ * 视觉上醒目且一眼可辨，禁用态保留浅橙色辨识度。
+ *
+ * 颜色方案（Arco Orange 色阶）：
+ *   正常态 #FF7D00（Orange 6） + 白字
+ *   Hover  #D25F00 加深
+ *   禁用态 #FFE4BA 浅橙底 + #FFAD42 橙色文字
+ */
+.toolbar-btn--binduser {
+  color: #fff !important;
+  background: #FF7D00 !important;
+  border-color: #FF7D00 !important;
+  font-weight: 600 !important;
+}
+.toolbar-btn--binduser:hover:not(:disabled) {
+  background: #D25F00 !important;
+  border-color: #D25F00 !important;
+}
+.toolbar-btn--binduser:disabled {
+  color: #FFAD42 !important;
+  background: #FFE4BA !important;
+  border-color: #FFCF8B !important;
+  cursor: not-allowed;
+}
+
 .scope-hint {
   margin-top: 12px;
 }
@@ -449,5 +526,35 @@ onMounted(() => { loadData(); loadOrgTree(); loadDeptTree(); });
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/**
+ * 角色行选中高亮样式
+ * ─────────────────
+ * 点击某行后添加 .role-row--selected 类。
+ * 所有列统一使用同一种柔和的青绿色高亮，不对某一列做特殊处理，
+ * 视觉上干净、协调、一眼可辨。
+ *
+ * 颜色方案（柔和青绿 Teal / Cyan）：
+ *   底色   #E8FFFB — 清新浅青（所有列统一）
+ *   hover  #C9F5ED — 略深青
+ *   文字   #0E7B6B — 深青文字，保持可读性
+ *   下边线 #A8EAD9 — 与底色搭配的分割线
+ */
+:deep(.arco-table-tr.role-row--selected > .arco-table-td) {
+  background-color: #E8FFFB !important;
+  border-bottom-color: #A8EAD9 !important;
+}
+:deep(.arco-table-tr.role-row--selected > .arco-table-td .arco-table-cell) {
+  color: #0E7B6B;
+  font-weight: 600;
+}
+:deep(.arco-table-tr.role-row--selected:hover > .arco-table-td) {
+  background-color: #C9F5ED !important;
+}
+
+/* 让数据行鼠标变为手指，暗示可点击选中 */
+:deep(.arco-table-body .arco-table-tr) {
+  cursor: pointer;
 }
 </style>

@@ -6,7 +6,6 @@ import com.bml.core.base.service.impl.BaseServiceImpl;
 import com.bml.core.common.constant.GlobalConstants;
 import com.bml.core.framework.security.model.LoginUser;
 import com.bml.core.framework.security.utils.SecurityUtils;
-import com.bml.module.system.converter.MenuConverter;
 import com.bml.module.system.dto.SysMenuDTO;
 import com.bml.module.system.entity.SysMenu;
 import com.bml.module.system.mapper.SysMenuMapper;
@@ -204,34 +203,6 @@ public class SysMenuServiceImpl extends BaseServiceImpl<SysMenuMapper, SysMenu> 
     }
 
     /**
-     * 校验同一父级下菜单名称是否唯一
-     *
-     * @param menu 菜单 DTO（包含 menuName、parentId、id）
-     * @return {@code true} 表示名称已存在（不唯一），{@code false} 表示唯一
-     */
-    @Override
-    public boolean checkMenuNameUnique(SysMenuDTO menu) {
-        long count = this.lambdaQuery()
-                .eq(SysMenu::getMenuName, menu.getMenuName())
-                .eq(SysMenu::getParentId, menu.getParentId())
-                .ne(menu.getId() != null, SysMenu::getId, menu.getId())
-                .count();
-        return count > 0;
-    }
-
-    /**
-     * 新增菜单
-     *
-     * @param menuDto 菜单 DTO
-     * @return 是否成功
-     */
-    @Override
-    public boolean insertMenu(SysMenuDTO menuDto) {
-        SysMenu menu = MenuConverter.INSTANCE.toEntity(menuDto);
-        return this.save(menu);
-    }
-
-    /**
      * 查询权限分配面板所需的扁平菜单列表（业务系统角色授权专用）
      * <p>
      * <b>仅返回业务系统菜单</b>，即挂载在"系统管理"（path=
@@ -297,18 +268,6 @@ public class SysMenuServiceImpl extends BaseServiceImpl<SysMenuMapper, SysMenu> 
         return allMenus.stream()
                 .filter(m -> includeIds.contains(m.getId()))
                 .collect(Collectors.toList());
-    }
-
-    /**
-     * 修改菜单
-     *
-     * @param menuDto 菜单 DTO
-     * @return 是否成功
-     */
-    @Override
-    public boolean updateMenu(SysMenuDTO menuDto) {
-        SysMenu menu = MenuConverter.INSTANCE.toEntity(menuDto);
-        return this.updateById(menu);
     }
 
     // ======================== 私有方法 ========================
