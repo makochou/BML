@@ -174,10 +174,11 @@ const handleReset = () => {
    列头搜索组件容器
    ───────────────────────────────────────────── */
 .tcs-wrapper {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 4px;
-  /* 确保不超出表头单元格 */
+  /* 确保不超出表头单元格，防止列标题重叠 */
+  width: 100%;
   max-width: 100%;
   overflow: hidden;
 }

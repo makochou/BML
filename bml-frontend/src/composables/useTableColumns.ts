@@ -1,4 +1,5 @@
 import { computed, type ComputedRef } from 'vue';
+import { resolveTableColumnDefaultWidth } from '../utils/tableColumnWidth';
 
 export type ColumnFix = 'left' | 'right';
 
@@ -38,6 +39,11 @@ export type ConfigurableTableColumn<Kind extends string> = {
   titleSlotName?: string;
 };
 
+export type ResolvedConfigurableTableColumn<Kind extends string> =
+  Omit<ConfigurableTableColumn<Kind>, 'sortable'> & {
+    sortable?: boolean | { sortDirections: ('ascend' | 'descend')[] };
+  };
+
 type TableColumnSource<Kind extends string> =
   | readonly ConfigurableTableColumn<Kind>[]
   | (() => readonly ConfigurableTableColumn<Kind>[]);
@@ -60,7 +66,7 @@ export function defineTableColumns<Kind extends string>(
 export function useTableColumns<Kind extends string>(
   source: TableColumnSource<Kind>
 ): {
-  columns: ComputedRef<ConfigurableTableColumn<Kind>[]>;
+  columns: ComputedRef<ResolvedConfigurableTableColumn<Kind>[]>;
   getPlainText: <RecordType extends object>(
     record: RecordType,
     dataIndex?: string,
@@ -71,6 +77,14 @@ export function useTableColumns<Kind extends string>(
     const resolved = typeof source === 'function' ? source() : source;
     return resolved.map(column => ({
       ...column,
+      // 统一兜底列宽，确保带搜索/排序能力的表头标题默认完整展示。
+      width: resolveTableColumnDefaultWidth({
+        title: column.title,
+        hasTitleSlot: !!column.titleSlotName,
+        sortable: !!column.sortable,
+        resizable: true,
+        width: column.width,
+      }),
       // 默认居中对齐：表头与单元格内容统一居中，视觉更整洁规范。
       align: column.align ?? 'center',
       ellipsis: column.ellipsis ?? Boolean(column.tooltip),

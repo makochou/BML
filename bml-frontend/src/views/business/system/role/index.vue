@@ -71,7 +71,7 @@
           </template>
         </a-popover>
       </template>
-      <a-table :key="tableResetKey" :data="tableData" :loading="loading" :bordered="false" :pagination="false" row-key="id" stripe size="small" :scroll="{ x: scrollX, y: '100%' }" :scrollbar="false" sticky-header :columns="visibleColumns" column-resizable :row-class="getRowClass" @row-click="handleRowClick" @column-resize="handleColumnResize" @row-dblclick="handleRowDblClick">
+      <a-table :key="tableResetKey" :data="filteredData" :loading="loading" :bordered="false" :pagination="false" row-key="id" stripe size="small" :scroll="{ x: scrollX, y: '100%' }" :scrollbar="false" sticky-header :columns="visibleColumns" column-resizable ref="tableRef" :style="tableStyle" :row-class="getRowClass" @row-click="handleRowClick" @column-resize="handleColumnResize" @row-dblclick="handleRowDblClick">
         <!-- 自定义列头：每列标题旁加放大镜搜索图标（与授权治理一致） -->
         <template #th-roleName><TableColumnSearch title="角色名称" v-model="columnFilters['roleName']" /></template>
         <template #th-roleCode><TableColumnSearch title="角色编码" v-model="columnFilters['roleCode']" /></template>
@@ -227,6 +227,8 @@ import BusinessTableColumnSetting from '../../../../components/business/Business
 import TableColumnSearch from '../../../../components/common/TableColumnSearch.vue';
 import { useBusinessTableColumns, type BusinessTableColumn } from '../../../../composables/useBusinessTableColumns';
 import { useButtonPermission } from '../../../../composables/useButtonPermission';
+import { useColumnFilter, resetColumnFilters } from '../../../../composables/useColumnFilter';
+import { useTableRowHighlight } from '../../../../composables/useTableRowHighlight';
 
 const DATA_SCOPE_OPTIONS = [
   { value: 1, label: '全部数据', desc: '不受任何限制，可查看系统所有数据' },
@@ -270,13 +272,23 @@ const defaultColumns: BusinessTableColumn[] = [
   { key: 'actions', title: '操作', slotName: 'actions', width: 170, visible: true, fixed: 'right', locked: true, align: 'center' },
 ];
 
-const { visibleColumns, columnSettingItems, dragState, tableResetKey, scrollX, handleColumnResize, toggleColumnVisible, moveColumn, toggleColumnFixed, handleDragStart, handleDragOver, handleDrop, handleDragEnd, resetColumns } = useBusinessTableColumns('system-role', defaultColumns);
-
-/** 表格列宽 CSS 绑定值（含单位，供 v-bind 使用） */
-const tableScrollWidth = computed(() => scrollX.value + 'px');
+const {
+  visibleColumns, columnSettingItems, dragState, tableResetKey, scrollX, tableStyle, tableRef,
+  handleColumnResize, toggleColumnVisible, moveColumn, toggleColumnFixed,
+  handleDragStart, handleDragOver, handleDrop, handleDragEnd, resetColumns,
+} = useBusinessTableColumns('system-role', defaultColumns);
 
 const loading = ref(false);
 const tableData = ref<RoleVO[]>([]);
+
+/** 列头搜索值格式化器：将非文本字段转换为可搜索的展示文本 */
+const columnFilterFormatters: Record<string, (val: any) => string> = {
+  dataScope: (val) => dataScopeLabel(val),
+  status: (val) => val === 1 ? '正常' : '停用',
+};
+/** 列头搜索过滤后的表格数据 */
+const { filteredData } = useColumnFilter(tableData, columnFilters, columnFilterFormatters);
+
 const orgTreeData = ref<OrgVO[]>([]);
 const deptTreeData = ref<DeptVO[]>([]);
 const dialogVisible = ref(false);
@@ -291,10 +303,10 @@ const canEditRole = computed(() => hasPermission('system:role:edit'));
 const queryParams = reactive({ roleName: '', roleCode: '', status: undefined as number | undefined, dataScope: undefined as number | undefined });
 const pagination = reactive({ current: 1, pageSize: 20, total: 0 });
 
-/** 当前页正常状态角色数量 */
-const activeCount = computed(() => tableData.value.filter(r => r.status === 1).length);
-/** 当前页停用状态角色数量 */
-const disabledCount = computed(() => tableData.value.filter(r => r.status === 0).length);
+/** 当前页正常状态角色数量（列头筛选后） */
+const activeCount = computed(() => filteredData.value.filter(r => r.status === 1).length);
+/** 当前页停用状态角色数量（列头筛选后） */
+const disabledCount = computed(() => filteredData.value.filter(r => r.status === 0).length);
 
 const defaultForm = (): RoleForm => ({ id: undefined, roleName: '', roleCode: '', sort: 0, dataScope: 6, status: 1, menuIds: [], halfCheckMenuIds: [], customOrgIds: [], customDeptIds: [], remark: '' });
 
@@ -303,25 +315,17 @@ const permDialogVisible = ref(false);
 const permRoleId = ref<number>();
 const permRoleName = ref<string>();
 
-/** 角色行单选（点击行即选中，无需单独的 radio 列） */
-const selectedRoleId = ref<number | undefined>(undefined);
-const selectedRole = computed(() => tableData.value.find(r => r.id === selectedRoleId.value));
-
 /**
- * 行点击选中处理：单击某行即标记为当前选中角色，
- * 再次点击同一行则取消选中（toggle 行为）。
+ * 行点击选中高亮（使用通用 composable）
+ * ──────────────────────────────────
+ * handleRowClick + getRowClass 由 useTableRowHighlight 提供，
+ * 选中行自动附加 .bml-row-active 类名，底色跟随主题色。
+ * 全局样式定义在 business-system.css 第 24 节。
  */
-const handleRowClick = (record: RoleVO) => {
-  selectedRoleId.value = selectedRoleId.value === record.id ? undefined : record.id;
-};
+const { activeRowId, handleRowClick, getRowClass, clearSelection } = useTableRowHighlight();
 
-/**
- * 根据当前选中的角色ID返回行 CSS 类名，
- * 用于给选中行添加高亮背景色以区分。
- */
-const getRowClass = (record: RoleVO) => {
-  return record.id === selectedRoleId.value ? 'role-row--selected' : '';
-};
+/** 当前选中的角色（用于工具栏「绑定用户」等业务操作） */
+const selectedRole = computed(() => tableData.value.find(r => r.id === activeRowId.value));
 
 /** 绑定用户弹窗状态 */
 const userDialogVisible = ref(false);
@@ -374,7 +378,7 @@ const loadDeptTree = async () => {
 };
 
 const handleSearch = () => { pagination.current = 1; loadData(); };
-const handleReset = () => { queryParams.roleName = ''; queryParams.roleCode = ''; queryParams.status = undefined; queryParams.dataScope = undefined; pagination.current = 1; loadData(); };
+const handleReset = () => { queryParams.roleName = ''; queryParams.roleCode = ''; queryParams.status = undefined; queryParams.dataScope = undefined; resetColumnFilters(columnFilters); clearSelection(); pagination.current = 1; loadData(); };
 const handlePageChange = (page: number) => { pagination.current = page; loadData(); };
 const handlePageSizeChange = (size: number) => { pagination.pageSize = size; pagination.current = 1; loadData(); };
 
@@ -510,51 +514,8 @@ onMounted(() => { loadData(); loadOrgTree(); loadDeptTree(); });
   line-height: 1.6;
 }
 
-/**
- * 修复 sticky-header 模式下表头与数据列框线不对齐
- * 原理：sticky-header 将 header 和 body 拆为两个独立 <table>，
- * 使用 table-layout: fixed 强制列宽按 <colgroup> 声明精确分配，
- * 配合 scroll.x = scrollX（可见列宽之和）保证两表总宽一致。
+/*
+ * 行选中高亮已迁移至全局 business-system.css (.bml-row-active)
+ * 此处无需定义页面级选中样式，所有业务列表页共享统一规则。
  */
-:deep(.arco-table-element) {
-  table-layout: fixed !important;
-  width: v-bind(tableScrollWidth) !important;
-  min-width: 0 !important;
-}
-
-:deep(.arco-table-td .arco-table-cell) {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/**
- * 角色行选中高亮样式
- * ─────────────────
- * 点击某行后添加 .role-row--selected 类。
- * 所有列统一使用同一种柔和的青绿色高亮，不对某一列做特殊处理，
- * 视觉上干净、协调、一眼可辨。
- *
- * 颜色方案（柔和青绿 Teal / Cyan）：
- *   底色   #E8FFFB — 清新浅青（所有列统一）
- *   hover  #C9F5ED — 略深青
- *   文字   #0E7B6B — 深青文字，保持可读性
- *   下边线 #A8EAD9 — 与底色搭配的分割线
- */
-:deep(.arco-table-tr.role-row--selected > .arco-table-td) {
-  background-color: #E8FFFB !important;
-  border-bottom-color: #A8EAD9 !important;
-}
-:deep(.arco-table-tr.role-row--selected > .arco-table-td .arco-table-cell) {
-  color: #0E7B6B;
-  font-weight: 600;
-}
-:deep(.arco-table-tr.role-row--selected:hover > .arco-table-td) {
-  background-color: #C9F5ED !important;
-}
-
-/* 让数据行鼠标变为手指，暗示可点击选中 */
-:deep(.arco-table-body .arco-table-tr) {
-  cursor: pointer;
-}
 </style>

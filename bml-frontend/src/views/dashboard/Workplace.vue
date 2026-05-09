@@ -140,7 +140,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import dayjs from 'dayjs';
 import {
-  IconThunderbolt, IconLayers, IconSafe, IconSettings, IconComputer,
+  IconThunderbolt, IconLayers, IconSafe, IconComputer,
   IconNotification, IconSync, IconRight, IconCheckCircleFill, IconExclamationCircleFill
 } from '@arco-design/web-vue/es/icon';
 import { getDashboardSummary, type DashboardSummary } from '@/api/dashboard';

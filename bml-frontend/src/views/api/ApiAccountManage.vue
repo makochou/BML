@@ -581,6 +581,7 @@ import { defineTableColumns, useTableColumns } from '../../composables/useTableC
 import { useResizableModal } from '../../composables/useResizableModal';
 import { buildUserScopedStorageKey } from '../../utils/userScopedStorage';
 import { getModuleDisplayName, getControllerDisplayName } from '../../utils/api-account-governance';
+import { calcTableHeaderMinWidth, TABLE_COLUMN_WIDTH_SCHEME_VERSION } from '../../utils/tableColumnWidth';
 import type {
   AccessEnvironment,
   ApiAccountDetail,
@@ -989,17 +990,16 @@ const queryAdvancedToggleText = computed(() => queryAdvancedExpanded.value ? '�
  */
 /**
  * 列布局本地缓存版本号。
- * v9：全面开放 21 个字段供用户选择，并根据行业标准预设了默认显示的 7 个核心字段及先后顺序。
+ * v10：接入统一表头列宽方案，确保默认列宽完整展示列标题。
  */
-const ACCOUNT_TABLE_LAYOUT_STORAGE_KEY_PREFIX = 'bml.api-account.manage.table-layout.v9';
+const ACCOUNT_TABLE_LAYOUT_STORAGE_KEY_PREFIX = `bml.api-account.manage.table-layout.v10.w${TABLE_COLUMN_WIDTH_SCHEME_VERSION}`;
 function getAccountTableLayoutStorageKey() {
   return buildUserScopedStorageKey(ACCOUNT_TABLE_LAYOUT_STORAGE_KEY_PREFIX);
 }
 const ACCOUNT_TABLE_LOCKED_COLUMN_KINDS = new Set<AccountColumnKind>(['actions']);
 /**
- * 列宽拖拽最小值统一与 Arco Table 内置最小宽度对齐（40px）。
- * 之前按业务可读性设置了较大的列最小宽度，导致用户拖窄后刷新会被“回弹”到较大值，
- * 看起来像“没有记住用户配置”。这里改为记录用户真实拖拽结果，只在恢复默认时回到设计宽度。
+ * 列宽拖拽基础最小值统一与 Arco Table 内置最小宽度对齐（40px）。
+ * 实际最小宽度还会叠加表头标题完整展示所需宽度，避免列头搜索、排序图标挤压标题。
  */
 const ACCOUNT_TABLE_COLUMN_RESIZE_MIN_WIDTH = 40;
 const ACCOUNT_TABLE_COLUMN_MAX_WIDTH: Record<AccountColumnKind, number> = {
@@ -1063,6 +1063,15 @@ const accountTableColumnBaseMap = (accountTableColumnBaseModel as any[]).reduce(
   accumulator[column.kind] = column;
   return accumulator;
 }, {} as Record<string, any>);
+function getAccountColumnHeaderMinWidth(kind: AccountColumnKind) {
+  const base = accountTableColumnBaseMap[kind];
+  return calcTableHeaderMinWidth({
+    title: base.title,
+    hasTitleSlot: !!base.titleSlotName,
+    sortable: !!base.sortable,
+    resizable: true
+  });
+}
 function createDefaultAccountTableColumnLayout(): Record<AccountColumnKind, AccountTableColumnLayout> {
   const layout = {} as any;
 
@@ -1094,7 +1103,7 @@ function createDefaultAccountTableColumnLayout(): Record<AccountColumnKind, Acco
   accountTableColumnBaseModel.forEach((col: any, index: number) => {
     const visibleIndex = defaultVisibleOrder.indexOf(col.kind);
     layout[col.kind as AccountColumnKind] = {
-      width: col.width,
+      width: clampAccountColumnWidth(col.kind, col.width),
       visible: visibleIndex !== -1,
       order: visibleIndex !== -1 ? visibleIndex : 100 + index, // 非默认显示的字段排在后面
       fixedFront: col.fixed === 'left'
@@ -1114,7 +1123,7 @@ const columnSettingDragState = reactive({
 });
 function clampAccountColumnWidth(kind: AccountColumnKind, width: number) {
   const max = ACCOUNT_TABLE_COLUMN_MAX_WIDTH[kind];
-  const min = kind === 'index' ? 60 : ACCOUNT_TABLE_COLUMN_RESIZE_MIN_WIDTH;
+  const min = Math.max(kind === 'index' ? 60 : ACCOUNT_TABLE_COLUMN_RESIZE_MIN_WIDTH, getAccountColumnHeaderMinWidth(kind));
   return Math.min(max, Math.max(min, Math.round(width)));
 }
 function normalizeAccountTableColumnOrder() {
@@ -1369,7 +1378,7 @@ const accountTableColumnModel = computed(() => {
     const base = accountTableColumnBaseMap[item.kind];
     const column = {
       ...base,
-      width: accountTableColumnLayout[item.kind]!.width,
+      width: clampAccountColumnWidth(item.kind, accountTableColumnLayout[item.kind]!.width),
       fixed: item.kind === 'actions'
         ? 'right'
         : (accountTableColumnLayout[item.kind]!.fixedFront ? 'left' : (item.locked ? base.fixed : undefined))
@@ -2054,6 +2063,7 @@ async function handleTextModeSearch(mode: QueryTextMatchMode) {
   await handleSearch();
 }
 async function handleResetSearch() {
+  clearAllColumnFilters();
   Object.assign(queryForm, {
     accountId: undefined,
     accountName: '',
@@ -7031,26 +7041,26 @@ onBeforeUnmount(() => {
 :deep(.account-table .arco-table-tr.arco-table-tr-checked .arco-table-td),
 :deep(.account-table .arco-table-tr.arco-table-tr-checked .arco-table-col-fixed-right),
 :deep(.account-table .arco-table-tr.arco-table-tr-checked .arco-table-col-fixed-left) {
-  /* 选中行使用不透明背景色，防止固定列出现内容重叠透视 */
-  background-color: #f0f7ff !important;
+  /* 选中行底色跟随主题色 —— 主色 6% 不透明度（原 #f0f7ff 已替换） */
+  background-color: rgba(var(--bml-primary-rgb, 22, 93, 255), 0.06) !important;
   transition: background-color 0.2s ease;
 }
 
-/* 即使在有斑马纹或鼠标悬停时，也强制保持选中色 */
+/* 即使在有斑马纹或鼠标悬停时，也强制保持选中色（主色 10%） */
 :deep(.account-table .arco-table-tr.is-row-active:hover .arco-table-td),
 :deep(.account-table .arco-table-tr.is-row-active:hover .arco-table-col-fixed-right),
 :deep(.account-table .arco-table-tr.is-row-active:hover .arco-table-left),
 :deep(.account-table .arco-table-tr.arco-table-tr-checked:hover .arco-table-td),
 :deep(.account-table .arco-table-tr.arco-table-tr-checked:hover .arco-table-col-fixed-right),
 :deep(.account-table .arco-table-tr.arco-table-tr-checked:hover .arco-table-col-fixed-left) {
-  background-color: #f0f7ff !important;
+  background-color: rgba(var(--bml-primary-rgb, 22, 93, 255), 0.10) !important;
 }
 
 /* 在第一列单元格使用内阴影实现侧边指示条，这种方式不会改变单元格尺寸或导致布局崩坏 */
 :deep(.account-table .arco-table-tr.is-row-active .arco-table-td:first-child),
 :deep(.account-table .arco-table-tr.arco-table-tr-checked .arco-table-td:first-child) {
   position: relative;
-  box-shadow: inset 4px 0 0 var(--color-primary, #165dff); /* 加粗到 4px，颜色更深，更明显 */
+  box-shadow: inset 4px 0 0 var(--bml-primary, var(--color-primary, #165dff)); /* 主题色指示条 */
 }
 
 /* ═══════════════════════════════════════════════════════════════

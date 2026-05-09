@@ -89,9 +89,9 @@
           </template>
         </a-popover>
       </template>
-      <a-table :key="tableResetKey" :data="tableData" :loading="loading" :bordered="false" :pagination="false"
+      <a-table :key="tableResetKey" :data="filteredData" :loading="loading" :bordered="false" :pagination="false"
         row-key="id" stripe size="small" :scroll="{ x: scrollX, y: '100%' }" :scrollbar="false"
-        sticky-header :columns="visibleColumns" column-resizable @column-resize="handleColumnResize" @row-dblclick="handleRowDblClick">
+        sticky-header :columns="visibleColumns" column-resizable ref="tableRef" :style="tableStyle" :row-class="getRowClass" @row-click="handleRowClick" @column-resize="handleColumnResize" @row-dblclick="handleRowDblClick">
         <!-- 自定义列头：每列标题旁加放大镜搜索图标（与授权治理一致） -->
         <template #th-username><TableColumnSearch title="账号" v-model="columnFilters['username']" /></template>
         <template #th-nickname><TableColumnSearch title="用户名" v-model="columnFilters['nickname']" /></template>
@@ -355,6 +355,8 @@ import BusinessTableColumnSetting from '../../../../components/business/Business
 import TableColumnSearch from '../../../../components/common/TableColumnSearch.vue';
 import { useBusinessTableColumns, type BusinessTableColumn } from '../../../../composables/useBusinessTableColumns';
 import { useButtonPermission } from '../../../../composables/useButtonPermission';
+import { useColumnFilter, resetColumnFilters } from '../../../../composables/useColumnFilter';
+import { useTableRowHighlight } from '../../../../composables/useTableRowHighlight';
 
 const USER_STATUS_MAP: Record<number, { label: string; color: string }> = {
   1: { label: '正常', color: 'green' },
@@ -364,6 +366,15 @@ const USER_STATUS_MAP: Record<number, { label: string; color: string }> = {
 
 const textMatchMode = ref<'fuzzy' | 'exact'>('fuzzy');
 const queryExpanded = ref(false);
+
+/**
+ * 行点击选中高亮（使用通用 composable）
+ * ──────────────────────────────────
+ * handleRowClick + getRowClass 由 useTableRowHighlight 提供，
+ * 选中行自动附加 .bml-row-active 类名，底色跟随主题色。
+ * 全局样式定义在 business-system.css 第 24 节。
+ */
+const { handleRowClick, getRowClass } = useTableRowHighlight();
 
 /**
  * 用户列默认配置（与授权治理列管理模式一致）：
@@ -380,14 +391,14 @@ const columnFilters = reactive<Record<string, string>>({
 const defaultColumns: BusinessTableColumn[] = [
   /* ── 核心标识（默认显示） ── */
   { key: 'username',   title: '账号',     dataIndex: 'username',   width: 120, visible: true, fixed: 'left', sortable: true, titleSlotName: 'th-username' },
-  { key: 'nickname',   title: '用户名',   dataIndex: 'nickname',   width: 110, visible: true, sortable: true, titleSlotName: 'th-nickname' },
+  { key: 'nickname',   title: '用户名',   dataIndex: 'nickname',   width: 120, visible: true, sortable: true, titleSlotName: 'th-nickname' },
   { key: 'employeeNo', title: '工号',     slotName: 'employeeNo',  width: 100, visible: true, sortable: true, titleSlotName: 'th-employeeNo', permission: 'system:user:field:employeeNo' },
-  { key: 'orgName',    title: '所属机构', dataIndex: 'orgName',    width: 140, visible: true, sortable: true, titleSlotName: 'th-orgName', permission: 'system:user:field:orgId' },
+  { key: 'orgName',    title: '所属机构', dataIndex: 'orgName',    width: 150, visible: true, sortable: true, titleSlotName: 'th-orgName', permission: 'system:user:field:orgId' },
   { key: 'deptName',   title: '部门',     dataIndex: 'deptName',   width: 120, visible: true, sortable: true, titleSlotName: 'th-deptName', permission: 'system:user:field:deptId' },
   { key: 'postName',   title: '岗位',     dataIndex: 'postName',   width: 110, visible: true, sortable: true, titleSlotName: 'th-postName', permission: 'system:user:field:postId' },
-  { key: 'phone',      title: '手机号',   dataIndex: 'phone',      width: 130, visible: true, sortable: true, titleSlotName: 'th-phone', permission: 'system:user:field:phone' },
-  { key: 'status',     title: '状态',     slotName: 'status',      width: 80,  visible: true, align: 'center', sortable: true, titleSlotName: 'th-status' },
-  { key: 'createTime', title: '创建时间', dataIndex: 'createTime', width: 170, visible: true, sortable: true, titleSlotName: 'th-createTime' },
+  { key: 'phone',      title: '手机号',   dataIndex: 'phone',      width: 140, visible: true, sortable: true, titleSlotName: 'th-phone', permission: 'system:user:field:phone' },
+  { key: 'status',     title: '状态',     slotName: 'status',      width: 90,  visible: true, align: 'center', sortable: true, titleSlotName: 'th-status' },
+  { key: 'createTime', title: '创建时间', dataIndex: 'createTime', width: 180, visible: true, sortable: true, titleSlotName: 'th-createTime' },
   /* ── 扩展字段（默认隐藏） ── */
   { key: 'entryDate', title: '入职日期', dataIndex: 'entryDate', width: 120, visible: false, sortable: true, titleSlotName: 'th-entryDate', permission: 'system:user:field:entryDate' },
   { key: 'email',     title: '邮箱',     dataIndex: 'email',     width: 180, visible: false, sortable: true, titleSlotName: 'th-email', permission: 'system:user:field:email' },
@@ -399,16 +410,21 @@ const defaultColumns: BusinessTableColumn[] = [
 ];
 
 const {
-  visibleColumns, columnSettingItems, dragState, tableResetKey, scrollX,
+  visibleColumns, columnSettingItems, dragState, tableResetKey, scrollX, tableStyle, tableRef,
   handleColumnResize, toggleColumnVisible, moveColumn, toggleColumnFixed,
   handleDragStart, handleDragOver, handleDrop, handleDragEnd, resetColumns,
 } = useBusinessTableColumns('system-user', defaultColumns);
 
-/** 表格列宽 CSS 绑定值（含单位，供 v-bind 使用） */
-const tableScrollWidth = computed(() => scrollX.value + 'px');
-
 const loading = ref(false);
 const tableData = ref<UserVO[]>([]);
+
+/** 列头搜索值格式化器：将非文本字段转换为可搜索的展示文本 */
+const columnFilterFormatters: Record<string, (val: any) => string> = {
+  status: (val) => USER_STATUS_MAP[val]?.label || '',
+};
+/** 列头搜索过滤后的表格数据 */
+const { filteredData } = useColumnFilter(tableData, columnFilters, columnFilterFormatters);
+
 const roleOptions = ref<RoleVO[]>([]);
 const orgTreeData = ref<OrgVO[]>([]);
 const deptTreeData = ref<DeptVO[]>([]);
@@ -423,12 +439,12 @@ const { hasPermission } = useButtonPermission();
 const canEditUser = computed(() => hasPermission('system:user:edit'));
 const pagination = reactive({ current: 1, pageSize: 20, total: 0 });
 
-/** 当前页正常状态用户数量 */
-const activeCount = computed(() => tableData.value.filter(r => r.status === 1).length);
-/** 当前页停用状态用户数量 */
-const disabledCount = computed(() => tableData.value.filter(r => r.status === 0).length);
-/** 当前页锁定状态用户数量 */
-const lockedCount = computed(() => tableData.value.filter(r => r.status === 2).length);
+/** 当前页正常状态用户数量（列头筛选后） */
+const activeCount = computed(() => filteredData.value.filter(r => r.status === 1).length);
+/** 当前页停用状态用户数量（列头筛选后） */
+const disabledCount = computed(() => filteredData.value.filter(r => r.status === 0).length);
+/** 当前页锁定状态用户数量（列头筛选后） */
+const lockedCount = computed(() => filteredData.value.filter(r => r.status === 2).length);
 
 const queryParams = reactive({
   username: '', phone: '', status: undefined as number | undefined,
@@ -473,6 +489,7 @@ const handleReset = () => {
   queryParams.username = ''; queryParams.phone = ''; queryParams.status = undefined;
   queryParams.orgId = undefined; queryParams.nickname = '';
   queryParams.deptId = undefined; queryParams.email = ''; queryParams.gender = undefined;
+  resetColumnFilters(columnFilters);
   pagination.current = 1; loadData();
 };
 const handlePageChange = (page: number) => { pagination.current = page; loadData(); };
@@ -605,22 +622,4 @@ onMounted(() => { loadData(); loadRoles(); loadOrgTree(); loadDeptTree(); loadPo
 
 <style scoped>
 .form-tabs :deep(.arco-tabs-content) { padding-top: 12px; }
-
-/**
- * 修复 sticky-header 模式下表头与数据列框线不对齐
- * 原理：sticky-header 将 header 和 body 拆为两个独立 <table>，
- * 使用 table-layout: fixed 强制列宽按 <colgroup> 声明精确分配，
- * 配合 scroll.x = scrollX（可见列宽之和）保证两表总宽一致。
- */
-:deep(.arco-table-element) {
-  table-layout: fixed !important;
-  width: v-bind(tableScrollWidth) !important;
-  min-width: 0 !important;
-}
-
-:deep(.arco-table-td .arco-table-cell) {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 </style>

@@ -119,10 +119,14 @@
         @expand="handleExpandChange"
         size="small"
         :columns="visibleColumns"
-        :scroll="{ x: 1300, y: '100%' }"
+        :scroll="{ x: scrollX, y: '100%' }"
         :scrollbar="false"
         sticky-header
         column-resizable
+        ref="tableRef"
+        :style="tableStyle"
+        :row-class="getRowClass"
+        @row-click="handleRowClick"
         @column-resize="handleColumnResize"
         @row-dblclick="handleRowDblClick"
       >
@@ -508,7 +512,7 @@
  */
 defineOptions({ name: 'SystemOrg' });
 
-import { ref, reactive, computed, onMounted } from 'vue';
+import { ref, reactive, computed, onMounted, watch } from 'vue';
 import { Message, Modal } from '@arco-design/web-vue';
 import { IconPlus, IconEdit, IconDelete, IconMore, IconSettings, IconUp, IconDown, IconShareExternal, IconExpand, IconShrink } from '@arco-design/web-vue/es/icon';
 import { fetchOrgList, createOrg, updateOrg, deleteOrg, fetchOrgShareList, createOrgShare, deleteOrgShare, type OrgVO, type OrgForm, type OrgQuery, type OrgDataShareVO, type OrgDataShareForm } from '../../../../api/system';
@@ -519,6 +523,17 @@ import BusinessTableColumnSetting from '../../../../components/business/Business
 import TableColumnSearch from '../../../../components/common/TableColumnSearch.vue';
 import { useBusinessTableColumns, type BusinessTableColumn } from '../../../../composables/useBusinessTableColumns';
 import { useButtonPermission } from '../../../../composables/useButtonPermission';
+import { useTreeColumnFilter, resetColumnFilters } from '../../../../composables/useColumnFilter';
+import { useTableRowHighlight } from '../../../../composables/useTableRowHighlight';
+
+/**
+ * 行点击选中高亮（使用通用 composable）
+ * ──────────────────────────────────
+ * handleRowClick + getRowClass 由 useTableRowHighlight 提供，
+ * 选中行自动附加 .bml-row-active 类名，底色跟随主题色。
+ * 全局样式定义在 business-system.css 第 24 节。
+ */
+const { handleRowClick, getRowClass } = useTableRowHighlight();
 
 const ORG_TYPE_OPTIONS = [
   { value: 1, label: '集团', color: 'red' },
@@ -564,14 +579,14 @@ const columnFilters = reactive<Record<string, string>>({
 const defaultColumns: BusinessTableColumn[] = [
   /* ── 核心标识（默认显示） ── */
   { key: 'orgName',       title: '机构名称',       dataIndex: 'orgName',       width: 220, visible: true, fixed: 'left', sortable: true, titleSlotName: 'th-orgName' },
-  { key: 'orgCode',       title: '机构编码',       dataIndex: 'orgCode',       width: 130, visible: true, sortable: true, titleSlotName: 'th-orgCode' },
-  { key: 'orgType',       title: '机构类型',       slotName: 'orgType',        width: 100, visible: true, align: 'center', sortable: true, titleSlotName: 'th-orgType' },
-  { key: 'leader',        title: '负责人',         dataIndex: 'leader',        width: 100, visible: true, sortable: true, titleSlotName: 'th-leader' },
-  { key: 'phone',         title: '联系电话',       dataIndex: 'phone',         width: 130, visible: true, sortable: true, titleSlotName: 'th-phone', permission: 'system:org:field:phone' },
-  { key: 'dataIsolation', title: '数据隔离',       slotName: 'dataIsolation',  width: 110, visible: true, align: 'center', sortable: true, titleSlotName: 'th-dataIsolation' },
-  { key: 'sort',          title: '排序',           dataIndex: 'sort',          width: 70,  visible: true, align: 'center', sortable: true, titleSlotName: 'th-sort' },
-  { key: 'status',        title: '状态',           slotName: 'status',         width: 80,  visible: true, align: 'center', sortable: true, titleSlotName: 'th-status' },
-  { key: 'createTime',    title: '创建时间',       dataIndex: 'createTime',    width: 170, visible: true, sortable: true, titleSlotName: 'th-createTime' },
+  { key: 'orgCode',       title: '机构编码',       dataIndex: 'orgCode',       width: 140, visible: true, sortable: true, titleSlotName: 'th-orgCode' },
+  { key: 'orgType',       title: '机构类型',       slotName: 'orgType',        width: 120, visible: true, align: 'center', sortable: true, titleSlotName: 'th-orgType' },
+  { key: 'leader',        title: '负责人',         dataIndex: 'leader',        width: 110, visible: true, sortable: true, titleSlotName: 'th-leader' },
+  { key: 'phone',         title: '联系电话',       dataIndex: 'phone',         width: 140, visible: true, sortable: true, titleSlotName: 'th-phone', permission: 'system:org:field:phone' },
+  { key: 'dataIsolation', title: '数据隔离',       slotName: 'dataIsolation',  width: 120, visible: true, align: 'center', sortable: true, titleSlotName: 'th-dataIsolation' },
+  { key: 'sort',          title: '排序',           dataIndex: 'sort',          width: 80,  visible: true, align: 'center', sortable: true, titleSlotName: 'th-sort' },
+  { key: 'status',        title: '状态',           slotName: 'status',         width: 90,  visible: true, align: 'center', sortable: true, titleSlotName: 'th-status' },
+  { key: 'createTime',    title: '创建时间',       dataIndex: 'createTime',    width: 180, visible: true, sortable: true, titleSlotName: 'th-createTime' },
   /* ── 扩展字段（默认隐藏） ── */
   { key: 'creditCode',       title: '统一社会信用代码', dataIndex: 'creditCode',       width: 200, visible: false, sortable: true, titleSlotName: 'th-creditCode', permission: 'system:org:field:creditCode' },
   { key: 'legalPerson',      title: '法定代表人',       dataIndex: 'legalPerson',      width: 120, visible: false, sortable: true, titleSlotName: 'th-legalPerson', permission: 'system:org:field:legalPerson' },
@@ -586,7 +601,7 @@ const defaultColumns: BusinessTableColumn[] = [
 ];
 
 const {
-  visibleColumns, columnSettingItems, dragState, tableResetKey,
+  visibleColumns, columnSettingItems, dragState, tableResetKey, scrollX, tableStyle, tableRef,
   handleColumnResize, toggleColumnVisible, moveColumn, toggleColumnFixed,
   handleDragStart, handleDragOver, handleDrop, handleDragEnd, resetColumns,
 } = useBusinessTableColumns('system-org', defaultColumns);
@@ -596,6 +611,15 @@ const queryExpanded = ref(false);
 
 const loading = ref(false);
 const tableData = ref<OrgVO[]>([]);
+
+/** 列头搜索值格式化器：将非文本字段转换为可搜索的展示文本 */
+const columnFilterFormatters: Record<string, (val: any) => string> = {
+  orgType: (val) => orgTypeLabel(val),
+  dataIsolation: (val) => isolationLabel(val),
+  status: (val) => val === 1 ? '正常' : '停用',
+};
+/** 列头搜索过滤后的树形数据 */
+const { filteredData: filteredTreeData } = useTreeColumnFilter(tableData, columnFilters, columnFilterFormatters);
 
 /** 递归收集树所有节点 ID，用于默认展开全部行 */
 const collectAllKeys = (nodes: OrgVO[]): number[] =>
@@ -609,18 +633,18 @@ const expandedKeys = ref<number[]>([]);
 /** 递归统计树形数据总条数 */
 const countTreeNodes = (nodes: OrgVO[]): number =>
   nodes.reduce((sum, n) => sum + 1 + (n.children ? countTreeNodes(n.children) : 0), 0);
-const totalOrgCount = computed(() => countTreeNodes(tableData.value));
+const totalOrgCount = computed(() => countTreeNodes(filteredTreeData.value));
 
 /** 递归统计树形数据中指定状态的节点数量 */
 const countByStatus = (nodes: OrgVO[], status: number): number =>
   nodes.reduce((sum, n) => sum + (n.status === status ? 1 : 0) + (n.children ? countByStatus(n.children, status) : 0), 0);
 
 /** 顶级机构数量（树的根节点数） */
-const topLevelCount = computed(() => tableData.value.length);
-/** 正常状态机构数量 */
-const activeCount = computed(() => countByStatus(tableData.value, 1));
-/** 停用状态机构数量 */
-const disabledCount = computed(() => countByStatus(tableData.value, 0));
+const topLevelCount = computed(() => filteredTreeData.value.length);
+/** 正常状态机构数量（列头筛选后） */
+const activeCount = computed(() => countByStatus(filteredTreeData.value, 1));
+/** 停用状态机构数量（列头筛选后） */
+const disabledCount = computed(() => countByStatus(filteredTreeData.value, 0));
 
 /* ══════ 树形分页（按顶级节点分页，保持每棵子树完整） ══════ */
 const pageSize = ref(10);
@@ -628,9 +652,9 @@ const currentPage = ref(1);
 
 /** 分页后的表格数据：按顶级节点切片，pageSize 为 0 时显示全部 */
 const pagedTableData = computed(() => {
-  if (pageSize.value === 0) return tableData.value;
+  if (pageSize.value === 0) return filteredTreeData.value;
   const start = (currentPage.value - 1) * pageSize.value;
-  return tableData.value.slice(start, start + pageSize.value);
+  return filteredTreeData.value.slice(start, start + pageSize.value);
 });
 
 /** 全部展开 */
@@ -657,6 +681,12 @@ const handlePageSizeChange = () => {
 const handlePageChange = () => {
   expandedKeys.value = collectAllKeys(pagedTableData.value);
 };
+
+/** 列头筛选条件变化时重置到第一页并展开所有节点 */
+watch(columnFilters, () => {
+  currentPage.value = 1;
+  expandedKeys.value = collectAllKeys(pagedTableData.value);
+}, { deep: true });
 
 const dialogVisible = ref(false);
 const dialogTitle = ref('新增机构');
@@ -724,6 +754,7 @@ const handleReset = () => {
   queryParams.phone = ''; queryParams.creditCode = '';
   queryParams.legalPerson = ''; queryParams.province = '';
   queryParams.city = '';
+  resetColumnFilters(columnFilters);
   loadData();
 };
 

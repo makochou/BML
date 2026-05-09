@@ -10,16 +10,24 @@
 
 /* ── CSS 变量（亮色主题） ── */
 :root {
-  /* 主色调 */
+  /* ── 主色调（由 theme.ts 动态覆盖，此处为初始值） ── */
   --bml-primary: #165dff;
+  --bml-primary-rgb: 22, 93, 255;
   --bml-primary-light: #3c7eff;
+  --bml-primary-lighter: #f0f5ff;
   --bml-primary-dark: #0e42d2;
 
-  /* 渐变 */
+  /* ── 渐变（由 theme.ts 动态覆盖） ── */
   --bml-gradient: linear-gradient(135deg, #165dff 0%, #3c7eff 100%);
-  --bml-gradient-alt: linear-gradient(135deg, #165dff 0%, #722ed1 100%);
+  --bml-gradient-alt: linear-gradient(135deg, #165dff 0%, #0e42d2 100%);
 
-  /* 阴影 */
+  /* ── 语义化主题变量 — 组件统一使用这些变量实现主题跟随 ── */
+  --bml-selected-bg: rgba(22, 93, 255, 0.06);
+  --bml-hover-bg: rgba(22, 93, 255, 0.04);
+  --bml-active-bg: rgba(22, 93, 255, 0.10);
+  --bml-border-active: rgba(22, 93, 255, 0.4);
+
+  /* ── 阴影 ── */
   --bml-shadow: rgba(22, 93, 255, 0.3);
   --bml-shadow-sm: rgba(0, 0, 0, 0.06);
   --bml-shadow-md: rgba(0, 0, 0, 0.1);
@@ -226,6 +234,37 @@ samp {
 /* 统一 Tag 圆角 */
 .arco-tag {
   border-radius: var(--bml-radius-sm) !important;
+}
+
+/* ── 主题切换全局平滑过渡 ── */
+body.theme-transitioning,
+body.theme-transitioning * {
+  transition: background-color 0.3s ease,
+              border-color 0.3s ease,
+              color 0.3s ease,
+              box-shadow 0.3s ease,
+              fill 0.3s ease !important;
+}
+
+/* ── Arco 按钮主色跟随主题 ── */
+.arco-btn-primary:not(.arco-btn-status-warning):not(.arco-btn-status-danger):not(.arco-btn-status-success) {
+  background-color: var(--bml-primary) !important;
+  border-color: var(--bml-primary) !important;
+}
+.arco-btn-primary:not(.arco-btn-status-warning):not(.arco-btn-status-danger):not(.arco-btn-status-success):hover {
+  background-color: var(--bml-primary-light) !important;
+  border-color: var(--bml-primary-light) !important;
+}
+
+/* ── Arco Switch 跟随主题 ── */
+.arco-switch-checked {
+  background-color: var(--bml-primary) !important;
+}
+
+/* ── Arco Radio 跟随主题 ── */
+.arco-radio-checked .arco-radio-icon {
+  background-color: var(--bml-primary) !important;
+  border-color: var(--bml-primary) !important;
 }
 
 /* ── 全局复选框样式增强（多选下拉、表格行选择等通用场景） ── */

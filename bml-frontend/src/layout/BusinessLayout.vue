@@ -13,7 +13,7 @@
   <a-layout class="biz-layout">
     <!-- 注意：不使用 collapsible / breakpoint，避免 Arco 进入 drawer 模式导致生成 mask 遮罩层拦截点击事件。
          折叠由自定义 collapse-btn 按钮控制。 -->
-    <a-layout-sider :collapsed="collapsed" :collapsed-width="64">
+    <a-layout-sider :collapsed="collapsed" :collapsed-width="64" :class="[`sidebar-${appStore.sidebarTheme}`]">
       <!-- 点击 Logo 返回业务系统工作台首页 -->
       <div class="logo" @click="goHome">
         <!-- 若配置了侧边栏 Logo 图片则显示图片，否则回退为渐变文字 -->
@@ -69,7 +69,7 @@
 
     <a-layout>
       <!-- 顶部栏：透明 + Glass Dock -->
-      <a-layout-header>
+      <a-layout-header :class="[`header-${appStore.headerTheme}`]">
         <!-- 左侧：纯净标题区 -->
         <div class="header-left">
           <div class="page-title-area">
@@ -153,7 +153,7 @@
         </div>
         <div class="page-container">
           <router-view v-slot="{ Component, route: currentRoute }">
-            <keep-alive :max="20">
+            <keep-alive :include="cachedViews" :max="20">
               <component :is="Component" :key="String(currentRoute.name)" />
             </keep-alive>
           </router-view>
@@ -395,9 +395,10 @@ onUnmounted(() => {
   background-color: #f7f8fa;
   display: flex;
   overflow: hidden;
+  /* 背景纹理跟随主题色 */
   background-image:
-    radial-gradient(circle at 10% 20%, rgba(226, 240, 255, 0.4) 0%, transparent 40%),
-    radial-gradient(circle at 90% 80%, rgba(240, 230, 255, 0.4) 0%, transparent 40%);
+    radial-gradient(circle at 10% 20%, rgba(var(--bml-primary-rgb, 22, 93, 255), 0.06) 0%, transparent 40%),
+    radial-gradient(circle at 90% 80%, rgba(var(--bml-primary-rgb, 22, 93, 255), 0.04) 0%, transparent 40%);
 }
 
 /* ═══════════════════════════════════════════════════
@@ -565,7 +566,7 @@ onUnmounted(() => {
   padding: 0 12px !important;
 }
 .biz-layout :deep(.arco-menu-inline-header.arco-menu-selected) {
-  background-color: var(--bml-primary-lighter, rgba(22, 93, 255, 0.08)) !important;
+  background-color: var(--bml-selected-bg, rgba(22, 93, 255, 0.08)) !important;
   color: var(--bml-primary, #165dff) !important;
   font-weight: 700 !important;
   border: 1px solid rgba(var(--bml-primary-rgb, 22, 93, 255), 0.1) !important;
@@ -638,7 +639,7 @@ onUnmounted(() => {
   height: 48px;
   background: #fff;
   color: var(--bml-primary, #165dff);
-  box-shadow: 0 12px 32px var(--bml-shadow, rgba(22, 93, 255, 0.25));
+  box-shadow: 0 12px 32px rgba(var(--bml-primary-rgb, 22, 93, 255), 0.25);
 }
 
 /* ═══════════════════════════════════════════════════
@@ -863,4 +864,128 @@ onUnmounted(() => {
   opacity: 0;
   transform: translateX(30px);
 }
+
+/* ═══════════════════════════════════════════════════
+   动态主题样式（侧边栏 + 头部栏）
+   ═══════════════════════════════════════════════════ */
+
+/* ── Header 主题 ── */
+.header-white {
+  background: rgba(255, 255, 255, 0.8) !important;
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(0,0,0,0.05) !important;
+}
+.header-dark {
+  background: rgba(23, 23, 26, 0.9) !important;
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(255,255,255,0.05) !important;
+}
+.header-dark .breadcrumb-root { color: #86909c !important; }
+.header-dark .breadcrumb-active,
+.header-dark .breadcrumb-active-solo { color: #f2f3f5 !important; }
+.header-dark .dock-item { color: #c9cdd4 !important; }
+.header-dark .dock-item:hover { background: rgba(255,255,255,0.1) !important; color: #fff !important; }
+
+.header-primary {
+  background: linear-gradient(90deg, var(--arcoblue-6) 0%, var(--arcoblue-5) 100%) !important;
+  color: #fff !important;
+}
+.header-primary .breadcrumb-root { color: rgba(255,255,255,0.7) !important; }
+.header-primary .breadcrumb-active,
+.header-primary .breadcrumb-active-solo { color: #fff !important; }
+.header-primary .dock-item { color: rgba(255,255,255,0.9) !important; }
+.header-primary .dock-item:hover { background: rgba(255,255,255,0.2) !important; }
+.header-primary .glass-dock {
+  background: rgba(255,255,255,0.15) !important;
+  border: 1px solid rgba(255,255,255,0.3) !important;
+}
+
+/* ── Sidebar 主题 ── */
+.sidebar-white :deep(.arco-layout-sider) {
+  background: #fff !important;
+  border-right: 1px solid rgba(0,0,0,0.05) !important;
+}
+.sidebar-dark :deep(.arco-layout-sider) {
+  background: #232324 !important;
+  border-right: 1px solid rgba(255,255,255,0.05) !important;
+  backdrop-filter: none;
+}
+.sidebar-dark :deep(.arco-menu-item) { color: #c9cdd4 !important; }
+.sidebar-dark :deep(.arco-menu-item:hover) { background: rgba(255,255,255,0.05) !important; color: #fff !important; }
+.sidebar-dark .logo { color: #fff !important; }
+.sidebar-dark .logo-text { color: #fff !important; -webkit-text-fill-color: #fff; background: none !important; }
+.sidebar-dark .collapse-btn {
+  background: rgba(60, 60, 62, 0.85);
+  border-color: rgba(255,255,255,0.1);
+  color: #c9cdd4;
+}
+.sidebar-dark .collapse-btn:hover {
+  background: rgba(80, 80, 84, 0.95);
+  color: #fff;
+}
+.sidebar-dark .mini-item { color: #c9cdd4; }
+.sidebar-dark .mini-item:hover { background: rgba(255,255,255,0.08); color: #fff; }
+
+.sidebar-primary {
+  background: var(--bml-gradient-alt, linear-gradient(180deg, var(--arcoblue-6) 0%, var(--arcoblue-5) 100%)) !important;
+  border-right: none !important;
+}
+.sidebar-primary :deep(.arco-menu-inner) { background: transparent !important; }
+.sidebar-primary :deep(.arco-menu-item) { color: rgba(255,255,255,0.8) !important; background: transparent; }
+.sidebar-primary :deep(.arco-menu-item:hover) { background: rgba(255,255,255,0.1) !important; color: #fff !important; }
+.sidebar-primary :deep(.arco-menu-item.arco-menu-selected) {
+  background: rgba(255,255,255,0.2) !important;
+  color: #fff !important;
+}
+.sidebar-primary :deep(.arco-icon) { color: inherit !important; }
+.sidebar-primary .logo { color: #fff !important; }
+.sidebar-primary .logo-text { color: #fff !important; -webkit-text-fill-color: #fff; background: none !important; }
+.sidebar-primary .collapse-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255,255,255,0.3);
+  color: #fff;
+}
+.sidebar-primary .collapse-btn:hover {
+  background: rgba(255, 255, 255, 0.35);
+  color: #fff;
+}
+.sidebar-primary .mini-item { color: rgba(255,255,255,0.8); }
+.sidebar-primary .mini-item:hover { background: rgba(255,255,255,0.1); color: #fff; }
+.sidebar-primary .mini-item.active {
+  background: rgba(255,255,255,0.25) !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+/* 主色侧边栏父级菜单状态 */
+.sidebar-primary :deep(.arco-menu-inline-header) {
+  color: rgba(255,255,255,0.8);
+}
+.sidebar-primary :deep(.arco-menu-inline-header.arco-menu-selected) {
+  background: rgba(255, 255, 255, 0.15) !important;
+  color: #fff !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+}
+.sidebar-primary :deep(.arco-menu-inline-header.arco-menu-selected .arco-icon),
+.sidebar-primary :deep(.arco-menu-inline-header.arco-menu-selected .arco-menu-icon-suffix) {
+  color: #fff !important;
+}
+.sidebar-primary :deep(.arco-menu-inline-header:hover) {
+  color: #fff;
+  background: rgba(255,255,255,0.1);
+}
+
+/* ── 暗色模式 Header ── */
+:global(body[arco-theme='dark']) .modern-breadcrumb .breadcrumb-active,
+:global(body[arco-theme='dark']) .modern-breadcrumb .breadcrumb-active-solo { color: #f2f3f5; }
+:global(body[arco-theme='dark']) .glass-dock {
+  background: rgba(35, 35, 36, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.2), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+:global(body[arco-theme='dark']) .glass-dock:hover {
+  background: rgba(35, 35, 36, 0.8);
+  box-shadow: 0 8px 16px -2px rgba(0, 0, 0, 0.3), inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+:global(body[arco-theme='dark']) .dock-item { color: #86909c; }
+:global(body[arco-theme='dark']) .dock-item:hover { background: rgba(255, 255, 255, 0.1); color: #f2f3f5; }
+:global(body[arco-theme='dark']) .dock-divider { background: #3a3a3b; }
 </style>

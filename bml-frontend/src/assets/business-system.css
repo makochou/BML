@@ -186,12 +186,12 @@
     background: rgba(255, 255, 255, 0.92) !important;
 }
 
-/* 输入框 focus 状态：蓝色边框 + 外发光阴影 */
+/* 输入框 focus 状态：主题色边框 + 外发光阴影 */
 .biz-query-form .arco-input-wrapper.arco-input-focus,
 .biz-query-form .arco-select-view.arco-select-view-focus,
 .biz-query-form .arco-tree-select-view.arco-tree-select-view-focus {
-    border-color: rgba(54, 124, 217, 0.82) !important;
-    box-shadow: 0 0 0 4px rgba(69, 138, 226, 0.13) !important;
+    border-color: var(--bml-border-active, rgba(54, 124, 217, 0.82)) !important;
+    box-shadow: 0 0 0 4px rgba(var(--bml-primary-rgb, 22, 93, 255), 0.13) !important;
 }
 
 /* 输入框内文字大小：12px，与授权治理一致 */
@@ -461,16 +461,16 @@
     transition: all 0.18s ease;
 }
 
-/* 主操作按钮（编辑、查看等）*/
+/* 主操作按钮（编辑、查看等）—— 跟随主题色 */
 .table-action-btn--primary.arco-btn-primary {
     border: 0;
-    background: linear-gradient(135deg, #3b82f6, #06b6d4);
-    box-shadow: 0 1px 4px rgba(59, 130, 246, 0.18);
+    background: var(--bml-gradient, linear-gradient(135deg, #3b82f6, #06b6d4)) !important;
+    box-shadow: 0 1px 4px var(--bml-shadow, rgba(59, 130, 246, 0.18));
 }
 
 .table-action-btn--primary.arco-btn-primary:hover {
     transform: translateY(-0.5px);
-    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.28);
+    box-shadow: 0 2px 8px var(--bml-shadow, rgba(59, 130, 246, 0.28));
 }
 
 /* 危险操作常驻按钮（删除等） */
@@ -497,9 +497,9 @@
 }
 
 .table-action-btn--more.arco-btn:hover {
-    border-color: rgba(59, 130, 246, 0.4);
-    color: #3b82f6;
-    background: rgba(59, 130, 246, 0.04);
+    border-color: var(--bml-border-active, rgba(59, 130, 246, 0.4));
+    color: var(--bml-primary, #3b82f6);
+    background: var(--bml-hover-bg, rgba(59, 130, 246, 0.04));
 }
 
 /* 危险操作（删除等�?*/
@@ -521,31 +521,174 @@
    - 选中行：蓝色左边框标�?
    ───────────────────────────────────────────────────────────── */
 
-/* 表头样式 */
+/*
+ * 表头/表体单元格定位基准 + 溢出策略（全局通用）
+ * ─────────────────────────────────────────────────────
+ * position: relative 用于：
+ *   1. 列宽拖拽手柄 (.arco-table-column-handle) 的定位基准
+ *   2. 表头与表体共用同一套列分割线 ::after 定位基准
+ *
+ * ⚠ 关键：必须排除固定列（fixed-left / fixed-right）！
+ *   Arco Table 的固定列依赖 position: sticky 实现横向滚动时"钉住"效果，
+ *   CSS 只允许一个 position 值，relative 会直接覆盖 sticky 导致：
+ *   - 左侧固定列表头滚动时跟随移动（不再固定）
+ *   - 右侧固定操作列表头被其他列遮挡（z-index 层级丢失）
+ *
+ * 文字溢出裁剪交由内层 .arco-table-cell 处理（见下方规则）。
+ */
+.governance-list-stage .arco-table-th:not(.arco-table-col-fixed-left):not(.arco-table-col-fixed-right),
+.governance-list-stage .arco-table-td:not(.arco-table-col-fixed-left):not(.arco-table-col-fixed-right),
+.page-wrapper .arco-table-th:not(.arco-table-col-fixed-left):not(.arco-table-col-fixed-right),
+.page-wrapper .arco-table-td:not(.arco-table-col-fixed-left):not(.arco-table-col-fixed-right) {
+    position: relative;
+}
+
+/*
+ * 表头与表体列分割线统一规则。
+ * 所有普通列的右边界都由单元格自身的 right: 0 绘制，确保标题列名与下方数据列框线完全对齐。
+ * 固定列边缘使用下面 fixed-left-last / fixed-right-first 的专用遮罩规则，避免覆盖 sticky 定位。
+ */
+.governance-list-stage .arco-table-th:not(.arco-table-col-fixed-left):not(.arco-table-col-fixed-right):not(.arco-table-filler):not(:last-child)::after,
+.governance-list-stage .arco-table-td:not(.arco-table-col-fixed-left):not(.arco-table-col-fixed-right):not(.arco-table-filler):not(:last-child)::after,
+.page-wrapper .arco-table-th:not(.arco-table-col-fixed-left):not(.arco-table-col-fixed-right):not(.arco-table-filler):not(:last-child)::after,
+.page-wrapper .arco-table-td:not(.arco-table-col-fixed-left):not(.arco-table-col-fixed-right):not(.arco-table-filler):not(:last-child)::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: -1px;
+    width: 1px;
+    background: rgba(188, 205, 226, 0.34);
+    pointer-events: none;
+}
+
+.governance-list-stage .arco-table-th .arco-table-cell,
+.page-wrapper .arco-table-th .arco-table-cell {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+}
+
+/*
+ * 自定义列头插槽内容（如 TableColumnSearch 组件）溢出裁剪。
+ * Arco Table 的 th > .arco-table-cell 内部可能嵌套自定义组件，
+ * 需要确保其 display: block 以使 overflow: hidden 生效。
+ */
+.governance-list-stage .arco-table-th .arco-table-cell > *,
+.page-wrapper .arco-table-th .arco-table-cell > * {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+    display: inline-flex;
+}
+
+/*
+ * 固定列层叠防穿透
+ * ─────────────────────────────────────────────────────
+ * 问题说明：
+ *   固定列（左侧固定字段、右侧操作列）位于普通滚动列上方。
+ *   如果上层固定列背景半透明或层级不足，底层滚动列的边框/分割线会从下面透出，
+ *   视觉上就会出现“上层显示下层框线”的问题。
+ *
+ * 处理原则：
+ *   1. 固定列 th/td 使用完全不透明背景；
+ *   2. 固定列层级高于普通列，避免普通列伪元素压到上层；
+ *   3. 仅在固定列边缘（left-last / right-first）增加柔和遮罩，
+ *      覆盖底层滚动列的竖向分割线，同时保留清爽的分层边界。
+ */
+.governance-list-stage .arco-table-th,
+.page-wrapper .arco-table-th {
+    --bml-table-fixed-layer-bg: linear-gradient(180deg,
+        rgba(var(--bml-primary-rgb, 22, 93, 255), 0.06),
+        rgba(var(--bml-primary-rgb, 22, 93, 255), 0.03)),
+        #ffffff;
+    --bml-table-fixed-mask-color: #f8fbff;
+}
+
+.governance-list-stage .arco-table-td,
+.page-wrapper .arco-table-td {
+    --bml-table-fixed-layer-bg: #ffffff;
+    --bml-table-fixed-mask-color: #ffffff;
+}
+
+.governance-list-stage .arco-table-th.arco-table-col-fixed-left,
+.governance-list-stage .arco-table-th.arco-table-col-fixed-right,
+.page-wrapper .arco-table-th.arco-table-col-fixed-left,
+.page-wrapper .arco-table-th.arco-table-col-fixed-right {
+    z-index: 14;
+    background: var(--bml-table-fixed-layer-bg) !important;
+    background-clip: padding-box;
+}
+
+/* 固定列数据行同样需要不透明背景 + z-index，防止横向滚动时内容穿透 */
+.governance-list-stage .arco-table-td.arco-table-col-fixed-left,
+.governance-list-stage .arco-table-td.arco-table-col-fixed-right,
+.page-wrapper .arco-table-td.arco-table-col-fixed-left,
+.page-wrapper .arco-table-td.arco-table-col-fixed-right {
+    z-index: 12;
+    background: var(--bml-table-fixed-layer-bg) !important;
+    background-clip: padding-box;
+}
+
+/* 覆盖 Arco 在固定列 hover/stripe 场景下自动生成的 ::before 背景，确保遮挡层始终不透明。 */
+.governance-list-stage .arco-table-td.arco-table-col-fixed-left::before,
+.governance-list-stage .arco-table-td.arco-table-col-fixed-right::before,
+.page-wrapper .arco-table-td.arco-table-col-fixed-left::before,
+.page-wrapper .arco-table-td.arco-table-col-fixed-right::before {
+    background: var(--bml-table-fixed-layer-bg) !important;
+}
+
+/* 左侧最后一个固定列：右侧外扩遮罩，挡住底层普通列滚动到固定列下方时露出的竖线。 */
+.governance-list-stage .arco-table-col-fixed-left-last::after,
+.page-wrapper .arco-table-col-fixed-left-last::after {
+    width: 12px;
+    background: linear-gradient(90deg, var(--bml-table-fixed-mask-color) 0%, var(--bml-table-fixed-mask-color) 36%, transparent 100%);
+    box-shadow: inset 1px 0 0 rgba(188, 205, 226, 0.44) !important;
+    pointer-events: none;
+}
+
+/* 右侧第一个固定列：左侧外扩遮罩，挡住底层普通列滚动到操作列下方时露出的竖线。 */
+.governance-list-stage .arco-table-col-fixed-right-first::after,
+.page-wrapper .arco-table-col-fixed-right-first::after {
+    width: 12px;
+    background: linear-gradient(90deg, transparent 0%, var(--bml-table-fixed-mask-color) 64%, var(--bml-table-fixed-mask-color) 100%);
+    box-shadow: inset -1px 0 0 rgba(188, 205, 226, 0.44) !important;
+    pointer-events: none;
+}
+
+/* 表头样式 —— 跟随主题色 */
 .governance-list-stage .arco-table-th {
-    background: linear-gradient(180deg, rgba(241, 246, 255, 0.98), rgba(235, 243, 255, 0.96)) !important;
-    border-bottom: 1px solid rgba(210, 224, 240, 0.9) !important;
+    background: linear-gradient(180deg, rgba(var(--bml-primary-rgb, 22, 93, 255), 0.04), rgba(var(--bml-primary-rgb, 22, 93, 255), 0.02)) !important;
+    border-bottom: 1px solid rgba(var(--bml-primary-rgb, 22, 93, 255), 0.1) !important;
 }
 
 .governance-list-stage .arco-table-th .arco-table-cell {
     font-size: 12px;
     font-weight: 700;
-    color: #334155;
+    color: var(--bml-text-color, #334155);
     letter-spacing: 0.02em;
 }
 
 /* 表格行悬停效�?*/
-.governance-list-stage .arco-table-tr:hover .arco-table-td {
-    background: rgba(23, 105, 255, 0.03) !important;
+.governance-list-stage .arco-table-tr:hover .arco-table-td,
+.page-wrapper .arco-table-tr:hover .arco-table-td {
+    --bml-table-fixed-layer-bg: #f5faff;
+    --bml-table-fixed-mask-color: #f5faff;
+    background: #f5faff !important;
 }
 
 /* 选中行高�?*/
-.governance-list-stage .arco-table-tr.is-row-active .arco-table-td {
-    background: rgba(23, 105, 255, 0.05) !important;
+.governance-list-stage .arco-table-tr.is-row-active .arco-table-td,
+.page-wrapper .arco-table-tr.is-row-active .arco-table-td {
+    --bml-table-fixed-layer-bg: #f1f7ff;
+    --bml-table-fixed-mask-color: #f1f7ff;
+    background: #f1f7ff !important;
 }
 
 .governance-list-stage .arco-table-tr.is-row-active .arco-table-td:first-child {
-    box-shadow: inset 3px 0 0 #1769ff;
+    box-shadow: inset 3px 0 0 var(--bml-primary, #1769ff);
 }
 
 /* 表格单元格内边距 */
@@ -554,8 +697,11 @@
 }
 
 /* 斑马纹（stripe 模式�?*/
-.governance-list-stage .arco-table-stripe .arco-table-tr:nth-child(even) .arco-table-td {
-    background: rgba(248, 251, 255, 0.8);
+.governance-list-stage .arco-table-stripe .arco-table-tr:nth-child(even) .arco-table-td,
+.page-wrapper .arco-table-stripe .arco-table-tr:nth-child(even) .arco-table-td {
+    --bml-table-fixed-layer-bg: #f8fbff;
+    --bml-table-fixed-mask-color: #f8fbff;
+    background: #f8fbff;
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -574,30 +720,30 @@
     padding-bottom: 0;
 }
 
-/* Tab 标签按钮 */
+/* Tab 标签按钮 —— 跟随主题色 */
 .bml-modal__body .arco-tabs-tab {
     padding: 6px 16px;
     border-radius: 8px 8px 0 0;
     font-size: 13px;
     font-weight: 600;
-    color: #64748b;
+    color: var(--bml-text-color, #64748b);
     transition: all 0.2s ease;
 }
 
 .bml-modal__body .arco-tabs-tab:hover {
-    color: #1769ff;
-    background: rgba(23, 105, 255, 0.04);
+    color: var(--bml-primary, #1769ff);
+    background: var(--bml-hover-bg, rgba(23, 105, 255, 0.04));
 }
 
-/* 激活的 Tab 标签 */
+/* 激活的 Tab 标签 —— 跟随主题色 */
 .bml-modal__body .arco-tabs-tab.arco-tabs-tab-active {
-    color: #1769ff;
-    background: rgba(23, 105, 255, 0.06);
+    color: var(--bml-primary, #1769ff);
+    background: var(--bml-selected-bg, rgba(23, 105, 255, 0.06));
 }
 
-/* Tab 激活指示线 */
+/* Tab 激活指示线 —— 跟随主题色 */
 .bml-modal__body .arco-tabs-nav-ink {
-    background: linear-gradient(90deg, #1769ff, #12b8a6);
+    background: var(--bml-gradient, linear-gradient(90deg, var(--bml-primary, #1769ff), var(--bml-primary, #12b8a6)));
     height: 2px;
     border-radius: 999px;
 }
@@ -620,12 +766,12 @@
 .bml-modal__body .arco-form-item-label-col>label {
     font-size: 13px;
     font-weight: 600;
-    color: #334155;
+    color: var(--bml-text-color, #334155);
 }
 
 /* 必填星号 */
 .bml-modal__body .arco-form-item-label-required-symbol {
-    color: #ef4444;
+    color: var(--bml-danger-color, #ef4444);
 }
 
 /* 输入框、选择框、文本域统一圆角 */
@@ -647,7 +793,7 @@
 .bml-modal__body .arco-picker:hover,
 .bml-modal__body .arco-input-number:hover,
 .bml-modal__body .arco-tree-select-view:hover {
-    border-color: rgba(23, 105, 255, 0.4) !important;
+    border-color: var(--bml-border-active, rgba(23, 105, 255, 0.4)) !important;
 }
 
 .bml-modal__body .arco-input-wrapper.arco-input-focus,
@@ -656,8 +802,8 @@
 .bml-modal__body .arco-picker.arco-picker-focused,
 .bml-modal__body .arco-input-number.arco-input-number-focused,
 .bml-modal__body .arco-tree-select-view.arco-tree-select-view-focus {
-    border-color: rgba(23, 105, 255, 0.7) !important;
-    box-shadow: 0 0 0 3px rgba(23, 105, 255, 0.1) !important;
+    border-color: rgba(var(--bml-primary-rgb, 22, 93, 255), 0.7) !important;
+    box-shadow: 0 0 0 3px rgba(var(--bml-primary-rgb, 22, 93, 255), 0.1) !important;
 }
 
 /* 表单项间�?*/
@@ -682,7 +828,7 @@
 
 /* 激活页�?*/
 .governance-list-stage .arco-pagination-item-active {
-    background: linear-gradient(135deg, #1769ff, #12b8a6) !important;
+    background: var(--bml-gradient, linear-gradient(135deg, var(--bml-primary, #1769ff), var(--bml-primary, #12b8a6))) !important;
     border-color: transparent !important;
     color: #ffffff !important;
     font-weight: 700;
@@ -690,8 +836,8 @@
 
 /* 页码按钮悬停 */
 .governance-list-stage .arco-pagination-item:not(.arco-pagination-item-active):hover {
-    border-color: rgba(23, 105, 255, 0.4) !important;
-    color: #1769ff !important;
+    border-color: var(--bml-border-active, rgba(23, 105, 255, 0.4)) !important;
+    color: var(--bml-primary, #1769ff) !important;
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -708,7 +854,7 @@
     right: 14px;
     height: 2px;
     border-radius: 0 0 999px 999px;
-    background: linear-gradient(90deg, #1769ff, #12b8a6);
+    background: var(--bml-gradient, linear-gradient(90deg, var(--bml-primary, #1769ff), var(--bml-primary, #12b8a6)));
     opacity: 0.9;
     z-index: 10;
 }
@@ -722,11 +868,11 @@
    - 危险按钮（重置密码等）：橙色
    ───────────────────────────────────────────────────────────── */
 
-/* 确定/提交按钮 */
+/* 确定/提交按钮 —— 跟随主题色 */
 .bml-modal__footer .arco-btn-primary:not(.arco-btn-status-warning):not(.arco-btn-status-danger) {
-    background: linear-gradient(135deg, #1769ff 0%, #1f8bff 46%, #12b8a6 100%) !important;
+    background: var(--bml-gradient, linear-gradient(135deg, var(--bml-primary, #1769ff), var(--bml-primary, #1f8bff))) !important;
     border: 0 !important;
-    box-shadow: 0 8px 20px rgba(23, 105, 255, 0.24) !important;
+    box-shadow: 0 8px 20px var(--bml-shadow, rgba(23, 105, 255, 0.24)) !important;
     font-weight: 700;
     min-width: 96px;
     border-radius: 10px !important;
@@ -734,27 +880,27 @@
 
 .bml-modal__footer .arco-btn-primary:not(.arco-btn-status-warning):not(.arco-btn-status-danger):hover {
     transform: translateY(-1px);
-    box-shadow: 0 10px 24px rgba(23, 105, 255, 0.32) !important;
+    box-shadow: 0 10px 24px var(--bml-shadow, rgba(23, 105, 255, 0.32)) !important;
 }
 
 /* 取消按钮 */
 .bml-modal__footer .arco-btn:not(.arco-btn-primary):not(.arco-btn-status-warning):not(.arco-btn-status-danger) {
     border-color: rgba(203, 213, 225, 0.9) !important;
     background: linear-gradient(180deg, #ffffff, #f8fafc) !important;
-    color: #475569 !important;
+    color: var(--bml-text-color, #475569) !important;
     font-weight: 600;
     min-width: 80px;
     border-radius: 10px !important;
 }
 
 .bml-modal__footer .arco-btn:not(.arco-btn-primary):not(.arco-btn-status-warning):not(.arco-btn-status-danger):hover {
-    border-color: rgba(23, 105, 255, 0.4) !important;
-    color: #1769ff !important;
+    border-color: var(--bml-border-active, rgba(23, 105, 255, 0.4)) !important;
+    color: var(--bml-primary, #1769ff) !important;
 }
 
 /* 警告按钮（重置密码等�?*/
 .bml-modal__footer .arco-btn-status-warning {
-    background: linear-gradient(135deg, #f97316, #fb923c) !important;
+    background: linear-gradient(135deg, var(--bml-warning-color, #f97316), var(--bml-warning-color, #fb923c)) !important;
     border: 0 !important;
     color: #ffffff !important;
     font-weight: 700;
@@ -768,12 +914,12 @@
    统一树形表格（机构管理、部门管理、菜单管理）的展开图标样式�?
    ───────────────────────────────────────────────────────────── */
 .governance-list-stage .arco-table-expand-btn {
-    color: #64748b;
+    color: var(--bml-text-color, #64748b);
     transition: color 0.2s ease;
 }
 
 .governance-list-stage .arco-table-expand-btn:hover {
-    color: #1769ff;
+    color: var(--bml-primary, #1769ff);
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -786,7 +932,7 @@
 }
 
 .governance-list-stage .arco-empty-description {
-    color: #94a3b8;
+    color: var(--bml-text-color, #94a3b8);
     font-size: 13px;
 }
 
@@ -812,7 +958,7 @@
 }
 
 .arco-popconfirm-popup-content .arco-btn-primary {
-    background: linear-gradient(135deg, #ef4444, #f97316) !important;
+    background: linear-gradient(135deg, var(--bml-danger-color, #ef4444), var(--bml-danger-color, #f97316)) !important;
     border: 0 !important;
     border-radius: 8px !important;
 }
@@ -829,8 +975,8 @@
 }
 
 .arco-tree-node-selected>.arco-tree-node-title {
-    background: rgba(23, 105, 255, 0.08) !important;
-    color: #1769ff !important;
+    background: var(--bml-selected-bg, rgba(23, 105, 255, 0.08)) !important;
+    color: var(--bml-primary, #1769ff) !important;
     font-weight: 600;
 }
 
@@ -846,13 +992,13 @@
 }
 
 .arco-select-option-selected {
-    background: rgba(23, 105, 255, 0.06) !important;
-    color: #1769ff !important;
+    background: var(--bml-selected-bg, rgba(23, 105, 255, 0.06)) !important;
+    color: var(--bml-primary, #1769ff) !important;
     font-weight: 600;
 }
 
 .arco-select-option:hover {
-    background: rgba(23, 105, 255, 0.04) !important;
+    background: var(--bml-hover-bg, rgba(23, 105, 255, 0.04)) !important;
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -867,7 +1013,7 @@
 }
 
 .arco-picker-date-value.arco-picker-cell-selected .arco-picker-date-value {
-    background: linear-gradient(135deg, #1769ff, #12b8a6) !important;
+    background: var(--bml-primary, #1769ff) !important;
     border-radius: 50% !important;
 }
 
@@ -923,16 +1069,69 @@
 }
 
 .table-column-setting-btn.arco-btn:hover {
-    border-color: rgba(23, 105, 255, 0.4);
-    color: #1769ff;
-    background: rgba(23, 105, 255, 0.04);
+    border-color: var(--bml-border-active, rgba(23, 105, 255, 0.4));
+    color: var(--bml-primary, #1769ff);
+    background: var(--bml-hover-bg, rgba(23, 105, 255, 0.04));
 }
 
 /* ─────────────────────────────────────────────────────────────
-   21. 表格铺满容器
+   21. 表格列宽固定策略（全局通用，所有业务列表生效）
+   ─────────────────────────────────────────────────────────────
+   根因：
+     Arco Table 默认使用 table-layout: auto，浏览器会根据单元格内容
+     自动分配列宽。当容器宽度 < 所有列宽之和时，浏览器会等比例压缩
+     各列导致表头标题被截断。
+
+   解决方案：
+     强制 table-layout: fixed，浏览器严格按照 <colgroup> 中定义的
+     列宽来渲染（即 columns 配置里的 width 属性），不再根据内容压缩。
+     配合 Arco Table 的 scroll.x 属性（= 所有可见列宽之和），
+     当总宽度超出容器时自动出现横向滚动条。
+
+   影响范围：
+     - 所有业务系统列表页（机构、部门、岗位、用户、角色等）
+     - 树形表格与普通表格均适用
+     - 用户仍可通过拖拽列边框自由调整列宽（column-resizable）
+   ───────────────────────────────────────────────────────────── */
+.governance-list-stage .arco-table-element,
+.page-wrapper .arco-table-element {
+    table-layout: fixed;
+    /*
+     * 精确设定表格总宽 = 所有可见列宽之和。
+     *
+     * --bml-table-scroll-width 由 useBusinessTableColumns composable 通过
+     * tableStyle 计算属性注入到 <a-table :style="tableStyle"> 的根元素上。
+     * CSS 自定义属性自动向下继承至此 <table> 元素。
+     *
+     * 使用 !important 确保此规则的优先级高于一切：
+     *   - 高于 Arco 默认的 .arco-table .arco-table-element { width: 100% }
+     *   - 高于 Arco 通过 contentStyle/headerStyle 设置的 inline style
+     *   - 高于任何其他非 !important 的 CSS 规则
+     *
+     * 当变量未定义时（非 useBusinessTableColumns 管理的表格），
+     * var() 回退到 100%，保持默认行为。
+     */
+    width: var(--bml-table-scroll-width, 100%) !important;
+    min-width: 0 !important;
+}
+
+/*
+ * table-layout: fixed 下单元格内容溢出裁剪。
+ * 列宽严格固定后，长文本内容可能超出列宽，
+ * 统一在单元格内容层裁剪并显示省略号，保持视觉整洁。
+ */
+.governance-list-stage .arco-table-td .arco-table-cell,
+.page-wrapper .arco-table-td .arco-table-cell {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   22. 表格铺满容器
    ─────────────────────────────────────────────────────────────
    让表格在 GovernanceListStage body-fill 模式下铺满整个区域，
-   而不是只占数据行的高度�?
+   而不是只占数据行的高度。
    ───────────────────────────────────────────────────────────── */
 
 /* 表格容器铺满（flex: 1 代替 height: 100%，确保同级 footer 不被挤出可视区） */
@@ -1030,9 +1229,9 @@
     letter-spacing: 0.01em !important;
 }
 
-/* 选项 hover 效果 — 渐变背景 + 微位移 */
+/* 选项 hover 效果 — 跟随主题色渐变背景 + 微位移 */
 .arco-dropdown-option:hover:not(.arco-dropdown-option-disabled) {
-    background: linear-gradient(135deg, rgba(22, 93, 255, 0.07), rgba(60, 126, 255, 0.04)) !important;
+    background: linear-gradient(135deg, rgba(var(--bml-primary-rgb, 22, 93, 255), 0.07), rgba(var(--bml-primary-rgb, 22, 93, 255), 0.04)) !important;
     color: var(--bml-primary, #165dff) !important;
     transform: translateX(2px) !important;
 }
@@ -1238,4 +1437,134 @@ body[arco-theme='dark'] .bml-dropdown-user-role {
     border-color: rgba(96, 146, 205, 0.76);
     color: #2d4d71;
     transform: translateY(-1px);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   24. 表格行点击选中高亮（全局通用）
+   ─────────────────────────────────────────────────────────────
+   配套 composable：src/composables/useTableRowHighlight.ts
+   统一类名：.bml-row-active
+
+   设计特点：
+     1. 底色使用 --bml-primary-rgb 自动跟随主题色
+     2. 第一列左侧内阴影实现 3px 主色指示条（不破坏表格布局）
+     3. 选中行文字加粗、微调色彩，视觉层次鲜明
+     4. hover 状态与选中状态互不冲突，始终保持选中底色
+     5. 固定列（col-fixed-left/right）同步高亮，无透视穿透
+     6. 平滑过渡动画 0.2s，操作手感流畅
+     7. 暗色模式自动适配
+     8. 数据行显示 pointer 光标，暗示可点击
+
+   使用方式：
+     在 <a-table> 上绑定：
+       :row-class="getRowClass"
+       @row-click="handleRowClick"
+     其中 getRowClass / handleRowClick 由 useTableRowHighlight() 提供。
+   ───────────────────────────────────────────────────────────── */
+
+/*
+ * 数据行鼠标指针 — 暗示可点击选中
+ * 作用范围：所有业务页面的 a-table body 行
+ */
+.page-wrapper .arco-table-body .arco-table-tr {
+    cursor: pointer;
+}
+
+/*
+ * 选中行底色 — 主题色 6% 不透明度
+ * 同时覆盖 td、col-fixed-left、col-fixed-right，
+ * 确保固定列不会出现颜色断层或内容透视。
+ */
+.arco-table-tr.bml-row-active > .arco-table-td,
+.arco-table-tr.bml-row-active > .arco-table-col-fixed-left,
+.arco-table-tr.bml-row-active > .arco-table-col-fixed-right {
+    --bml-table-fixed-layer-bg: #f1f7ff;
+    --bml-table-fixed-mask-color: #f1f7ff;
+    background-color: #f1f7ff !important;
+    transition: background-color 0.2s ease;
+}
+
+/*
+ * 选中行 hover 覆盖 — 稍加深至 10%，
+ * 防止 Arco 默认 hover 灰色覆盖选中高亮。
+ */
+.arco-table-tr.bml-row-active:hover > .arco-table-td,
+.arco-table-tr.bml-row-active:hover > .arco-table-col-fixed-left,
+.arco-table-tr.bml-row-active:hover > .arco-table-col-fixed-right {
+    --bml-table-fixed-layer-bg: #e8f2ff;
+    --bml-table-fixed-mask-color: #e8f2ff;
+    background-color: #e8f2ff !important;
+}
+
+/*
+ * 选中行第一列（含 checkbox 列）左侧指示条
+ * 使用 inset box-shadow 实现 3px 竖条，
+ * 不改变单元格尺寸，不破坏表格布局。
+ */
+.arco-table-tr.bml-row-active > .arco-table-td:first-child {
+    box-shadow: inset 3px 0 0 var(--bml-primary, #165dff);
+}
+
+/*
+ * 选中行文字样式增强
+ * 加粗 + 主色文字，确保在浅色底色上清晰可辨。
+ */
+.arco-table-tr.bml-row-active > .arco-table-td .arco-table-cell {
+    color: var(--bml-primary-dark, #104acd);
+    font-weight: 600;
+}
+
+/*
+ * 选中行下边框 — 主色 15% 不透明度
+ * 替代 Arco 默认的灰色分割线，与底色形成呼应。
+ */
+.arco-table-tr.bml-row-active > .arco-table-td {
+    border-bottom-color: rgba(var(--bml-primary-rgb, 22, 93, 255), 0.15) !important;
+}
+
+/*
+ * 选中行内 Tag 保持原色
+ * 防止 .arco-table-cell 的 color 继承导致 Tag 文字变色。
+ */
+.arco-table-tr.bml-row-active .arco-tag {
+    color: inherit;
+}
+
+/*
+ * 选中行内操作按钮区域保持原样
+ * 操作按钮有独立的颜色体系，不应被选中行文字色干扰。
+ */
+.arco-table-tr.bml-row-active .table-row-actions .arco-btn {
+    color: unset;
+    font-weight: unset;
+}
+
+/* ── 暗色模式适配 ── */
+
+/*
+ * 暗色模式：选中行底色使用主色 12% 不透明度
+ * 暗色背景下需要更高不透明度才能看清选中效果。
+ */
+body[arco-theme='dark'] .arco-table-tr.bml-row-active > .arco-table-td,
+body[arco-theme='dark'] .arco-table-tr.bml-row-active > .arco-table-col-fixed-left,
+body[arco-theme='dark'] .arco-table-tr.bml-row-active > .arco-table-col-fixed-right {
+    --bml-table-fixed-layer-bg: #1f2f4a;
+    --bml-table-fixed-mask-color: #1f2f4a;
+    background-color: #1f2f4a !important;
+}
+
+body[arco-theme='dark'] .arco-table-tr.bml-row-active:hover > .arco-table-td,
+body[arco-theme='dark'] .arco-table-tr.bml-row-active:hover > .arco-table-col-fixed-left,
+body[arco-theme='dark'] .arco-table-tr.bml-row-active:hover > .arco-table-col-fixed-right {
+    --bml-table-fixed-layer-bg: #263a5c;
+    --bml-table-fixed-mask-color: #263a5c;
+    background-color: #263a5c !important;
+}
+
+body[arco-theme='dark'] .arco-table-tr.bml-row-active > .arco-table-td .arco-table-cell {
+    color: var(--bml-primary-light, #5b8fff);
+}
+
+body[arco-theme='dark'] .arco-table-tr.bml-row-active > .arco-table-td {
+    border-bottom-color: rgba(var(--bml-primary-rgb, 22, 93, 255), 0.25) !important;
 }

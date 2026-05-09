@@ -73,7 +73,7 @@
           </template>
         </a-popover>
       </template>
-      <a-table :key="tableResetKey" :data="tableData" :loading="loading" :bordered="false" :pagination="false" row-key="id" size="small" :scroll="{ x: scrollX, y: '100%' }" :scrollbar="false" sticky-header :columns="visibleColumns" column-resizable @column-resize="handleColumnResize" @row-dblclick="handleRowDblClick">
+      <a-table :key="tableResetKey" :data="filteredData" :loading="loading" :bordered="false" :pagination="false" row-key="id" size="small" :scroll="{ x: scrollX, y: '100%' }" :scrollbar="false" sticky-header :columns="visibleColumns" column-resizable ref="tableRef" :style="tableStyle" :row-class="getRowClass" @row-click="handleRowClick" @column-resize="handleColumnResize" @row-dblclick="handleRowDblClick">
         <!-- 自定义列头：每列标题旁加放大镜搜索图标（与授权治理一致） -->
         <template #th-postName><TableColumnSearch title="岗位名称" v-model="columnFilters['postName']" /></template>
         <template #th-postCode><TableColumnSearch title="岗位编码" v-model="columnFilters['postCode']" /></template>
@@ -211,6 +211,8 @@ import BusinessTableColumnSetting from '../../../../components/business/Business
 import TableColumnSearch from '../../../../components/common/TableColumnSearch.vue';
 import { useBusinessTableColumns, type BusinessTableColumn } from '../../../../composables/useBusinessTableColumns';
 import { useButtonPermission } from '../../../../composables/useButtonPermission';
+import { useColumnFilter, resetColumnFilters } from '../../../../composables/useColumnFilter';
+import { useTableRowHighlight } from '../../../../composables/useTableRowHighlight';
 
 const POST_CATEGORIES = ['管理类', '技术类', '行政类', '财务类', '销售类', '生产类'];
 const CATEGORY_COLOR: Record<string, string> = {
@@ -221,6 +223,15 @@ const categoryColor = (c: string) => CATEGORY_COLOR[c] || 'gray';
 
 const textMatchMode = ref<'fuzzy' | 'exact'>('fuzzy');
 const queryExpanded = ref(false);
+
+/**
+ * 行点击选中高亮（使用通用 composable）
+ * ──────────────────────────────────
+ * handleRowClick + getRowClass 由 useTableRowHighlight 提供，
+ * 选中行自动附加 .bml-row-active 类名，底色跟随主题色。
+ * 全局样式定义在 business-system.css 第 24 节。
+ */
+const { handleRowClick, getRowClass } = useTableRowHighlight();
 
 /**
  * 岗位列默认配置（与授权治理列管理模式一致）：
@@ -236,26 +247,35 @@ const columnFilters = reactive<Record<string, string>>({
 const defaultColumns: BusinessTableColumn[] = [
   /* ── 核心标识（默认显示） ── */
   { key: 'postName',     title: '岗位名称', dataIndex: 'postName',     width: 160, visible: true, fixed: 'left', sortable: true, titleSlotName: 'th-postName' },
-  { key: 'postCode',     title: '岗位编码', dataIndex: 'postCode',     width: 120, visible: true, sortable: true, titleSlotName: 'th-postCode' },
+  { key: 'postCode',     title: '岗位编码', dataIndex: 'postCode',     width: 140, visible: true, sortable: true, titleSlotName: 'th-postCode' },
   { key: 'orgName',      title: '所属机构', dataIndex: 'orgName',      width: 160, visible: true, sortable: true, titleSlotName: 'th-orgName', permission: 'system:post:field:orgId' },
-  { key: 'postCategory', title: '岗位类别', slotName: 'postCategory',  width: 110, visible: true, align: 'center', sortable: true, titleSlotName: 'th-postCategory', permission: 'system:post:field:postCategory' },
-  { key: 'postLevel',    title: '岗位级别', slotName: 'postLevel',     width: 100, visible: true, align: 'center', sortable: true, titleSlotName: 'th-postLevel', permission: 'system:post:field:postLevel' },
-  { key: 'sort',         title: '排序',     dataIndex: 'sort',         width: 70,  visible: true, align: 'center', sortable: true, titleSlotName: 'th-sort' },
-  { key: 'status',       title: '状态',     slotName: 'status',        width: 80,  visible: true, align: 'center', sortable: true, titleSlotName: 'th-status' },
-  { key: 'createTime',   title: '创建时间', dataIndex: 'createTime',   width: 170, visible: true, sortable: true, titleSlotName: 'th-createTime' },
+  { key: 'postCategory', title: '岗位类别', slotName: 'postCategory',  width: 120, visible: true, align: 'center', sortable: true, titleSlotName: 'th-postCategory', permission: 'system:post:field:postCategory' },
+  { key: 'postLevel',    title: '岗位级别', slotName: 'postLevel',     width: 120, visible: true, align: 'center', sortable: true, titleSlotName: 'th-postLevel', permission: 'system:post:field:postLevel' },
+  { key: 'sort',         title: '排序',     dataIndex: 'sort',         width: 80,  visible: true, align: 'center', sortable: true, titleSlotName: 'th-sort' },
+  { key: 'status',       title: '状态',     slotName: 'status',        width: 90,  visible: true, align: 'center', sortable: true, titleSlotName: 'th-status' },
+  { key: 'createTime',   title: '创建时间', dataIndex: 'createTime',   width: 180, visible: true, sortable: true, titleSlotName: 'th-createTime' },
   /* ── 扩展字段（默认隐藏） ── */
   { key: 'remark', title: '备注', dataIndex: 'remark', width: 200, visible: true, ellipsis: true, sortable: true, titleSlotName: 'th-remark', permission: 'system:post:field:remark' },
   /* ── 操作列（锁定） ── */
   { key: 'actions', title: '操作', slotName: 'actions', width: 170, visible: true, fixed: 'right', locked: true, align: 'center' },
 ];
 
-const { visibleColumns, columnSettingItems, dragState, tableResetKey, scrollX, handleColumnResize, toggleColumnVisible, moveColumn, toggleColumnFixed, handleDragStart, handleDragOver, handleDrop, handleDragEnd, resetColumns } = useBusinessTableColumns('system-post', defaultColumns);
-
-/** 表格列宽 CSS 绑定值（含单位，供 v-bind 使用） */
-const tableScrollWidth = computed(() => scrollX.value + 'px');
+const {
+  visibleColumns, columnSettingItems, dragState, tableResetKey, scrollX, tableStyle, tableRef,
+  handleColumnResize, toggleColumnVisible, moveColumn, toggleColumnFixed,
+  handleDragStart, handleDragOver, handleDrop, handleDragEnd, resetColumns,
+} = useBusinessTableColumns('system-post', defaultColumns);
 
 const loading = ref(false);
 const tableData = ref<PostVO[]>([]);
+
+/** 列头搜索值格式化器：将非文本字段转换为可搜索的展示文本 */
+const columnFilterFormatters: Record<string, (val: any) => string> = {
+  status: (val) => val === 1 ? '正常' : '停用',
+};
+/** 列头搜索过滤后的表格数据 */
+const { filteredData } = useColumnFilter(tableData, columnFilters, columnFilterFormatters);
+
 const orgTreeData = ref<OrgVO[]>([]);
 const dialogVisible = ref(false);
 const dialogTitle = ref('新增岗位');
@@ -269,10 +289,10 @@ const canEditPost = computed(() => hasPermission('system:post:edit'));
 const queryParams = reactive<PostQuery & { postLevel?: string }>({ postName: '', postCode: '', postCategory: undefined, status: undefined, orgId: undefined, postLevel: '' });
 const pagination = reactive({ current: 1, pageSize: 20, total: 0 });
 
-/** 当前页正常状态岗位数量 */
-const activeCount = computed(() => tableData.value.filter(r => r.status === 1).length);
-/** 当前页停用状态岗位数量 */
-const disabledCount = computed(() => tableData.value.filter(r => r.status === 0).length);
+/** 当前页正常状态岗位数量（列头筛选后） */
+const activeCount = computed(() => filteredData.value.filter(r => r.status === 1).length);
+/** 当前页停用状态岗位数量（列头筛选后） */
+const disabledCount = computed(() => filteredData.value.filter(r => r.status === 0).length);
 
 const defaultForm = (): PostForm => ({
   id: undefined, postCode: '', postName: '', orgId: undefined,
@@ -304,6 +324,7 @@ const handleSearch = () => { pagination.current = 1; loadData(); };
 const handleReset = () => {
   queryParams.postName = ''; queryParams.postCode = ''; queryParams.postCategory = undefined;
   queryParams.status = undefined; queryParams.orgId = undefined; queryParams.postLevel = '';
+  resetColumnFilters(columnFilters);
   pagination.current = 1; loadData();
 };
 const handlePageChange = (page: number) => { pagination.current = page; loadData(); };
@@ -376,22 +397,4 @@ onMounted(() => { loadOrgTree(); loadData(); });
 <style scoped>
 .form-tabs :deep(.arco-tabs-content) { padding-top: 12px; }
 .text-gray { color: #c0c0c0; }
-
-/**
- * 修复 sticky-header 模式下表头与数据列框线不对齐
- * 原理：sticky-header 将 header 和 body 拆为两个独立 <table>，
- * 使用 table-layout: fixed 强制列宽按 <colgroup> 声明精确分配，
- * 配合 scroll.x = scrollX（可见列宽之和）保证两表总宽一致。
- */
-:deep(.arco-table-element) {
-  table-layout: fixed !important;
-  width: v-bind(tableScrollWidth) !important;
-  min-width: 0 !important;
-}
-
-:deep(.arco-table-td .arco-table-cell) {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
 </style>

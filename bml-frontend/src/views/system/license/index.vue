@@ -483,7 +483,6 @@ import {
   IconArrowUp,
   IconCheckCircle,
   IconCheckCircleFill,
-  IconClose,
   IconDelete,
   IconExclamationCircle,
   IconExclamationCircleFill,
@@ -1227,16 +1226,6 @@ const downgradeWarnings = computed(() => {
     }
   });
   return warnings;
-});
-
-const compareSummary = computed(() => {
-  if (!previewData.value) {
-    return '请核对新旧许可证差异后再继续更新。';
-  }
-  if (!downgradeWarnings.value.length) {
-    return '新许可证不存在降级风险，可直接确认更新。';
-  }
-  return '检测到部分配额或模块发生变化，请先确认是否符合本次交付预期。';
 });
 
 const resetActivationSelection = () => {

@@ -81,7 +81,7 @@
           </template>
         </a-popover>
       </template>
-      <a-table :key="tableResetKey" :data="pagedTableData" :loading="loading" :bordered="false" :pagination="false" row-key="id" :expanded-keys="expandedKeys" size="small" :scroll="{ x: scrollX, y: '100%' }" :scrollbar="false" sticky-header :columns="visibleColumns" column-resizable @column-resize="handleColumnResize" @row-dblclick="handleRowDblClick" @expand="handleExpandChange">
+      <a-table :key="tableResetKey" :data="pagedTableData" :loading="loading" :bordered="false" :pagination="false" row-key="id" :expanded-keys="expandedKeys" size="small" :scroll="{ x: scrollX, y: '100%' }" :scrollbar="false" sticky-header :columns="visibleColumns" column-resizable ref="tableRef" :style="tableStyle" :row-class="getRowClass" @row-click="handleRowClick" @column-resize="handleColumnResize" @row-dblclick="handleRowDblClick" @expand="handleExpandChange">
         <!-- 自定义列头：每列标题旁加放大镜搜索图标（与授权治理一致） -->
         <template #th-deptName><TableColumnSearch title="部门名称" v-model="columnFilters['deptName']" /></template>
         <template #th-deptCode><TableColumnSearch title="部门编码" v-model="columnFilters['deptCode']" /></template>
@@ -273,7 +273,7 @@
 <script lang="ts" setup>
 defineOptions({ name: 'SystemDept' });
 
-import { ref, reactive, computed, onMounted } from 'vue';
+import { ref, reactive, computed, onMounted, watch } from 'vue';
 import { Message, Modal } from '@arco-design/web-vue';
 import { IconPlus, IconEdit, IconMore, IconSettings, IconUp, IconDown, IconDelete, IconExpand, IconShrink } from '@arco-design/web-vue/es/icon';
 import { fetchDeptList, createDept, updateDept, deleteDept, fetchOrgList, type DeptVO, type DeptForm, type OrgVO } from '../../../../api/system';
@@ -284,6 +284,8 @@ import BusinessTableColumnSetting from '../../../../components/business/Business
 import TableColumnSearch from '../../../../components/common/TableColumnSearch.vue';
 import { useBusinessTableColumns, type BusinessTableColumn } from '../../../../composables/useBusinessTableColumns';
 import { useButtonPermission } from '../../../../composables/useButtonPermission';
+import { useTreeColumnFilter, resetColumnFilters } from '../../../../composables/useColumnFilter';
+import { useTableRowHighlight } from '../../../../composables/useTableRowHighlight';
 
 const DEPT_TYPE_MAP: Record<number, string> = { 1: '事业部', 2: '中心', 3: '部门', 4: '小组' };
 const DEPT_TYPE_COLOR: Record<number, string> = { 1: 'purple', 2: 'arcoblue', 3: 'green', 4: 'cyan' };
@@ -293,6 +295,15 @@ const FUNC_TYPES = ['管理', '研发', '销售', '财务', '人事', '行政', 
 
 const textMatchMode = ref<'fuzzy' | 'exact'>('fuzzy');
 const queryExpanded = ref(false);
+
+/**
+ * 行点击选中高亮（使用通用 composable）
+ * ──────────────────────────────────
+ * handleRowClick + getRowClass 由 useTableRowHighlight 提供，
+ * 选中行自动附加 .bml-row-active 类名，底色跟随主题色。
+ * 全局样式定义在 business-system.css 第 24 节。
+ */
+const { handleRowClick, getRowClass } = useTableRowHighlight();
 
 /**
  * 部门列默认配置（与授权治理列管理模式一致）：
@@ -309,14 +320,14 @@ const columnFilters = reactive<Record<string, string>>({
 const defaultColumns: BusinessTableColumn[] = [
   /* ── 核心标识（默认显示） ── */
   { key: 'deptName', title: '部门名称', dataIndex: 'deptName', width: 240, visible: true, fixed: 'left', ellipsis: true, sortable: true, titleSlotName: 'th-deptName' },
-  { key: 'deptCode', title: '部门编码', dataIndex: 'deptCode', width: 120, visible: true, sortable: true, titleSlotName: 'th-deptCode' },
+  { key: 'deptCode', title: '部门编码', dataIndex: 'deptCode', width: 140, visible: true, sortable: true, titleSlotName: 'th-deptCode' },
   { key: 'orgName',  title: '所属机构', dataIndex: 'orgName',  width: 150, visible: true, sortable: true, titleSlotName: 'th-orgName', permission: 'system:dept:field:orgId' },
-  { key: 'deptType', title: '部门类型', slotName: 'deptType',  width: 100, visible: true, align: 'center', sortable: true, titleSlotName: 'th-deptType', permission: 'system:dept:field:deptType' },
-  { key: 'funcType', title: '职能分类', slotName: 'funcType',  width: 100, visible: true, align: 'center', sortable: true, titleSlotName: 'th-funcType', permission: 'system:dept:field:funcType' },
-  { key: 'leader',   title: '负责人',   dataIndex: 'leader',   width: 100, visible: true, sortable: true, titleSlotName: 'th-leader', permission: 'system:dept:field:leader' },
-  { key: 'sort',     title: '排序',     dataIndex: 'sort',     width: 70,  visible: true, align: 'center', sortable: true, titleSlotName: 'th-sort' },
-  { key: 'status',   title: '状态',     slotName: 'status',    width: 80,  visible: true, align: 'center', sortable: true, titleSlotName: 'th-status' },
-  { key: 'createTime', title: '创建时间', dataIndex: 'createTime', width: 170, visible: true, sortable: true, titleSlotName: 'th-createTime' },
+  { key: 'deptType', title: '部门类型', slotName: 'deptType',  width: 120, visible: true, align: 'center', sortable: true, titleSlotName: 'th-deptType', permission: 'system:dept:field:deptType' },
+  { key: 'funcType', title: '职能分类', slotName: 'funcType',  width: 120, visible: true, align: 'center', sortable: true, titleSlotName: 'th-funcType', permission: 'system:dept:field:funcType' },
+  { key: 'leader',   title: '负责人',   dataIndex: 'leader',   width: 110, visible: true, sortable: true, titleSlotName: 'th-leader', permission: 'system:dept:field:leader' },
+  { key: 'sort',     title: '排序',     dataIndex: 'sort',     width: 80,  visible: true, align: 'center', sortable: true, titleSlotName: 'th-sort' },
+  { key: 'status',   title: '状态',     slotName: 'status',    width: 90,  visible: true, align: 'center', sortable: true, titleSlotName: 'th-status' },
+  { key: 'createTime', title: '创建时间', dataIndex: 'createTime', width: 180, visible: true, sortable: true, titleSlotName: 'th-createTime' },
   /* ── 扩展字段（默认隐藏） ── */
   { key: 'phone',  title: '联系电话', dataIndex: 'phone',  width: 130, visible: false, sortable: true, titleSlotName: 'th-phone', permission: 'system:dept:field:phone' },
   { key: 'email',  title: '邮箱',     dataIndex: 'email',  width: 180, visible: false, sortable: true, titleSlotName: 'th-email', permission: 'system:dept:field:email' },
@@ -324,17 +335,22 @@ const defaultColumns: BusinessTableColumn[] = [
   { key: 'actions', title: '操作', slotName: 'actions', width: 170, visible: true, fixed: 'right', locked: true, align: 'center' },
 ];
 
-const { visibleColumns, columnSettingItems, dragState, tableResetKey, scrollX, handleColumnResize, toggleColumnVisible, moveColumn, toggleColumnFixed, handleDragStart, handleDragOver, handleDrop, handleDragEnd, resetColumns } = useBusinessTableColumns('system-dept', defaultColumns);
-
-/**
- * 树形表格列宽 CSS 绑定值（含单位，供 v-bind 使用）
- * 用于强制 header 与 body 两个 <table> 使用完全相同的总宽度，
- * 配合 table-layout: fixed 从根本上消除列对齐偏差。
- */
-const treeTableScrollWidth = computed(() => scrollX.value + 'px');
+const {
+  visibleColumns, columnSettingItems, dragState, tableResetKey, scrollX, tableStyle, tableRef,
+  handleColumnResize, toggleColumnVisible, moveColumn, toggleColumnFixed,
+  handleDragStart, handleDragOver, handleDrop, handleDragEnd, resetColumns,
+} = useBusinessTableColumns('system-dept', defaultColumns);
 
 const loading = ref(false);
 const tableData = ref<DeptVO[]>([]);
+
+/** 列头搜索值格式化器：将非文本字段转换为可搜索的展示文本 */
+const columnFilterFormatters: Record<string, (val: any) => string> = {
+  deptType: (val) => deptTypeLabel(val),
+  status: (val) => val === 1 ? '正常' : '停用',
+};
+/** 列头搜索过滤后的树形数据 */
+const { filteredData: filteredTreeData } = useTreeColumnFilter(tableData, columnFilters, columnFilterFormatters);
 
 /** 递归收集树所有节点 ID，用于默认展开全部行 */
 const collectAllKeys = (nodes: DeptVO[]): number[] =>
@@ -348,18 +364,18 @@ const expandedKeys = ref<number[]>([]);
 /** 递归统计树形数据总条数 */
 const countTreeNodes = (nodes: DeptVO[]): number =>
   nodes.reduce((sum, n) => sum + 1 + (n.children ? countTreeNodes(n.children) : 0), 0);
-const totalDeptCount = computed(() => countTreeNodes(tableData.value));
+const totalDeptCount = computed(() => countTreeNodes(filteredTreeData.value));
 
 /** 递归统计树形数据中指定状态的节点数量 */
 const countByStatus = (nodes: DeptVO[], status: number): number =>
   nodes.reduce((sum, n) => sum + (n.status === status ? 1 : 0) + (n.children ? countByStatus(n.children, status) : 0), 0);
 
 /** 顶级部门数量（树的根节点数） */
-const topLevelCount = computed(() => tableData.value.length);
-/** 正常状态部门数量 */
-const activeCount = computed(() => countByStatus(tableData.value, 1));
-/** 停用状态部门数量 */
-const disabledCount = computed(() => countByStatus(tableData.value, 0));
+const topLevelCount = computed(() => filteredTreeData.value.length);
+/** 正常状态部门数量（列头筛选后） */
+const activeCount = computed(() => countByStatus(filteredTreeData.value, 1));
+/** 停用状态部门数量（列头筛选后） */
+const disabledCount = computed(() => countByStatus(filteredTreeData.value, 0));
 
 /* ══════ 树形分页（按顶级节点分页，保持每棵子树完整） ══════ */
 const pageSize = ref(10);
@@ -374,9 +390,9 @@ const currentPage = ref(1);
  * </p>
  */
 const pagedTableData = computed(() => {
-  if (pageSize.value === 0) return tableData.value;
+  if (pageSize.value === 0) return filteredTreeData.value;
   const start = (currentPage.value - 1) * pageSize.value;
-  return tableData.value.slice(start, start + pageSize.value);
+  return filteredTreeData.value.slice(start, start + pageSize.value);
 });
 
 /** 全部展开 */
@@ -398,6 +414,12 @@ const handlePageSizeChange = () => {
 const handlePageChange = () => {
   expandedKeys.value = collectAllKeys(pagedTableData.value);
 };
+
+/** 列头筛选条件变化时重置到第一页并展开所有节点 */
+watch(columnFilters, () => {
+  currentPage.value = 1;
+  expandedKeys.value = collectAllKeys(pagedTableData.value);
+}, { deep: true });
 
 const orgTreeData = ref<OrgVO[]>([]);
 const dialogVisible = ref(false);
@@ -477,6 +499,7 @@ const handleReset = () => {
   queryParams.deptName = ''; queryParams.deptCode = ''; queryParams.status = undefined;
   queryParams.orgId = undefined; queryParams.deptType = undefined;
   queryParams.funcType = undefined; queryParams.leader = '';
+  resetColumnFilters(columnFilters);
   loadData();
 };
 
@@ -555,29 +578,6 @@ onMounted(() => { loadOrgTree(); loadData(); });
 
 <style scoped>
 .form-tabs :deep(.arco-tabs-content) { padding-top: 12px; }
-
-/**
- * ═══ 修复：树形表格表头与数据列不对齐 ═══
- *
- * 根因：
- *   Arco Design 的 sticky-header 模式将 header 和 body 拆为两个独立的 <table>。
- *   默认 table-layout: auto 下，浏览器根据单元格内容独立计算各列宽度。
- *   树形表格 body 首列包含展开图标 + 缩进 padding，使其内容比 header 更宽，
- *   导致 body 首列实际宽度 > header 首列宽度，后续所有列的分隔线均产生偏移。
- *
- * 解决方案（三管齐下，缺一不可）：
- *   A. :scrollbar="false"     → 使用原生滚动条，Arco 能正确计算 gutter 补偿宽度，
- *                                消除自定义叠加滚动条导致的 header/body 容器宽度差异
- *   B. table-layout: fixed    → 强制使用 <colgroup> 声明的列宽，忽略单元格内容
- *   C. width: v-bind(scrollX) → 精确设定表格总宽 = 所有可见列宽之和
- *      min-width: 0           → 覆盖 Arco 内部的 min-width，防止浏览器自动拉宽
- *   三者配合，header 与 body 列宽完全一致，fixed 列偏移量精确匹配，横向滚动对齐。
- */
-:deep(.arco-table-element) {
-  table-layout: fixed !important;
-  width: v-bind(treeTableScrollWidth) !important;
-  min-width: 0 !important;
-}
 
 /**
  * 树形缩进内容溢出裁剪

@@ -355,7 +355,8 @@ onMounted(() => {
   background: #fff;
   color: var(--bml-primary, #165dff);
   font-weight: 500;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 2px 8px rgba(var(--bml-primary-rgb, 22, 93, 255), 0.1);
+  border-bottom: 2px solid var(--bml-primary, #165dff);
 }
 
 .tag-title {
@@ -393,6 +394,23 @@ onMounted(() => {
   background: rgba(0, 0, 0, 0.06);
   color: #1d2129;
 }
+
+/* 暗色模式适配 */
+:global(body[arco-theme='dark']) .tags-view-item {
+  background: rgba(255, 255, 255, 0.04);
+  color: #86909c;
+}
+:global(body[arco-theme='dark']) .tags-view-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #e5e6eb;
+}
+:global(body[arco-theme='dark']) .tags-view-item.active {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--bml-primary, #165dff);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+:global(body[arco-theme='dark']) .tag-close-icon { color: #6b7785; }
+:global(body[arco-theme='dark']) .tag-close-icon:hover { background: rgba(255,255,255,0.1); color: #e5e6eb; }
 
 .tags-dropdown-label {
   display: inline-flex;

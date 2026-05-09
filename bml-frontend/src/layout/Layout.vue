@@ -341,9 +341,10 @@ onUnmounted(() => {
   display: flex;
   overflow: hidden;
   /* 背景纹理 - 更加细腻 */
+  /* 背景纹理跟随主题色 */
   background-image: 
-    radial-gradient(circle at 10% 20%, rgba(226, 240, 255, 0.4) 0%, transparent 40%),
-    radial-gradient(circle at 90% 80%, rgba(240, 230, 255, 0.4) 0%, transparent 40%);
+    radial-gradient(circle at 10% 20%, rgba(var(--bml-primary-rgb, 22, 93, 255), 0.06) 0%, transparent 40%),
+    radial-gradient(circle at 90% 80%, rgba(var(--bml-primary-rgb, 22, 93, 255), 0.04) 0%, transparent 40%);
 }
 
 /* 侧边栏 - Vision Pro 毛玻璃风格 */
@@ -414,7 +415,7 @@ onUnmounted(() => {
     height: 48px;
     background: #fff;
     color: var(--bml-primary, #165dff);
-    box-shadow: 0 12px 32px rgba(22, 93, 255, 0.25);
+    box-shadow: 0 12px 32px rgba(var(--bml-primary-rgb, 22, 93, 255), 0.25);
 }
 
 /* Logo */
@@ -544,11 +545,11 @@ onUnmounted(() => {
 }
 
 .layout-demo :deep(.arco-menu-inline-header.arco-menu-selected) {
-    background-color: rgba(22, 93, 255, 0.08) !important; /* 加深背景，确保可见 */
+    background-color: var(--bml-selected-bg, rgba(22, 93, 255, 0.08)) !important;
     color: var(--bml-primary, #165dff) !important;
     font-weight: 700 !important;
-    border: 1px solid rgba(22, 93, 255, 0.1) !important;
-    box-shadow: 0 4px 10px rgba(22, 93, 255, 0.05);
+    border: 1px solid rgba(var(--bml-primary-rgb, 22, 93, 255), 0.1) !important;
+    box-shadow: 0 4px 10px rgba(var(--bml-primary-rgb, 22, 93, 255), 0.05);
 }
 
 /* 在激活的父级菜单左侧增加一个小批注/标志，使其更显眼 */
@@ -799,6 +800,41 @@ onUnmounted(() => {
     margin: 0 !important;
     line-height: normal !important;
 }
+/* ── 暗色模式下侧边栏耒合 ── */
+.sidebar-dark :deep(.arco-layout-sider),
+.sidebar-dark:deep(.arco-layout-sider) {
+    backdrop-filter: none;
+}
+.sidebar-dark .collapse-btn {
+    background: rgba(60, 60, 62, 0.85);
+    border-color: rgba(255,255,255,0.1);
+    color: #c9cdd4;
+}
+.sidebar-dark .collapse-btn:hover {
+    background: rgba(80, 80, 84, 0.95);
+    color: #fff;
+}
+/* 主色侧边栏下折叠按钮适配 */
+.sidebar-primary .collapse-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255,255,255,0.3);
+    color: #fff;
+}
+.sidebar-primary .collapse-btn:hover {
+    background: rgba(255, 255, 255, 0.35);
+    color: #fff;
+}
+/* 暗色侧边栏 mini dock 活动状态 */
+.sidebar-dark .mini-item { color: #c9cdd4; }
+.sidebar-dark .mini-item:hover { background: rgba(255,255,255,0.08); color: #fff; }
+/* 主色侧边栏 mini dock 活动状态 */
+.sidebar-primary .mini-item { color: rgba(255,255,255,0.8); }
+.sidebar-primary .mini-item:hover { background: rgba(255,255,255,0.1); color: #fff; }
+.sidebar-primary .mini-item.active {
+    background: rgba(255,255,255,0.25) !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
 /* Dark Mode Header */
 :global(body[arco-theme='dark']) .modern-breadcrumb .breadcrumb-active { color: #f2f3f5; }
 :global(body[arco-theme='dark']) .glass-dock {
@@ -868,7 +904,7 @@ onUnmounted(() => {
 .sidebar-dark .logo { color: #fff !important; }
 
 .sidebar-primary {
-    background: linear-gradient(180deg, var(--arcoblue-6) 0%, var(--arcoblue-5) 100%) !important;
+    background: var(--bml-gradient-alt, linear-gradient(180deg, var(--arcoblue-6) 0%, var(--arcoblue-5) 100%)) !important;
     border-right: none !important;
 }
 .sidebar-primary :deep(.arco-menu-inner) { background: transparent !important; }

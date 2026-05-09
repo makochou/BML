@@ -1,7 +1,13 @@
-import { computed, reactive, ref } from 'vue';
+import { computed, reactive, ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue';
+import type { Ref } from 'vue';
 import { Message } from '@arco-design/web-vue';
 import type { TableColumnData } from '@arco-design/web-vue';
 import { usePermissionStore } from '../store/permission';
+import {
+    calcTableHeaderMinWidth,
+    resolveTableColumnDefaultWidth,
+    TABLE_COLUMN_WIDTH_SCHEME_VERSION,
+} from '../utils/tableColumnWidth';
 
 /**
  * 业务系统通用列配置项类型（与授权治理一致）。
@@ -111,6 +117,38 @@ export function useBusinessTableColumns(
     const STORAGE_KEY = `bml_table_columns_${storageKey}`;
     /** 列宽拖拽最小值，与 Arco Table 内置最小宽度对齐 */
     const COLUMN_RESIZE_MIN_WIDTH = 40;
+    /** 计算当前列完整展示表头标题所需的最小宽度 */
+    const getColumnHeaderMinWidth = (column: BusinessTableColumn): number => Math.max(
+        COLUMN_RESIZE_MIN_WIDTH,
+        calcTableHeaderMinWidth({
+            title: column.title,
+            hasTitleSlot: !!column.titleSlotName,
+            sortable: !!column.sortable,
+            resizable: true,
+        })
+    );
+    /** 归一化列宽：默认宽度和用户拖拽宽度都不能小于表头完整展示宽度 */
+    const resolveBusinessColumnWidth = (column: BusinessTableColumn, width = column.width): number => Math.max(
+        resolveTableColumnDefaultWidth({
+            title: column.title,
+            hasTitleSlot: !!column.titleSlotName,
+            sortable: !!column.sortable,
+            resizable: true,
+            width,
+        }),
+        getColumnHeaderMinWidth(column)
+    );
+    /**
+     * 列布局版本指纹 —— 基于默认列宽的签名。
+     * 当开发者在代码中调整了默认列宽，此指纹会变化，
+     * 从而自动使 localStorage 中的旧缓存失效，新宽度立即生效。
+     * 避免用户看到过窄的旧缓存宽度，无需手动重置列设置。
+     */
+    const LAYOUT_VERSION_KEY = `${STORAGE_KEY}_ver`;
+    const layoutFingerprint = [
+        `scheme:${TABLE_COLUMN_WIDTH_SCHEME_VERSION}`,
+        ...defaultColumns.map(c => `${c.key}:${resolveBusinessColumnWidth(c)}:${c.title}:${c.titleSlotName ?? ''}:${c.sortable ? 1 : 0}`),
+    ].join(',');
 
     const permissionStore = usePermissionStore();
 
@@ -149,7 +187,7 @@ export function useBusinessTableColumns(
         const layout: Record<string, ColumnLayout> = {};
         defaultColumns.forEach((col, index) => {
             layout[col.key] = {
-                width: col.width,
+                width: resolveBusinessColumnWidth(col),
                 visible: col.locked ? true : col.visible,
                 order: index,
                 fixedFront: col.fixed === 'left',
@@ -165,25 +203,38 @@ export function useBusinessTableColumns(
     function persistLayout() {
         try {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(columnLayout));
+            localStorage.setItem(LAYOUT_VERSION_KEY, layoutFingerprint);
         } catch { /* 忽略存储失败 */ }
     }
 
     /** 从 localStorage 恢复列布局，与默认布局合并 */
     function restoreLayout() {
         try {
+            /*
+             * 版本指纹校验：如果开发者修改了默认列宽，
+             * 则旧缓存自动失效，使用最新的默认宽度。
+             */
+            const storedVersion = localStorage.getItem(LAYOUT_VERSION_KEY);
+            if (storedVersion !== layoutFingerprint) {
+                localStorage.removeItem(STORAGE_KEY);
+                localStorage.setItem(LAYOUT_VERSION_KEY, layoutFingerprint);
+                return;
+            }
             const raw = localStorage.getItem(STORAGE_KEY);
             if (!raw) return;
             const parsed = JSON.parse(raw) as Record<string, Partial<ColumnLayout>>;
             for (const key of Object.keys(columnLayout)) {
                 const stored = parsed[key];
                 if (!stored) continue;
+                const base = columnBaseMap.get(key);
+                if (!base) continue;
                 /**
                  * 宽度恢复：锁定列（如操作列）始终使用代码中定义的默认宽度，
                  * 避免旧缓存覆盖开发者对锁定列宽度的调整。
                  * 非锁定列正常从缓存恢复用户自定义宽度。
                  */
                 if (typeof stored.width === 'number' && Number.isFinite(stored.width) && !lockedKeys.has(key)) {
-                    columnLayout[key].width = Math.max(COLUMN_RESIZE_MIN_WIDTH, Math.round(stored.width));
+                    columnLayout[key].width = resolveBusinessColumnWidth(base, stored.width);
                 }
                 if (typeof stored.visible === 'boolean' && !lockedKeys.has(key)) {
                     columnLayout[key].visible = stored.visible;
@@ -251,7 +302,7 @@ export function useBusinessTableColumns(
                     title: base.title,
                     dataIndex: base.dataIndex,
                     slotName: base.slotName,
-                    width: layout.width,
+                    width: resolveBusinessColumnWidth(base, layout.width),
                     fixed,
                     ellipsis: base.ellipsis,
                     align: base.align,
@@ -315,7 +366,7 @@ export function useBusinessTableColumns(
         /* 通过 key 或 dataIndex 找到列，记录用户拖拽的真实宽度 */
         const col = defaultColumns.find(c => c.key === dataIndex || c.dataIndex === dataIndex);
         if (col && columnLayout[col.key]) {
-            columnLayout[col.key].width = Math.max(COLUMN_RESIZE_MIN_WIDTH, Math.round(width));
+            columnLayout[col.key].width = resolveBusinessColumnWidth(col, width);
             persistLayout();
         }
     }
@@ -494,6 +545,138 @@ export function useBusinessTableColumns(
         );
     });
 
+    /* ──────────────────────────────────────────────────────────
+     * 表格列宽 CSS 变量注入（主机制）
+     * ──────────────────────────────────────────────────────────
+     * 原理：
+     *   通过 :style 将 --bml-table-scroll-width 设置在 <a-table> 的根 DOM 元素上。
+     *   CSS 自定义属性自动向下继承至所有后代元素，包括 Arco 内部嵌套的
+     *   <table class="arco-table-element">。
+     *
+     *   全局 CSS 规则使用此变量：
+     *     .page-wrapper .arco-table-element {
+     *       width: var(--bml-table-scroll-width) !important;
+     *     }
+     *
+     *   CSS !important 优先级高于所有非 !important 规则（包括 Arco 的 inline style），
+     *   因此可以 100% 可靠地覆盖 Arco 内部设置的 width: 100% 或 inline width。
+     *
+     * 绑定方式：
+     *   <a-table :style="tableStyle" ...>
+     * ────────────────────────────────────────────────────────── */
+    const tableStyle = computed(() => ({
+        '--bml-table-scroll-width': `${scrollX.value}px`,
+    }));
+
+    /* ──────────────────────────────────────────────────────────
+     * 表格列宽 DOM 强制校正（备用机制 — MutationObserver）
+     * ──────────────────────────────────────────────────────────
+     * 问题背景：
+     *   Arco Table 在 scroll.x 有值时会对 <table class="arco-table-element">
+     *   设置 inline style width。但 Vue 的响应式渲染（数据加载、列变化等）
+     *   每次都会重新 patch VNode，导致通过 DOM API 设置的 style 被覆盖。
+     *
+     *   CSS 方案（!important 规则、CSS 变量、v-bind）由于 Arco 自身的
+     *   width: 100% + min-width: 100% 规则以及 inline style 优先级，
+     *   均无法在所有场景下可靠生效。
+     *
+     * 解决方案：
+     *   使用 MutationObserver 监听 .arco-table-element 的 style 属性变化。
+     *   每当 Vue / Arco 更新了 style，Observer 立即用 setProperty + !important
+     *   将 width 校正为 scrollX。这样无论 Vue 何时重新渲染，宽度都能被修正。
+     *
+     * 生命周期：
+     *   - onMounted → 首次查找并 observe 所有 .arco-table-element
+     *   - watch(tableRef) → <a-table :key> 变化导致组件重建时重新 observe
+     *   - watch(scrollX) → 列宽变化时重新应用宽度
+     *   - onBeforeUnmount → 断开 observer，防止内存泄漏
+     * ────────────────────────────────────────────────────────── */
+    const tableRef: Ref<any> = ref(null);
+
+    /** MutationObserver 实例，监听 .arco-table-element 的 style 变化 */
+    let observer: MutationObserver | null = null;
+    /** 当前被 observe 的 <table> 元素集合 */
+    let observedTables: HTMLElement[] = [];
+    /** 防止 Observer 回调中的 setProperty 再次触发自身（递归保护） */
+    let isApplying = false;
+
+    /**
+     * 将 scrollX 精确应用到所有 .arco-table-element（header + body 各一个）。
+     * 使用 style.setProperty 的第三参数 'important' 确保覆盖一切 CSS 规则。
+     */
+    const applyTableElementWidth = (): void => {
+        const el = tableRef.value?.$el as HTMLElement | undefined;
+        if (!el) return;
+        const w = `${scrollX.value}px`;
+        isApplying = true;
+        el.querySelectorAll<HTMLElement>('.arco-table-element').forEach((table) => {
+            table.style.setProperty('width', w, 'important');
+            table.style.setProperty('min-width', '0', 'important');
+        });
+        isApplying = false;
+    };
+
+    /**
+     * 建立 MutationObserver 监听：
+     *   找到当前 <a-table> 下所有 .arco-table-element，
+     *   对每个元素 observe attributes（仅 style），
+     *   当 style 被外部（Vue/Arco）修改时立即校正宽度。
+     */
+    const setupObserver = (): void => {
+        /* 清理旧 observer */
+        if (observer) {
+            observer.disconnect();
+            observer = null;
+        }
+        observedTables = [];
+
+        const el = tableRef.value?.$el as HTMLElement | undefined;
+        if (!el) return;
+
+        /* 先立即应用一次 */
+        applyTableElementWidth();
+
+        /* 收集所有 <table> 元素 */
+        const tables = el.querySelectorAll<HTMLElement>('.arco-table-element');
+        if (tables.length === 0) return;
+
+        observer = new MutationObserver(() => {
+            /* 递归保护：自身 setProperty 触发的 mutation 不再处理 */
+            if (isApplying) return;
+            applyTableElementWidth();
+        });
+
+        tables.forEach((table) => {
+            observedTables.push(table);
+            observer!.observe(table, {
+                attributes: true,
+                attributeFilter: ['style'],
+            });
+        });
+    };
+
+    onMounted(() => {
+        nextTick(setupObserver);
+    });
+
+    /*
+     * 触发重新建立 Observer 的场景：
+     *   - tableRef 变化 → <a-table :key> 导致组件重建，DOM 元素全部替换
+     *   - tableResetKey 变化 → 同上
+     *   - scrollX 变化 → 仅需重新应用宽度（不需要重建 observer）
+     */
+    watch(tableRef, () => nextTick(setupObserver), { flush: 'post' });
+    watch(tableResetKey, () => nextTick(setupObserver), { flush: 'post' });
+    watch(scrollX, () => nextTick(applyTableElementWidth), { flush: 'post' });
+
+    onBeforeUnmount(() => {
+        if (observer) {
+            observer.disconnect();
+            observer = null;
+        }
+        observedTables = [];
+    });
+
     return {
         columns: columnLayout,
         visibleColumns,
@@ -501,8 +684,16 @@ export function useBusinessTableColumns(
         dragState,
         /** 表格重置键：绑定到 <a-table :key> 强制重新挂载，确保列宽恢复 */
         tableResetKey,
-        /** 表格横向滚动总宽度（所有可见列宽之和） */
+        /** 表格横向滚动总宽度（所有可见列宽之和，数值） */
         scrollX,
+        /**
+         * 表格内联样式 —— 绑定到 &lt;a-table :style="tableStyle"&gt;。
+         * 设置 CSS 变量 --bml-table-scroll-width，通过全局 CSS !important 规则
+         * 强制覆盖 .arco-table-element 的宽度，防止列被压缩。
+         */
+        tableStyle,
+        /** 表格组件引用 —— 绑定到 &lt;a-table ref="tableRef"&gt;（MutationObserver 备用机制） */
+        tableRef,
         handleColumnResize,
         toggleColumnVisible,
         moveColumn,

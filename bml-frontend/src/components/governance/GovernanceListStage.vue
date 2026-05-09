@@ -75,7 +75,7 @@ const props = withDefaults(
     eyebrow: '',
     description: '',
     metaItems: () => [],
-    maxWidth: '1260px',
+    maxWidth: '100%',
     // 默认常规密度，页面可按需切换 ultra 获得极致紧凑布局。
     density: 'regular',
     // 默认保持内容自适应高度；需要“列表区铺满”时页面可显式打开。
@@ -438,8 +438,9 @@ const hasHeadContent = computed(() => Boolean(hasIntroContent.value || slots.act
  * 表头列分割线：
  * 使用渐变线条（上下渐隐）替代实线，视觉更精致。
  * 排除最后一列避免右侧多余线条。
+ * 排除固定列（fixed-left / fixed-right），避免分割线在横向滚动时透过固定列背景显现。
  */
-.governance-list-stage__body :deep(.arco-table-th:not(:last-child)::after) {
+.governance-list-stage__body :deep(.arco-table-th:not(:last-child):not(.arco-table-col-fixed-left):not(.arco-table-col-fixed-right)::after) {
   content: '';
   position: absolute;
   top: 12%;
@@ -453,8 +454,9 @@ const hasHeadContent = computed(() => Boolean(hasIntroContent.value || slots.act
 /**
  * 数据行列分割线：
  * 比表头更淡，保持数据区清爽。
+ * 同样排除固定列，避免横向滚动时分割线透出。
  */
-.governance-list-stage__body :deep(.arco-table-td:not(:last-child)::after) {
+.governance-list-stage__body :deep(.arco-table-td:not(:last-child):not(.arco-table-col-fixed-left):not(.arco-table-col-fixed-right)::after) {
   content: '';
   position: absolute;
   top: 12%;

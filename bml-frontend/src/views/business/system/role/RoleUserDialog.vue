@@ -16,9 +16,9 @@
   <BmlModal
     v-model:visible="innerVisible"
     title="绑定用户"
-    :width="1200"
+    :width="1440"
     :height="700"
-    :min-width="900"
+    :min-width="1080"
     :min-height="520"
   >
     <!-- 标题栏副标题 -->
@@ -114,38 +114,41 @@
             <a-tag color="arcoblue" size="small">{{ assignedPagination.total }}</a-tag>
           </div>
 
-          <!-- 搜索栏 -->
-          <div class="role-user-panel__search">
-            <a-input v-model="assignedQuery.username" placeholder="账号/用户名" allow-clear size="small"
-              @press-enter="searchAssigned" @clear="searchAssigned" style="flex: 1; min-width: 80px;" />
-            <a-input v-model="assignedQuery.phone" placeholder="手机号" allow-clear size="small"
-              @press-enter="searchAssigned" @clear="searchAssigned" style="flex: 1; min-width: 80px;" />
-            <a-button type="primary" size="small" @click="searchAssigned">
-              <template #icon><icon-search /></template>
-            </a-button>
-          </div>
+          <!-- 右侧面板主体（搜索栏 + 用户表格，纵向 flex 撑满） -->
+          <div class="role-user-panel__body role-user-panel__body--vertical">
+            <!-- 搜索栏 -->
+            <div class="role-user-panel__search">
+              <a-input v-model="assignedQuery.username" placeholder="账号/用户名" allow-clear size="small"
+                @press-enter="searchAssigned" @clear="searchAssigned" style="flex: 1; min-width: 80px;" />
+              <a-input v-model="assignedQuery.phone" placeholder="手机号" allow-clear size="small"
+                @press-enter="searchAssigned" @clear="searchAssigned" style="flex: 1; min-width: 80px;" />
+              <a-button type="primary" size="small" @click="searchAssigned">
+                <template #icon><icon-search /></template>
+              </a-button>
+            </div>
 
-          <!-- 用户表格（flex:1 自动撑满） -->
-          <a-table
-            class="panel-table"
-            :data="assignedData"
-            :loading="assignedLoading"
-            :pagination="false"
-            :bordered="false"
-            row-key="id"
-            size="mini"
-            stripe
-            :row-selection="{ type: 'checkbox', showCheckedAll: true }"
-            v-model:selectedKeys="assignedSelectedKeys"
-            :scroll="{ y: '100%' }"
-          >
-            <template #columns>
-              <a-table-column title="账号" data-index="username" :width="110" ellipsis />
-              <a-table-column title="用户名" data-index="nickname" :width="100" ellipsis />
-              <a-table-column title="手机号" data-index="phone" :width="120" ellipsis />
-              <a-table-column title="部门" data-index="deptName" :width="110" ellipsis />
-            </template>
-          </a-table>
+            <!-- 用户表格（flex:1 自动撑满） -->
+            <a-table
+              class="panel-table"
+              :data="assignedData"
+              :loading="assignedLoading"
+              :pagination="false"
+              :bordered="false"
+              row-key="id"
+              size="mini"
+              stripe
+              :row-selection="{ type: 'checkbox', showCheckedAll: true }"
+              v-model:selectedKeys="assignedSelectedKeys"
+              :scroll="{ y: '100%' }"
+            >
+              <template #columns>
+                <a-table-column title="账号" data-index="username" :width="110" ellipsis />
+                <a-table-column title="用户名" data-index="nickname" :width="100" ellipsis />
+                <a-table-column title="手机号" data-index="phone" :width="120" ellipsis />
+                <a-table-column title="部门" data-index="deptName" :width="110" ellipsis />
+              </template>
+            </a-table>
+          </div>
         </div>
       </div>
 
@@ -496,10 +499,10 @@ const dialogRef = ref<HTMLElement | null>(null);
   overflow: hidden;
 }
 .role-user-panel--left {
-  flex: 6;
+  flex: 1;
 }
 .role-user-panel--right {
-  flex: 4;
+  flex: 1;
 }
 
 /* ── 面板标题 ── */
@@ -515,12 +518,16 @@ const dialogRef = ref<HTMLElement | null>(null);
   flex-shrink: 0;
 }
 
-/* ── 左侧面板主体（部门树 + 用户列表并排） ── */
+/* ── 面板主体（部门树 + 用户列表并排 / 纵向搜索+表格） ── */
 .role-user-panel__body {
   display: flex;
   flex: 1;
   min-height: 0;
   overflow: hidden;
+}
+/* 右侧面板主体：纵向布局（搜索栏 + 表格） */
+.role-user-panel__body--vertical {
+  flex-direction: column;
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -646,10 +653,10 @@ const dialogRef = ref<HTMLElement | null>(null);
   flex-wrap: wrap;
 }
 .role-user-footer__section--left {
-  flex: 6;
+  flex: 1;
 }
 .role-user-footer__section--right {
-  flex: 4;
+  flex: 1;
 }
 
 /**
