@@ -1,7 +1,10 @@
 package com.bml.module.system.controller;
 
+import com.bml.core.base.controller.BaseController;
 import com.bml.core.common.constant.GlobalConstants;
 import com.bml.core.common.result.Result;
+import com.bml.core.framework.operlog.BusinessType;
+import com.bml.core.framework.operlog.OperationLog;
 import com.bml.module.system.dto.SysMenuDTO;
 import com.bml.module.system.service.SysMenuService;
 import com.bml.module.system.converter.MenuConverter;
@@ -15,10 +18,10 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 /**
- * 菜单权限控制器（角色授权专用）
+ * 菜单权限控制器。
  * <p>
- * 提供角色权限分配所需的菜单查询接口。
- * 本控制器不包含菜单 CRUD 操作，仅为角色管理模块提供数据支持。
+ * 提供角色授权面板所需的权限数据查询能力，同时提供菜单、按钮、字段权限的标准 CRUD 能力。
+ * 菜单管理是 RBAC 权限体系的元数据入口，所有新增菜单都应同步维护权限标识、组件路径和按钮权限。
  * </p>
  *
  * <h3>接口说明：</h3>
@@ -30,10 +33,10 @@ import java.util.List;
  *
  * @author BML Team
  */
-@Tag(name = "菜单权限（角色授权专用）")
+@Tag(name = "菜单管理")
 @RestController
 @RequestMapping("/system/menu")
-public class SysMenuController {
+public class SysMenuController extends BaseController {
 
     @Resource
     private SysMenuService menuService;
@@ -80,5 +83,73 @@ public class SysMenuController {
     public Result<List<SysMenuVO>> permissionData() {
         return Result.ok(MenuConverter.INSTANCE.toVOList(
                 menuService.selectPermissionMenuList()));
+    }
+
+    /**
+     * 查询菜单管理树。
+     *
+     * @param dto 查询条件
+     * @return 菜单树
+     */
+    @Operation(summary = "查询菜单管理树")
+    @PreAuthorize("@ss.hasPermi('system:menu:list')")
+    @GetMapping("/list")
+    public Result<List<SysMenuVO>> list(SysMenuDTO dto) {
+        return Result.ok(MenuConverter.INSTANCE.toVOList(menuService.selectMenuTree(dto)));
+    }
+
+    /**
+     * 查询菜单详情。
+     *
+     * @param menuId 菜单ID
+     * @return 菜单详情
+     */
+    @Operation(summary = "查询菜单详情")
+    @PreAuthorize("@ss.hasPermi('system:menu:query')")
+    @GetMapping("/{menuId}")
+    public Result<SysMenuVO> getInfo(@PathVariable Long menuId) {
+        return Result.ok(MenuConverter.INSTANCE.toVO(menuService.getById(menuId)));
+    }
+
+    /**
+     * 新增菜单、按钮或字段权限。
+     *
+     * @param dto 菜单表单
+     * @return 操作结果
+     */
+    @Operation(summary = "新增菜单")
+    @OperationLog(title = "菜单管理", businessType = BusinessType.INSERT)
+    @PreAuthorize("@ss.hasPermi('system:menu:add')")
+    @PostMapping
+    public Result<Void> add(@RequestBody SysMenuDTO dto) {
+        return toAjax(menuService.insertMenu(dto));
+    }
+
+    /**
+     * 修改菜单、按钮或字段权限。
+     *
+     * @param dto 菜单表单
+     * @return 操作结果
+     */
+    @Operation(summary = "修改菜单")
+    @OperationLog(title = "菜单管理", businessType = BusinessType.UPDATE)
+    @PreAuthorize("@ss.hasPermi('system:menu:edit')")
+    @PutMapping
+    public Result<Void> edit(@RequestBody SysMenuDTO dto) {
+        return toAjax(menuService.updateMenu(dto));
+    }
+
+    /**
+     * 删除菜单。
+     *
+     * @param menuId 菜单ID
+     * @return 操作结果
+     */
+    @Operation(summary = "删除菜单")
+    @OperationLog(title = "菜单管理", businessType = BusinessType.DELETE)
+    @PreAuthorize("@ss.hasPermi('system:menu:remove')")
+    @DeleteMapping("/{menuId}")
+    public Result<Void> remove(@PathVariable Long menuId) {
+        return toAjax(menuService.deleteMenu(menuId));
     }
 }

@@ -46,4 +46,36 @@ public interface SysMenuService extends BaseService<SysMenu> {
      * @return 扁平菜单列表（仅业务系统菜单）
      */
     List<SysMenu> selectPermissionMenuList();
+
+    /**
+     * 查询菜单管理页面使用的完整树形菜单。
+     *
+     * @param dto 查询条件
+     * @return 树形菜单列表
+     */
+    List<SysMenu> selectMenuTree(SysMenuDTO dto);
+
+    /**
+     * 新增菜单、按钮或字段权限。
+     *
+     * @param dto 菜单表单
+     * @return 是否成功
+     */
+    boolean insertMenu(SysMenuDTO dto);
+
+    /**
+     * 修改菜单、按钮或字段权限。
+     *
+     * @param dto 菜单表单
+     * @return 是否成功
+     */
+    boolean updateMenu(SysMenuDTO dto);
+
+    /**
+     * 删除菜单。
+     *
+     * @param menuId 菜单ID
+     * @return 是否成功
+     */
+    boolean deleteMenu(Long menuId);
 }

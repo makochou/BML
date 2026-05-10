@@ -2,6 +2,8 @@ package com.bml.module.system.controller;
 
 import com.bml.core.base.controller.BaseController;
 import com.bml.core.common.result.Result;
+import com.bml.core.framework.operlog.BusinessType;
+import com.bml.core.framework.operlog.OperationLog;
 import com.bml.module.system.converter.OrgConverter;
 import com.bml.module.system.dto.SysOrgDTO;
 import com.bml.module.system.entity.SysOrg;
@@ -68,6 +70,7 @@ public class SysOrgController extends BaseController {
      * 新增机构
      */
     @Operation(summary = "新增机构")
+    @OperationLog(title = "机构管理", businessType = BusinessType.INSERT)
     @PreAuthorize("@ss.hasPermi('system:org:add')")
     @PostMapping
     public Result<Void> add(@Validated @RequestBody SysOrgDTO dto) {
@@ -84,6 +87,7 @@ public class SysOrgController extends BaseController {
      * 修改机构
      */
     @Operation(summary = "修改机构")
+    @OperationLog(title = "机构管理", businessType = BusinessType.UPDATE)
     @PreAuthorize("@ss.hasPermi('system:org:edit')")
     @PutMapping
     public Result<Void> edit(@Validated @RequestBody SysOrgDTO dto) {
@@ -100,6 +104,7 @@ public class SysOrgController extends BaseController {
      * 删除机构
      */
     @Operation(summary = "删除机构")
+    @OperationLog(title = "机构管理", businessType = BusinessType.DELETE)
     @PreAuthorize("@ss.hasPermi('system:org:remove')")
     @DeleteMapping("/{orgId}")
     public Result<Void> remove(@PathVariable Long orgId) {

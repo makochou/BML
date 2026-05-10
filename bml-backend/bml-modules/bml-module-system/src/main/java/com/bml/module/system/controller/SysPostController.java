@@ -3,6 +3,8 @@ package com.bml.module.system.controller;
 import com.bml.core.base.controller.BaseController;
 import com.bml.core.common.result.PageResult;
 import com.bml.core.common.result.Result;
+import com.bml.core.framework.operlog.BusinessType;
+import com.bml.core.framework.operlog.OperationLog;
 import com.bml.module.system.converter.PostConverter;
 import com.bml.module.system.dto.SysPostDTO;
 import com.bml.module.system.service.SysPostService;
@@ -13,8 +15,6 @@ import jakarta.annotation.Resource;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 /**
  * 岗位管理控制器
@@ -69,6 +69,7 @@ public class SysPostController extends BaseController {
      * 新增岗位
      */
     @Operation(summary = "新增岗位")
+    @OperationLog(title = "岗位管理", businessType = BusinessType.INSERT)
     @PreAuthorize("@ss.hasPermi('system:post:add')")
     @PostMapping
     public Result<Void> add(@Validated @RequestBody SysPostDTO dto) {
@@ -82,6 +83,7 @@ public class SysPostController extends BaseController {
      * 修改岗位
      */
     @Operation(summary = "修改岗位")
+    @OperationLog(title = "岗位管理", businessType = BusinessType.UPDATE)
     @PreAuthorize("@ss.hasPermi('system:post:edit')")
     @PutMapping
     public Result<Void> edit(@Validated @RequestBody SysPostDTO dto) {
@@ -95,6 +97,7 @@ public class SysPostController extends BaseController {
      * 删除岗位
      */
     @Operation(summary = "删除岗位")
+    @OperationLog(title = "岗位管理", businessType = BusinessType.DELETE)
     @PreAuthorize("@ss.hasPermi('system:post:remove')")
     @DeleteMapping("/{postId}")
     public Result<Void> remove(@PathVariable Long postId) {

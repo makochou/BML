@@ -2,6 +2,8 @@ package com.bml.module.api.controller;
 
 import com.bml.core.base.controller.BaseController;
 import com.bml.core.common.result.Result;
+import com.bml.core.framework.operlog.BusinessType;
+import com.bml.core.framework.operlog.OperationLog;
 import com.bml.module.api.dto.OpenApiRegistryTreeQuery;
 import com.bml.module.api.service.SysOpenApiRegistryService;
 import com.bml.module.api.vo.OpenApiGroupVO;
@@ -38,6 +40,7 @@ public class SysOpenApiRegistryController extends BaseController {
     }
 
     @Operation(summary = "同步开放接口目录")
+    @OperationLog(title = "开放接口目录", businessType = BusinessType.SYNC)
     @PreAuthorize("@ss.hasPermi('api:account:sync')")
     @PostMapping("/sync")
     public Result<OpenApiRegistrySyncResultVO> sync() {

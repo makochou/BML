@@ -3,6 +3,8 @@ package com.bml.module.system.controller;
 import com.bml.core.base.controller.BaseController;
 import com.bml.core.common.result.PageResult;
 import com.bml.core.common.result.Result;
+import com.bml.core.framework.operlog.BusinessType;
+import com.bml.core.framework.operlog.OperationLog;
 import com.bml.module.system.converter.RoleConverter;
 import com.bml.module.system.dto.SysRoleDTO;
 import com.bml.module.system.service.SysRoleService;
@@ -126,6 +128,7 @@ public class SysRoleController extends BaseController {
      * @return 操作结果
      */
     @Operation(summary = "新增角色")
+    @OperationLog(title = "角色与权限", businessType = BusinessType.INSERT)
     @PreAuthorize("@ss.hasPermi('system:role:add')")
     @PostMapping
     public Result<Void> add(@Validated @RequestBody SysRoleDTO dto) {
@@ -142,6 +145,7 @@ public class SysRoleController extends BaseController {
      * @return 操作结果
      */
     @Operation(summary = "修改角色")
+    @OperationLog(title = "角色与权限", businessType = BusinessType.UPDATE)
     @PreAuthorize("@ss.hasPermi('system:role:edit')")
     @PutMapping
     public Result<Void> edit(@Validated @RequestBody SysRoleDTO dto) {
@@ -155,6 +159,7 @@ public class SysRoleController extends BaseController {
      * @return 操作结果
      */
     @Operation(summary = "删除角色")
+    @OperationLog(title = "角色与权限", businessType = BusinessType.DELETE)
     @PreAuthorize("@ss.hasPermi('system:role:remove')")
     @DeleteMapping("/{roleId}")
     public Result<Void> remove(@PathVariable Long roleId) {
@@ -221,6 +226,7 @@ public class SysRoleController extends BaseController {
      * @return 实际新增绑定的数量
      */
     @Operation(summary = "批量绑定用户到角色")
+    @OperationLog(title = "角色与权限", businessType = BusinessType.GRANT)
     @PreAuthorize("@ss.hasPermi('system:role:assignUser')")
     @PostMapping("/{roleId}/assignUsers")
     public Result<Integer> assignUsers(@PathVariable Long roleId,
@@ -236,6 +242,7 @@ public class SysRoleController extends BaseController {
      * @return 实际解绑的数量
      */
     @Operation(summary = "批量解绑角色下的用户")
+    @OperationLog(title = "角色与权限", businessType = BusinessType.GRANT)
     @PreAuthorize("@ss.hasPermi('system:role:assignUser')")
     @PostMapping("/{roleId}/unassignUsers")
     public Result<Integer> unassignUsers(@PathVariable Long roleId,

@@ -106,6 +106,22 @@
     padding: 0;
 }
 
+.biz-query-form-grid-4 {
+    grid-template-columns: repeat(4, minmax(180px, 1fr));
+}
+
+.biz-query-form-grid-4>.arco-form-item {
+    min-width: 220px !important;
+}
+
+.biz-query-form-span-2 {
+    grid-column: span 2;
+}
+
+.biz-query-form-span-2 .arco-picker {
+    width: 100% !important;
+}
+
 /*
  * 每个表单项：水平布局（标签在左，输入框在右）
  * 覆盖 Arco .arco-form-item-layout-inline 的 margin-right: 24px，
@@ -212,6 +228,9 @@
     .biz-query-form-primary {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
+    .biz-query-form-grid-4 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
     .biz-query-form-extra {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
@@ -220,8 +239,12 @@
 /* 响应式降级：窄屏 1 列 */
 @media (max-width: 768px) {
     .biz-query-form-primary,
+    .biz-query-form-grid-4,
     .biz-query-form-extra {
         grid-template-columns: 1fr;
+    }
+    .biz-query-form-span-2 {
+        grid-column: span 1;
     }
 }
 

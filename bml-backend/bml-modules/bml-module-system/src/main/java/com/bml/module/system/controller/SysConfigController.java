@@ -1,13 +1,21 @@
 package com.bml.module.system.controller;
 
+import com.bml.core.base.controller.BaseController;
+import com.bml.core.common.result.PageResult;
 import com.bml.core.common.result.Result;
+import com.bml.core.framework.operlog.BusinessType;
+import com.bml.core.framework.operlog.OperationLog;
+import com.bml.module.system.dto.SysConfigDTO;
 import com.bml.module.system.service.SysConfigService;
+import com.bml.module.system.vo.SysConfigVO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.Resource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -37,7 +45,7 @@ import java.util.Map;
 @Tag(name = "系统配置管理", description = "系统参数配置、品牌图片管理")
 @RestController
 @RequestMapping("/system/config")
-public class SysConfigController {
+public class SysConfigController extends BaseController {
 
     private static final Logger log = LoggerFactory.getLogger(SysConfigController.class);
 
@@ -51,6 +59,74 @@ public class SysConfigController {
     // ────────────────────────────────────────────
     // 配置项 CRUD
     // ────────────────────────────────────────────
+
+    /**
+     * 分页查询参数配置。
+     *
+     * @param dto 查询条件
+     * @return 参数配置分页结果
+     */
+    @Operation(summary = "分页查询参数配置")
+    @PreAuthorize("@ss.hasPermi('system:config:list')")
+    @GetMapping("/page")
+    public Result<PageResult<SysConfigVO>> page(SysConfigDTO dto) {
+        return Result.ok(configService.selectConfigPage(dto));
+    }
+
+    /**
+     * 查询参数配置详情。
+     *
+     * @param id 配置ID
+     * @return 参数配置详情
+     */
+    @Operation(summary = "查询参数配置详情")
+    @PreAuthorize("@ss.hasPermi('system:config:query')")
+    @GetMapping("/{id}")
+    public Result<SysConfigVO> getInfo(@PathVariable Long id) {
+        return Result.ok(configService.selectConfigById(id));
+    }
+
+    /**
+     * 新增参数配置。
+     *
+     * @param dto 参数配置表单
+     * @return 操作结果
+     */
+    @Operation(summary = "新增参数配置")
+    @OperationLog(title = "参数配置", businessType = BusinessType.INSERT)
+    @PreAuthorize("@ss.hasPermi('system:config:add')")
+    @PostMapping
+    public Result<Void> add(@Validated @RequestBody SysConfigDTO dto) {
+        return toAjax(configService.insertConfig(dto));
+    }
+
+    /**
+     * 修改参数配置。
+     *
+     * @param dto 参数配置表单
+     * @return 操作结果
+     */
+    @Operation(summary = "修改参数配置")
+    @OperationLog(title = "参数配置", businessType = BusinessType.UPDATE)
+    @PreAuthorize("@ss.hasPermi('system:config:edit')")
+    @PutMapping
+    public Result<Void> edit(@Validated @RequestBody SysConfigDTO dto) {
+        return toAjax(configService.updateConfig(dto));
+    }
+
+    /**
+     * 删除参数配置。
+     *
+     * @param id 配置ID
+     * @return 操作结果
+     */
+    @Operation(summary = "删除参数配置")
+    @OperationLog(title = "参数配置", businessType = BusinessType.DELETE)
+    @PreAuthorize("@ss.hasPermi('system:config:remove')")
+    @DeleteMapping("/{id}")
+    public Result<Void> remove(@PathVariable Long id) {
+        return toAjax(configService.deleteConfig(id));
+    }
 
     /**
      * 查询登录页及品牌相关配置（验证码开关、背景图、侧边栏 Logo 等）

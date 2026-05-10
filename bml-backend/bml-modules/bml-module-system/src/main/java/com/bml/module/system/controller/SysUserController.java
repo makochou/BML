@@ -3,6 +3,8 @@ package com.bml.module.system.controller;
 import com.bml.core.base.controller.BaseController;
 import com.bml.core.common.result.PageResult;
 import com.bml.core.common.result.Result;
+import com.bml.core.framework.operlog.BusinessType;
+import com.bml.core.framework.operlog.OperationLog;
 import com.bml.module.system.dto.SysUserDTO;
 import com.bml.module.system.entity.SysUser;
 import com.bml.module.system.service.SysUserService;
@@ -111,6 +113,7 @@ public class SysUserController extends BaseController {
      * @return 操作结果
      */
     @Operation(summary = "新增用户")
+    @OperationLog(title = "用户管理", businessType = BusinessType.INSERT)
     @PreAuthorize("@ss.hasPermi('system:user:add')")
     @PostMapping
     public Result<Void> add(@Validated @RequestBody SysUserDTO dto) {
@@ -124,6 +127,7 @@ public class SysUserController extends BaseController {
      * @return 操作结果
      */
     @Operation(summary = "修改用户")
+    @OperationLog(title = "用户管理", businessType = BusinessType.UPDATE)
     @PreAuthorize("@ss.hasPermi('system:user:edit')")
     @PutMapping
     public Result<Void> edit(@Validated @RequestBody SysUserDTO dto) {
@@ -137,6 +141,7 @@ public class SysUserController extends BaseController {
      * @return 操作结果
      */
     @Operation(summary = "删除用户")
+    @OperationLog(title = "用户管理", businessType = BusinessType.DELETE)
     @PreAuthorize("@ss.hasPermi('system:user:remove')")
     @DeleteMapping("/{userId}")
     public Result<Void> remove(@PathVariable Long userId) {
@@ -150,6 +155,7 @@ public class SysUserController extends BaseController {
     @PutMapping("/resetPwd")
     @PreAuthorize("@ss.hasPermi('system:user:resetPwd')")
     @Operation(summary = "重置用户密码")
+    @OperationLog(title = "用户管理", businessType = BusinessType.RESET)
     public Result<Void> resetPwd(@RequestBody Map<String, Object> body) {
         Long userId = Long.valueOf(body.get("userId").toString());
         String password = (String) body.get("password");

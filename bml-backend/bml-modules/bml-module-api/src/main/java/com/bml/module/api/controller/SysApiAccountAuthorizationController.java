@@ -2,6 +2,8 @@ package com.bml.module.api.controller;
 
 import com.bml.core.base.controller.BaseController;
 import com.bml.core.common.result.Result;
+import com.bml.core.framework.operlog.BusinessType;
+import com.bml.core.framework.operlog.OperationLog;
 import com.bml.module.api.dto.SaveApiAccountAuthorizationCommand;
 import com.bml.module.api.service.SysApiAccountAuthorizationService;
 import com.bml.module.api.vo.ApiAccountAuthorizationVO;
@@ -38,6 +40,7 @@ public class SysApiAccountAuthorizationController extends BaseController {
     }
 
     @Operation(summary = "保存账号授权")
+    @OperationLog(title = "API账号授权", businessType = BusinessType.GRANT)
     @PreAuthorize("@ss.hasPermi('api:account:authorize')")
     @PutMapping("/{id}/authorization")
     public Result<Void> saveAuthorization(@PathVariable Long id,

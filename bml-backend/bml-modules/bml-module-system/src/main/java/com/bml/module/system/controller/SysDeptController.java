@@ -2,6 +2,8 @@ package com.bml.module.system.controller;
 
 import com.bml.core.base.controller.BaseController;
 import com.bml.core.common.result.Result;
+import com.bml.core.framework.operlog.BusinessType;
+import com.bml.core.framework.operlog.OperationLog;
 import com.bml.module.system.converter.DeptConverter;
 import com.bml.module.system.dto.SysDeptDTO;
 import com.bml.module.system.entity.SysDept;
@@ -98,6 +100,7 @@ public class SysDeptController extends BaseController {
      * @return 操作结果
      */
     @Operation(summary = "新增部门")
+    @OperationLog(title = "部门管理", businessType = BusinessType.INSERT)
     @PreAuthorize("@ss.hasPermi('system:dept:add')")
     @PostMapping
     public Result<Void> add(@Validated @RequestBody SysDeptDTO dto) {
@@ -114,6 +117,7 @@ public class SysDeptController extends BaseController {
      * @return 操作结果
      */
     @Operation(summary = "修改部门")
+    @OperationLog(title = "部门管理", businessType = BusinessType.UPDATE)
     @PreAuthorize("@ss.hasPermi('system:dept:edit')")
     @PutMapping
     public Result<Void> edit(@Validated @RequestBody SysDeptDTO dto) {
@@ -133,6 +137,7 @@ public class SysDeptController extends BaseController {
      * @return 操作结果
      */
     @Operation(summary = "删除部门")
+    @OperationLog(title = "部门管理", businessType = BusinessType.DELETE)
     @PreAuthorize("@ss.hasPermi('system:dept:remove')")
     @DeleteMapping("/{deptId}")
     public Result<Void> remove(@PathVariable Long deptId) {

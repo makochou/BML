@@ -3,6 +3,8 @@ package com.bml.module.api.controller;
 import com.bml.core.base.controller.BaseController;
 import com.bml.core.common.result.PageResult;
 import com.bml.core.common.result.Result;
+import com.bml.core.framework.operlog.BusinessType;
+import com.bml.core.framework.operlog.OperationLog;
 import com.bml.module.api.dto.CreateSysApiAccountCommand;
 import com.bml.module.api.dto.SysApiAccountDTO;
 import com.bml.module.api.dto.SysApiAccountPageQuery;
@@ -95,6 +97,7 @@ public class SysApiAccountController extends BaseController {
      * @return 新建账号的凭证信息（包含初始密钥）
      */
     @Operation(summary = "新增API账号")
+    @OperationLog(title = "API账号管理", businessType = BusinessType.INSERT)
     @PreAuthorize("@ss.hasPermi('api:account:add')")
     @PostMapping
     public Result<ApiCredentialVO> create(@Valid @RequestBody CreateSysApiAccountCommand command) {
@@ -109,6 +112,7 @@ public class SysApiAccountController extends BaseController {
      * @return 操作结果
      */
     @Operation(summary = "修改API账号")
+    @OperationLog(title = "API账号管理", businessType = BusinessType.UPDATE)
     @PreAuthorize("@ss.hasPermi('api:account:edit')")
     @PutMapping("/{id}")
     public Result<Void> update(@PathVariable Long id, @Valid @RequestBody UpdateSysApiAccountCommand command) {
@@ -123,6 +127,7 @@ public class SysApiAccountController extends BaseController {
      * @return 操作结果
      */
     @Operation(summary = "修改API账号状态")
+    @OperationLog(title = "API账号管理", businessType = BusinessType.STATUS)
     @PreAuthorize("@ss.hasPermi('api:account:edit')")
     @PutMapping("/{id}/status")
     public Result<Void> updateStatus(@PathVariable Long id,
@@ -137,6 +142,7 @@ public class SysApiAccountController extends BaseController {
      * @return 操作结果
      */
     @Operation(summary = "删除API账号")
+    @OperationLog(title = "API账号管理", businessType = BusinessType.DELETE)
     @PreAuthorize("@ss.hasPermi('api:account:remove')")
     @DeleteMapping("/{id}")
     public Result<Void> remove(@PathVariable Long id) {
@@ -150,6 +156,7 @@ public class SysApiAccountController extends BaseController {
      * @return 新生成的凭证信息
      */
     @Operation(summary = "重置API账号密钥")
+    @OperationLog(title = "API账号管理", businessType = BusinessType.RESET)
     @PreAuthorize("@ss.hasPermi('api:account:reset')")
     @PutMapping("/{id}/secret/reset")
     public Result<ApiCredentialVO> resetSecret(@PathVariable Long id) {
@@ -170,6 +177,7 @@ public class SysApiAccountController extends BaseController {
     }
 
     @Operation(summary = "新增API账号(兼容旧接口)")
+    @OperationLog(title = "API账号管理", businessType = BusinessType.INSERT)
     @PreAuthorize("@ss.hasPermi('api:account:add')")
     @PostMapping("/add")
     public Result<ApiCredentialVO> add(@Valid @RequestBody SysApiAccountDTO dto) {
@@ -177,6 +185,7 @@ public class SysApiAccountController extends BaseController {
     }
 
     @Operation(summary = "修改API账号(兼容旧接口)")
+    @OperationLog(title = "API账号管理", businessType = BusinessType.UPDATE)
     @PreAuthorize("@ss.hasPermi('api:account:edit')")
     @PutMapping("/edit")
     public Result<Void> edit(@Valid @RequestBody SysApiAccountDTO dto) {
@@ -184,6 +193,7 @@ public class SysApiAccountController extends BaseController {
     }
 
     @Operation(summary = "删除API账号(兼容旧接口)")
+    @OperationLog(title = "API账号管理", businessType = BusinessType.DELETE)
     @PreAuthorize("@ss.hasPermi('api:account:remove')")
     @DeleteMapping("/remove/{id}")
     public Result<Void> removeLegacy(@PathVariable Long id) {
@@ -191,6 +201,7 @@ public class SysApiAccountController extends BaseController {
     }
 
     @Operation(summary = "重置密钥(兼容旧接口)")
+    @OperationLog(title = "API账号管理", businessType = BusinessType.RESET)
     @PreAuthorize("@ss.hasPermi('api:account:reset')")
     @PutMapping("/{id}/reset")
     public Result<ApiCredentialVO> resetSecretLegacy(@PathVariable Long id) {

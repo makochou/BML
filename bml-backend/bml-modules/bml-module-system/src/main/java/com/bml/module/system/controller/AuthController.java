@@ -17,6 +17,7 @@ import com.bml.module.system.entity.SysMenu;
 import com.bml.module.system.entity.SysUser;
 import com.bml.module.system.service.CaptchaService;
 import com.bml.module.system.service.SysConfigService;
+import com.bml.module.system.service.SysLoginLogService;
 import com.bml.module.system.service.SysLoginService;
 import com.bml.module.system.service.SysMenuService;
 import com.bml.module.system.service.SysRoleService;
@@ -94,6 +95,9 @@ public class AuthController {
     private SysLoginService loginService;
 
     @Resource
+    private SysLoginLogService loginLogService;
+
+    @Resource
     private SysMenuService menuService;
 
     @Resource
@@ -151,14 +155,16 @@ public class AuthController {
      */
     @Operation(summary = "前台业务系统登录", description = "使用数据库用户（sys_user 表）进行认证，返回 AccessToken 和 RefreshToken")
     @PostMapping("/login")
-    public Result<TokenVO> login(@RequestBody LoginBody loginBody) {
+    public Result<TokenVO> login(@RequestBody LoginBody loginBody, HttpServletRequest request) {
         // 验证码校验（仅当系统开启验证码功能时生效）
         String captchaEnabled = configService.getConfigValue("sys.login.captchaEnabled", "false");
         if ("true".equalsIgnoreCase(captchaEnabled)) {
             if (!StringUtils.hasText(loginBody.getCaptchaKey()) || !StringUtils.hasText(loginBody.getCaptchaCode())) {
+                loginLogService.recordLoginEvent(loginBody.getUsername(), false, "业务系统登录失败：请输入验证码", request);
                 return Result.badRequest("请输入验证码");
             }
             if (!captchaService.validateCaptcha(loginBody.getCaptchaKey(), loginBody.getCaptchaCode())) {
+                loginLogService.recordLoginEvent(loginBody.getUsername(), false, "业务系统登录失败：验证码错误或已过期", request);
                 return Result.badRequest("验证码错误或已过期");
             }
         }
@@ -167,7 +173,11 @@ public class AuthController {
         LoginModeHolder.setBusinessMode();
         try {
             TokenVO tokenVO = loginService.login(loginBody.getUsername(), loginBody.getPassword());
+            loginLogService.recordLoginEvent(loginBody.getUsername(), true, "业务系统登录成功", request);
             return Result.ok(tokenVO);
+        } catch (RuntimeException ex) {
+            loginLogService.recordLoginEvent(loginBody.getUsername(), false, "业务系统登录失败：" + ex.getMessage(), request);
+            throw ex;
         } finally {
             LoginModeHolder.clear();
         }
@@ -216,12 +226,16 @@ public class AuthController {
      */
     @Operation(summary = "中台管理平台登录", description = "使用配置管理员（application.yml）进行认证，返回 AccessToken 和 RefreshToken")
     @PostMapping("/admin/login")
-    public Result<TokenVO> adminLogin(@RequestBody LoginBody loginBody) {
+    public Result<TokenVO> adminLogin(@RequestBody LoginBody loginBody, HttpServletRequest request) {
         // 设置为中台管理平台登录模式 → UserDetailsServiceImpl 仅匹配配置管理员
         LoginModeHolder.setAdminMode();
         try {
             TokenVO tokenVO = loginService.login(loginBody.getUsername(), loginBody.getPassword());
+            loginLogService.recordLoginEvent(loginBody.getUsername(), true, "中台管理平台登录成功", request);
             return Result.ok(tokenVO);
+        } catch (RuntimeException ex) {
+            loginLogService.recordLoginEvent(loginBody.getUsername(), false, "中台管理平台登录失败：" + ex.getMessage(), request);
+            throw ex;
         } finally {
             LoginModeHolder.clear();
         }
@@ -299,6 +313,7 @@ public class AuthController {
         // 2. 如果用户存在，删除 Redis 中的缓存
         if (loginUser != null && StringUtils.hasText(loginUser.getUserKey())) {
             tokenService.deleteLoginUser(loginUser.getUserKey());
+            loginLogService.recordLoginEvent(loginUser.getUsername(), true, "用户登出成功", request);
         }
 
         return Result.ok();
@@ -542,15 +557,17 @@ public class AuthController {
      */
     @Operation(summary = "修改密码", description = "当前登录用户修改自己的密码，需验证旧密码")
     @PutMapping("/password")
-    public Result<Void> changePassword(@Validated @RequestBody ChangePasswordDTO dto) {
+    public Result<Void> changePassword(@Validated @RequestBody ChangePasswordDTO dto, HttpServletRequest request) {
         LoginUser loginUser = SecurityUtils.getLoginUser();
         if (loginUser == null || GlobalConstants.ADMIN_USER_ID.equals(loginUser.getUserId())) {
             return Result.badRequest("中台管理员不支持此操作");
         }
         try {
             userService.changePassword(loginUser.getUserId(), dto.getOldPassword(), dto.getNewPassword());
+            loginLogService.recordLoginEvent(loginUser.getUsername(), true, "用户修改密码成功", request);
             return Result.ok();
         } catch (RuntimeException e) {
+            loginLogService.recordLoginEvent(loginUser.getUsername(), false, "用户修改密码失败：" + e.getMessage(), request);
             return Result.badRequest(e.getMessage());
         }
     }

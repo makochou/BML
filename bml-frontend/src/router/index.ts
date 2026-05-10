@@ -69,6 +69,108 @@ const staticRoutes: RouteRecordRaw[] = [
                 meta: { title: '角色与权限', parentTitle: '组织与权限', permission: 'system:role:list' }
             },
             {
+                path: 'system/menu',
+                name: 'SystemMenu',
+                component: () => import('../views/business/system/menu/index.vue'),
+                meta: { title: '菜单管理', parentTitle: '基础配置', permission: 'system:menu:list' }
+            },
+            {
+                path: 'system/dict',
+                name: 'SystemDict',
+                component: () => import('../views/business/system/dict/index.vue'),
+                meta: { title: '字典管理', parentTitle: '基础配置', permission: 'system:dict:list' }
+            },
+            {
+                path: 'system/config',
+                name: 'SystemConfigParam',
+                component: () => import('../views/business/system/config/index.vue'),
+                meta: { title: '参数配置', parentTitle: '基础配置', permission: 'system:config:list' }
+            },
+            {
+                path: 'system/branding',
+                name: 'SystemBranding',
+                component: () => import('../views/business/system/branding/index.vue'),
+                meta: { title: '系统设置', parentTitle: '基础配置', permission: 'system:setting:list' }
+            },
+            {
+                path: 'system/file',
+                name: 'SystemFile',
+                component: () => import('../views/business/system/file/index.vue'),
+                meta: { title: '文件管理', parentTitle: '基础配置', permission: 'system:file:list' }
+            },
+            {
+                path: 'system/notice',
+                name: 'SystemNotice',
+                component: () => import('../views/business/system/notice/index.vue'),
+                meta: { title: '通知公告', parentTitle: '消息中心', permission: 'system:notice:list' }
+            },
+            {
+                path: 'system/online',
+                name: 'SystemOnline',
+                component: () => import('../views/business/system/online/index.vue'),
+                meta: { title: '在线用户', parentTitle: '安全审计', permission: 'system:online:list' }
+            },
+            {
+                path: 'system/monitor',
+                name: 'SystemMonitor',
+                component: () => import('../views/monitor/server/index.vue'),
+                meta: { title: '系统监控', parentTitle: '运维管理', permission: 'monitor:server:list' }
+            },
+            {
+                path: 'system/cache',
+                name: 'SystemCache',
+                component: () => import('../views/business/system/cache/index.vue'),
+                meta: { title: '缓存管理', parentTitle: '运维管理', permission: 'system:cache:list' }
+            },
+            {
+                path: 'system/job',
+                name: 'SystemJob',
+                component: () => import('../views/business/system/job/index.vue'),
+                meta: { title: '定时任务', parentTitle: '运维管理', permission: 'system:job:list' }
+            },
+            {
+                path: 'system/job-log',
+                name: 'SystemJobLog',
+                component: () => import('../views/business/system/job-log/index.vue'),
+                meta: { title: '任务日志', parentTitle: '运维管理', permission: 'system:joblog:list' }
+            },
+            {
+                path: 'system/audit/overview',
+                name: 'SystemAuditOverview',
+                component: () => import('../views/business/system/audit-overview/index.vue'),
+                meta: { title: '审计总览', parentTitle: '安全审计', permission: 'system:audit:list' }
+            },
+            {
+                path: 'system/loginlog',
+                name: 'SystemLoginLog',
+                component: () => import('../views/business/system/loginlog/index.vue'),
+                meta: { title: '登录日志', parentTitle: '安全审计', permission: 'system:loginlog:list' }
+            },
+            {
+                path: 'system/operlog',
+                name: 'SystemOperationLog',
+                component: () => import('../views/business/system/operlog/index.vue'),
+                meta: { title: '操作日志', parentTitle: '安全审计', permission: 'system:operlog:list' }
+            },
+            {
+                path: 'system/exceptionlog',
+                name: 'SystemExceptionLog',
+                component: () => import('../views/business/system/exceptionlog/index.vue'),
+                meta: { title: '异常日志', parentTitle: '安全审计', permission: 'system:exceptionlog:list' }
+            },
+            {
+                path: 'system/security-alert',
+                name: 'SystemSecurityAlert',
+                component: () => import('../views/business/system/security-alert/index.vue'),
+                meta: { title: '风险告警', parentTitle: '安全审计', permission: 'system:securityalert:list' }
+            },
+            {
+                path: 'system/audit-setting',
+                name: 'SystemAuditSetting',
+                component: () => import('../views/business/system/audit-setting/index.vue'),
+                meta: { title: '归档策略', parentTitle: '安全审计', permission: 'system:auditsetting:list' }
+            },
+            {
                 path: 'profile',
                 name: 'BusinessProfile',
                 component: () => import('../views/business/profile/index.vue'),

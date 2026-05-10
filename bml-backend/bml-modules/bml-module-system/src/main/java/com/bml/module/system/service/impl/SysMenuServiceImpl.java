@@ -14,7 +14,9 @@ import com.bml.module.system.service.SysMenuService;
 import com.bml.module.system.vo.RouterMetaVO;
 import com.bml.module.system.vo.RouterVO;
 import jakarta.annotation.Resource;
+import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -270,7 +272,71 @@ public class SysMenuServiceImpl extends BaseServiceImpl<SysMenuMapper, SysMenu> 
                 .collect(Collectors.toList());
     }
 
+    @Override
+    public List<SysMenu> selectMenuTree(SysMenuDTO dto) {
+        SysMenuDTO safeDto = dto == null ? new SysMenuDTO() : dto;
+        List<SysMenu> menus = selectMenuList(safeDto, GlobalConstants.SYSTEM_USER_ID);
+        return buildTree(menus, GlobalConstants.ROOT_NODE_ID);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean insertMenu(SysMenuDTO dto) {
+        SysMenu menu = toMenuEntity(dto);
+        if (menu.getParentId() == null) {
+            menu.setParentId(GlobalConstants.ROOT_NODE_ID);
+        }
+        if (menu.getSort() == null) {
+            menu.setSort(0);
+        }
+        if (menu.getVisible() == null) {
+            menu.setVisible(GlobalConstants.STATUS_NORMAL);
+        }
+        if (menu.getStatus() == null) {
+            menu.setStatus(GlobalConstants.STATUS_NORMAL);
+        }
+        if (menu.getIsFrame() == null) {
+            menu.setIsFrame(GlobalConstants.STATUS_DISABLE);
+        }
+        return this.save(menu);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean updateMenu(SysMenuDTO dto) {
+        if (dto == null || dto.getId() == null) {
+            throw new IllegalArgumentException("菜单ID不能为空");
+        }
+        if (Objects.equals(dto.getId(), dto.getParentId())) {
+            throw new IllegalArgumentException("上级菜单不能选择当前菜单");
+        }
+        SysMenu menu = toMenuEntity(dto);
+        return this.updateById(menu);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean deleteMenu(Long menuId) {
+        if (menuId == null) {
+            throw new IllegalArgumentException("菜单ID不能为空");
+        }
+        long childCount = this.lambdaQuery().eq(SysMenu::getParentId, menuId).count();
+        if (childCount > 0) {
+            throw new IllegalArgumentException("存在下级菜单或权限项，不允许删除");
+        }
+        return this.removeById(menuId);
+    }
+
     // ======================== 私有方法 ========================
+
+    private SysMenu toMenuEntity(SysMenuDTO dto) {
+        if (dto == null) {
+            throw new IllegalArgumentException("菜单信息不能为空");
+        }
+        SysMenu menu = new SysMenu();
+        BeanUtils.copyProperties(dto, menu);
+        return menu;
+    }
 
     /**
      * 构建树形结构

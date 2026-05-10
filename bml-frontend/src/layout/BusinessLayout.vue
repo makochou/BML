@@ -184,7 +184,9 @@ import {
   IconSettings, IconUser, IconSafe, IconBranch,
   IconLeft, IconRight, IconDown, IconExport,
   IconFullscreen, IconFullscreenExit, IconPalette,
-  IconApps, IconIdcard, IconLock
+  IconApps, IconIdcard, IconLock, IconHistory, IconFile,
+  IconDashboard, IconBug, IconNotification, IconStorage,
+  IconList, IconBook, IconTool, IconDesktop
 } from '@arco-design/web-vue/es/icon';
 import request from '../utils/request';
 import { clearAuthTokens, getAccessToken } from '../utils/auth';
@@ -261,6 +263,51 @@ const sidebarMenuConfig: SidebarMenuGroup[] = [
       { routeName: 'SystemPost', title: '岗位管理', icon: IconIdcard, permission: 'system:post:list' },
       { routeName: 'SystemUser', title: '用户管理', icon: IconUser,   permission: 'system:user:list' },
       { routeName: 'SystemRole', title: '角色与权限', icon: IconSafe, permission: 'system:role:list' },
+    ]
+  },
+  {
+    key: 'base-config',
+    title: '基础配置',
+    icon: IconSettings,
+    children: [
+      { routeName: 'SystemMenu', title: '菜单管理', icon: IconList, permission: 'system:menu:list' },
+      { routeName: 'SystemDict', title: '字典管理', icon: IconBook, permission: 'system:dict:list' },
+      { routeName: 'SystemConfigParam', title: '参数配置', icon: IconTool, permission: 'system:config:list' },
+      { routeName: 'SystemBranding', title: '系统设置', icon: IconPalette, permission: 'system:setting:list' },
+      { routeName: 'SystemFile', title: '文件管理', icon: IconFile, permission: 'system:file:list' },
+    ]
+  },
+  {
+    key: 'message',
+    title: '消息中心',
+    icon: IconNotification,
+    children: [
+      { routeName: 'SystemNotice', title: '通知公告', icon: IconNotification, permission: 'system:notice:list' },
+    ]
+  },
+  {
+    key: 'security-audit',
+    title: '安全审计',
+    icon: IconHistory,
+    children: [
+      { routeName: 'SystemAuditOverview', title: '审计总览', icon: IconDashboard, permission: 'system:audit:list' },
+      { routeName: 'SystemLoginLog', title: '登录日志', icon: IconLock, permission: 'system:loginlog:list' },
+      { routeName: 'SystemOperationLog', title: '操作日志', icon: IconFile, permission: 'system:operlog:list' },
+      { routeName: 'SystemExceptionLog', title: '异常日志', icon: IconBug, permission: 'system:exceptionlog:list' },
+      { routeName: 'SystemSecurityAlert', title: '风险告警', icon: IconNotification, permission: 'system:securityalert:list' },
+      { routeName: 'SystemOnline', title: '在线用户', icon: IconUser, permission: 'system:online:list' },
+      { routeName: 'SystemAuditSetting', title: '归档策略', icon: IconStorage, permission: 'system:auditsetting:list' },
+    ]
+  },
+  {
+    key: 'ops',
+    title: '运维管理',
+    icon: IconStorage,
+    children: [
+      { routeName: 'SystemMonitor', title: '系统监控', icon: IconDesktop, permission: 'monitor:server:list' },
+      { routeName: 'SystemCache', title: '缓存管理', icon: IconStorage, permission: 'system:cache:list' },
+      { routeName: 'SystemJob', title: '定时任务', icon: IconHistory, permission: 'system:job:list' },
+      { routeName: 'SystemJobLog', title: '任务日志', icon: IconFile, permission: 'system:joblog:list' },
     ]
   }
 ];
