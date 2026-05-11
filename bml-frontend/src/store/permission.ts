@@ -45,6 +45,52 @@ interface PermissionState {
     buttonPermissionsLoaded: boolean;
 }
 
+/**
+ * 中台管理平台侧边栏禁止展示的顶级菜单标识集合。
+ * <p>
+ * 业务系统的所有菜单均挂载在后端 {@code path='system'} 的顶级 M 目录下，
+ * 后端 {@code SysMenuServiceImpl#normalizePath} 会为根节点补前导斜杠，因此
+ * 匹配时需同时覆盖 {@code system} 与 {@code /system} 两种形态。
+ * 虽然后端已针对中台管理员过滤该子树（见 {@code AdminRouterFilter}），
+ * 但前端仍保留一道客户端防线，避免以下场景漏网：
+ * <ul>
+ *   <li>浏览器缓存了过期的 {@code /auth/routers} 响应</li>
+ *   <li>后端滚动发布期间个别节点尚未升级</li>
+ *   <li>后续有人在数据库新增其它业务菜单的顶级别名</li>
+ * </ul>
+ * 若将来需要屏蔽更多顶级菜单，直接在此处追加对应路径即可。
+ * </p>
+ */
+const ADMIN_SIDEBAR_BLOCKED_PATHS = new Set<string>(['system']);
+
+/**
+ * 将路由路径规范化为"去前导斜杠的小写字符串"，便于统一匹配。
+ *
+ * @param path 原始路径
+ * @returns 规范化后的字符串（{@code ''} 表示空路径）
+ */
+const normalizeRoutePath = (path?: string): string => {
+    if (!path) return '';
+    const trimmed = path.trim().toLowerCase();
+    return trimmed.startsWith('/') ? trimmed.substring(1) : trimmed;
+};
+
+/**
+ * 过滤掉中台管理平台不允许展示的业务系统菜单子树。
+ *
+ * @param routes 后端 /auth/routers 返回的顶级路由列表
+ * @returns 过滤后的路由列表（保持原有顺序与嵌套结构）
+ */
+const stripBusinessSystemMenus = (routes: BackendRouteItem[]): BackendRouteItem[] => {
+    if (!Array.isArray(routes) || routes.length === 0) {
+        return [];
+    }
+    return routes.filter(route => {
+        if (!route) return false;
+        return !ADMIN_SIDEBAR_BLOCKED_PATHS.has(normalizeRoutePath(route.path));
+    });
+};
+
 const buildSidebarMenus = (routes: BackendRouteItem[]): SidebarMenuItem[] => {
     return routes
         .filter(route => !route.hidden)
@@ -80,9 +126,7 @@ const STATIC_SIDEBAR_ITEMS_TAIL: SidebarMenuItem[] = [
         hidden: false,
         children: []
     }
-];
-
-export const usePermissionStore = defineStore('permission', {
+]; export const usePermissionStore = defineStore('permission', {
     state: (): PermissionState => ({
         dynamicRoutesLoaded: false,
         backendRoutes: [],
@@ -92,8 +136,10 @@ export const usePermissionStore = defineStore('permission', {
     }),
     actions: {
         setBackendRoutes(routes: BackendRouteItem[]) {
-            this.backendRoutes = routes;
-            const dynamicMenus = buildSidebarMenus(routes);
+            // 客户端防线：剔除业务系统菜单子树，防止其出现在中台侧边栏
+            const safeRoutes = stripBusinessSystemMenus(routes || []);
+            this.backendRoutes = safeRoutes;
+            const dynamicMenus = buildSidebarMenus(safeRoutes);
             // 将「授权管理」插入到「工作台」之后（索引 1）
             const insertIdx = Math.min(1, dynamicMenus.length);
             dynamicMenus.splice(insertIdx, 0, ...STATIC_SIDEBAR_ITEMS_FRONT);

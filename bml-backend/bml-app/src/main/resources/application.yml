@@ -173,7 +173,7 @@ bml:
   license:
     # 是否启用许可证校验（开发环境可关闭，生产环境必须开启）
     enabled: ${BML_LICENSE_ENABLED:true}
-    # 许可证文件存储目录
+    # 许可证文件存储目录；相对路径会统一解析到 bml-app 下，不再落到 bml-backend 根目录
     storage-dir: ${BML_LICENSE_STORAGE_DIR:License}
     # 许可证文件名
     file-name: bml-license.lic

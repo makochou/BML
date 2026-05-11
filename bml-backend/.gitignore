@@ -34,6 +34,14 @@ desktop.ini
 # --- 日志文件 ---
 *.log
 *.log.*
+logs/
+**/logs/
+
+# --- 运行期许可证文件 ---
+License/
+**/License/
+*.lic
+*.lic.bak
 
 # --- 临时文件 ---
 *.tmp

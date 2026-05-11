@@ -15,6 +15,11 @@
     <dependencies>
         <dependency>
             <groupId>com.bml</groupId>
+            <artifactId>bml-core-framework</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.bml</groupId>
             <artifactId>bml-module-system</artifactId>
         </dependency>
         <dependency>

@@ -241,9 +241,11 @@ interface MenuItem {
   parentId: number;
   menuName: string;
   menuType: string; // M=目录, C=菜单, B=按钮, F=字段
+  path?: string;
   perms?: string;
   icon?: string;
   sort?: number;
+  visible?: number;
   children?: MenuItem[];
 }
 
@@ -303,6 +305,11 @@ const roleDetailCache = ref<Record<string, any>>({});
 const buttonSearch = ref('');
 /** 表单字段面板搜索关键词 */
 const fieldSearch = ref('');
+
+/** 业务系统在后端 sys_menu 中的隐藏根目录 path，授权展示时需要展开其子节点作为顶层模块。 */
+const BUSINESS_SYSTEM_ROOT_PATH = 'system';
+/** 业务系统根目录在授权弹窗中的展示名称，需要与业务侧侧边栏保持一致。 */
+const BUSINESS_ORG_PERMISSION_TITLE = '组织与权限';
 
 /* ──────────────────────────── 计算属性 ──────────────────────────── */
 
@@ -384,8 +391,8 @@ const loadData = async () => {
     const bMenus = menus.filter(m => m.menuType === 'B');
     const fMenus = menus.filter(m => m.menuType === 'F');
 
-    // 3) 构建模块菜单树（M + C）
-    moduleTreeData.value = buildTree(mcMenus, 0);
+    // 3) 构建模块菜单树（M + C），展示时隐藏业务根目录“系统管理”，与业务系统侧边栏保持一致。
+    moduleTreeData.value = buildModuleTree(mcMenus);
 
     // 4) 按钮分组（按 parentId 分组，parentId 对应某个 C 菜单）
     allButtonGroups.value = buildGroups(bMenus, mcMenus);
@@ -422,6 +429,46 @@ const loadData = async () => {
   }
 };
 
+/** 构建授权模块树：后端保留业务根目录用于权限关系，前端展示时按业务侧侧边栏分组重排。 */
+const buildModuleTree = (items: MenuItem[]): MenuItem[] => {
+  const roots = buildTree(items, 0);
+  return flattenBusinessSystemRoot(roots);
+};
+
+/** 递归剥离业务系统隐藏根目录，避免授权树任何层级继续展示“系统管理”包裹节点。 */
+const flattenBusinessSystemRoot = (nodes: MenuItem[]): MenuItem[] =>
+  nodes.flatMap(node => {
+    if (isBusinessSystemRoot(node)) {
+      return buildBusinessTopModules(node);
+    }
+    return [{
+      ...node,
+      children: node.children?.length ? flattenBusinessSystemRoot(node.children) : node.children,
+    }];
+  });
+
+/** 将隐藏业务根目录拆成“组织与权限 + 其他业务域目录”，确保授权弹窗顶层与登录侧边栏一致。 */
+const buildBusinessTopModules = (root: MenuItem): MenuItem[] => {
+  const children = root.children || [];
+  const directMenus = children.filter(child => child.menuType === 'C');
+  const domainDirectories = children.filter(child => child.menuType !== 'C');
+  const topModules: MenuItem[] = [];
+
+  if (directMenus.length > 0) {
+    topModules.push({
+      ...root,
+      menuName: BUSINESS_ORG_PERMISSION_TITLE,
+      children: directMenus,
+    });
+  }
+
+  topModules.push(...domainDirectories);
+  return topModules.map(node => ({
+    ...node,
+    children: node.children?.length ? flattenBusinessSystemRoot(node.children) : node.children,
+  }));
+};
+
 /** 构建树形结构（从扁平列表），按 sort 字段排序 */
 const buildTree = (items: MenuItem[], _rootParentId: number = 0): MenuItem[] => {
   const map = new Map<number, MenuItem>();
@@ -447,6 +494,62 @@ const buildTree = (items: MenuItem[], _rootParentId: number = 0): MenuItem[] => 
   sortChildren(roots);
 
   return roots;
+};
+
+/** 判断是否为业务系统隐藏根目录“系统管理”：只识别业务根身份，不依赖 parentId 或 children，兼容扁平数据和树节点。 */
+const isBusinessSystemRoot = (menu?: MenuItem): boolean => {
+  if (!menu || menu.menuType !== 'M') {
+    return false;
+  }
+  const normalizedPath = (menu.path || '').replace(/^\/+/, '').toLowerCase();
+  const normalizedName = (menu.menuName || '').trim();
+  return normalizedPath === BUSINESS_SYSTEM_ROOT_PATH || normalizedName === '系统管理';
+};
+
+/** 从当前授权数据中定位业务系统隐藏根目录。 */
+const findBusinessSystemRoot = (): MenuItem | undefined =>
+  allMenus.value.find(menu => isBusinessSystemRoot(menu));
+
+/** 保存授权前补齐隐藏业务根目录，避免普通角色登录时因缺少根节点导致业务菜单无法构建。 */
+const ensureBusinessSystemRootForSave = (allCheckedIds: number[], halfCheckIds: Set<number>) => {
+  const root = findBusinessSystemRoot();
+  if (!root) {
+    return;
+  }
+
+  const checkedSet = new Set(allCheckedIds);
+  const selectedBusinessNodeCount = allMenus.value
+    .filter(menu => menu.id !== root.id)
+    .filter(menu => checkedSet.has(menu.id))
+    .length;
+
+  if (selectedBusinessNodeCount === 0) {
+    const rootIndex = allCheckedIds.indexOf(root.id);
+    if (rootIndex > -1) {
+      allCheckedIds.splice(rootIndex, 1);
+    }
+    halfCheckIds.delete(root.id);
+    return;
+  }
+
+  const businessModuleIds = allMenus.value
+    .filter(menu => menu.id !== root.id && (menu.menuType === 'M' || menu.menuType === 'C'))
+    .map(menu => menu.id);
+  const allBusinessModulesChecked = businessModuleIds.length > 0
+    && businessModuleIds.every(id => checkedSet.has(id));
+
+  if (!allBusinessModulesChecked) {
+    const rootIndex = allCheckedIds.indexOf(root.id);
+    if (rootIndex > -1) {
+      allCheckedIds.splice(rootIndex, 1);
+    }
+    halfCheckIds.add(root.id);
+    return;
+  }
+
+  if (!checkedSet.has(root.id)) {
+    halfCheckIds.add(root.id);
+  }
 };
 
 /** 按 parentId 分组，生成 PermGroup[]，按父菜单 sort 排序 */
@@ -653,7 +756,7 @@ const handleSave = async () => {
     // 计算 M 类型目录的半选状态
     const mMenus = allMenus.value.filter(m => m.menuType === 'M');
     const checkedSet = new Set(allCheckedIds);
-    const halfCheckIds: number[] = [];
+    const halfCheckIds = new Set<number>();
 
     mMenus.forEach(mMenu => {
       // 该目录下的所有 C 菜单
@@ -665,12 +768,14 @@ const handleSave = async () => {
       const checkedChildren = childCMenus.filter(c => checkedSet.has(c.id));
       if (checkedChildren.length > 0 && checkedChildren.length < childCMenus.length) {
         // 部分子菜单被选中 → M 目录为半选
-        halfCheckIds.push(mMenu.id);
+        halfCheckIds.add(mMenu.id);
         // 从完全勾选中移除此 M 目录（它是半选，不应在 menuIds 中）
         const idx = allCheckedIds.indexOf(mMenu.id);
         if (idx > -1) allCheckedIds.splice(idx, 1);
       }
     });
+
+    ensureBusinessSystemRootForSave(allCheckedIds, halfCheckIds);
 
     const formData: RoleForm = {
       id: props.roleId,
@@ -683,7 +788,7 @@ const handleSave = async () => {
       customOrgIds: roleDetailCache.value.customOrgIds,
       customDeptIds: roleDetailCache.value.customDeptIds,
       menuIds: allCheckedIds,
-      halfCheckMenuIds: halfCheckIds,
+      halfCheckMenuIds: [...halfCheckIds],
     };
 
     await updateRole(formData);

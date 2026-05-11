@@ -465,18 +465,6 @@ onMounted(() => { loadData(); loadOrgTree(); loadDeptTree(); });
   padding-top: 12px;
 }
 
-/* ── 授权按钮警告色 ── */
-.table-action-btn--warning {
-  color: var(--color-warning-6) !important;
-  border-color: var(--color-warning-3) !important;
-  background: var(--color-warning-1) !important;
-}
-.table-action-btn--warning:hover {
-  color: #fff !important;
-  border-color: var(--color-warning-6) !important;
-  background: var(--color-warning-6) !important;
-}
-
 /**
  * 工具栏「绑定用户」按钮
  * ──────────────────

@@ -1,5 +1,6 @@
 package com.bml.app;
 
+import com.bml.core.framework.runtime.BmlRuntimePaths;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.Banner;
 import org.springframework.boot.SpringApplication;
@@ -29,6 +30,9 @@ import java.util.Properties;
 public class BmlApplication {
 
         public static void main(String[] args) {
+                // 运行目录必须在 Spring Boot 初始化前确定，确保 Logback 能把日志写入 bml-app/logs。
+                BmlRuntimePaths.initRuntimeDirProperty();
+
                 SpringApplication app = new SpringApplication(BmlApplication.class);
 
                 // 1. 编程式配置日志 (替代 logback-spring.xml)

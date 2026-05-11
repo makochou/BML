@@ -24,27 +24,37 @@
         </template>
       </div>
 
-      <!-- 展开状态：使用 Arco 标准菜单（动态渲染，仅显示当前用户有权限的菜单项） -->
+      <!--
+        展开状态：使用 Arco 标准菜单（动态渲染，仅显示当前用户有权限的菜单项）
+        ─────────────────────────────────────────────────────────────
+        菜单默认展开当前用户可见的全部一级分组：
+        1. 超级管理员拥有 *:*:* 权限时可直接看到“基础配置 -> 菜单管理”等全部入口，避免误判为缺少菜单
+        2. 普通用户仅展开其有权限的分组，不会展示无权限菜单
+        3. 用户手动展开/收起某个分组后，Arco 内部会维护 open 状态，不再被 default 影响
+        4. defaultOpenKeys 仅作为首次挂载的初始状态，后续状态由用户交互决定
+      -->
       <a-menu
         v-if="!collapsed"
+        :key="businessMenuRenderKey"
         :selected-keys="selectedKeys"
-        :default-open-keys="visibleMenuGroups.length > 0 ? visibleMenuGroups.map(g => g.key) : []"
+        :default-open-keys="defaultOpenKeys"
         :auto-open-selected="true"
         @menu-item-click="onMenuClick"
       >
-        <template v-for="group in visibleMenuGroups" :key="group.key">
-          <a-sub-menu>
-            <template #icon><component :is="group.icon" /></template>
-            <template #title>{{ group.title }}</template>
-            <a-menu-item
-              v-for="item in group.children"
-              :key="item.routeName"
-            >
-              <template #icon><component :is="item.icon" /></template>
-              {{ item.title }}
-            </a-menu-item>
-          </a-sub-menu>
-        </template>
+        <a-sub-menu
+          v-for="group in visibleMenuGroups"
+          :key="group.key"
+        >
+          <template #icon><component :is="group.icon" /></template>
+          <template #title>{{ group.title }}</template>
+          <a-menu-item
+            v-for="item in group.children"
+            :key="item.routeName"
+          >
+            <template #icon><component :is="item.icon" /></template>
+            {{ item.title }}
+          </a-menu-item>
+        </a-sub-menu>
       </a-menu>
 
       <!-- 收起状态：Mini Dock 图标导航（仅显示有权限的菜单组） -->
@@ -325,6 +335,12 @@ const visibleMenuGroups = computed(() => {
     }))
     .filter(group => group.children.length > 0);
 });
+
+/** 默认展开的一级分组 key：与可见分组保持一致，确保超管首次进入即可看到全部授权菜单入口。 */
+const defaultOpenKeys = computed(() => visibleMenuGroups.value.map(group => group.key));
+
+/** 菜单渲染 key：权限异步加载后强制重建菜单，使 defaultOpenKeys 在首次有效数据到达时正确生效。 */
+const businessMenuRenderKey = computed(() => defaultOpenKeys.value.join('|'));
 
 /** 当前页面标题（来自路由 meta） */
 const pageTitle = computed(() => { const t = route.meta?.title; return typeof t === 'string' ? t : ''; });

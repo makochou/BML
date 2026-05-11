@@ -345,15 +345,54 @@ const addDynamicRoutes = (routes: BackendRouteItem[]): boolean => {
     return added;
 };
 
+/**
+ * 中台管理平台禁止注册为动态路由的顶级路径集合。
+ * <p>
+ * 与 {@code permission.ts} 中 {@code ADMIN_SIDEBAR_BLOCKED_PATHS} 保持一致。
+ * 后端 {@code SysMenuServiceImpl#normalizePath} 会为根节点补前导斜杠，所以
+ * 这里统一以"去前导斜杠"的形式匹配，兼容 {@code system} 与 {@code /system} 两种形态。
+ * 用于确保即使用户直接通过 URL 访问业务系统菜单（如 {@code /admin/system/user}），
+ * 也无法在中台管理平台中被解析，从而保持平台间的严格隔离。
+ * </p>
+ */
+const ADMIN_BLOCKED_ROOT_PATHS = new Set<string>(['system']);
+
+/**
+ * 将路由路径规范化为"去前导斜杠的小写字符串"，便于统一匹配。
+ */
+const normalizeRootPath = (path?: string): string => {
+    if (!path) return '';
+    const trimmed = path.trim().toLowerCase();
+    return trimmed.startsWith('/') ? trimmed.substring(1) : trimmed;
+};
+
+/**
+ * 剔除中台管理平台禁止展示的顶级业务系统菜单子树。
+ *
+ * @param routes 后端 /auth/routers 返回的顶级路由列表
+ * @returns 剔除业务子树后的新列表
+ */
+const stripBusinessRootRoutes = (routes: BackendRouteItem[]): BackendRouteItem[] => {
+    if (!Array.isArray(routes) || routes.length === 0) {
+        return [];
+    }
+    return routes.filter(route => {
+        if (!route) return false;
+        return !ADMIN_BLOCKED_ROOT_PATHS.has(normalizeRootPath(route.path));
+    });
+};
+
 const ensureDynamicRoutesLoaded = async (): Promise<boolean> => {
     const permissionStore = usePermissionStore();
     if (permissionStore.dynamicRoutesLoaded) {
         return false;
     }
     const response = await request.get('/auth/routers') as { data: BackendRouteItem[] };
-    const backendRoutes = Array.isArray(response.data) ? response.data : [];
-    permissionStore.setBackendRoutes(backendRoutes);
-    return addDynamicRoutes(backendRoutes);
+    const rawRoutes = Array.isArray(response.data) ? response.data : [];
+    // 剔除业务系统菜单子树，保证中台管理平台的路由与侧边栏严格隔离
+    const adminRoutes = stripBusinessRootRoutes(rawRoutes);
+    permissionStore.setBackendRoutes(adminRoutes);
+    return addDynamicRoutes(adminRoutes);
 };
 
 export const resetDynamicRoutes = () => {

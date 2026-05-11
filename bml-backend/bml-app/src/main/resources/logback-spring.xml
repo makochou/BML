@@ -2,8 +2,8 @@
 <configuration scan="true" scanPeriod="60 seconds">
 
     <!-- 属性配置 -->
-    <!-- BML 根目录，将日志文件输出到项目根目录的 logs 文件夹下 -->
-    <property name="LOG_HOME" value="./logs"/>
+    <!-- 运行目录由 BmlRuntimePaths 在 Spring Boot 启动前写入，日志统一输出到 bml-app/logs。 -->
+    <property name="LOG_HOME" value="${bml.runtime.dir:-.}/logs"/>
     <property name="APP_NAME" value="bml-backend"/>
 
     <!-- 日志输出格式与 Spring Boot 默认风格保持一致并增强 -->

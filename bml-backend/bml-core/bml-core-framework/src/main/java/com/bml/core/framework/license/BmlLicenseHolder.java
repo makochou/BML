@@ -1,5 +1,6 @@
 package com.bml.core.framework.license;
 
+import com.bml.core.framework.runtime.BmlRuntimePaths;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import jakarta.annotation.PostConstruct;
@@ -29,7 +30,7 @@ import java.time.format.DateTimeFormatter;
  * </p>
  * <p>
  * 许可证文件路径由 {@link LicenseProperties#getStorageDir()} 和
- * {@link LicenseProperties#getFileName()} 决定，默认为 {@code ./config/license/bml-license.lic}。
+ * {@link LicenseProperties#getFileName()} 决定，默认落盘到 {@code bml-app/License/bml-license.lic}。
  * </p>
  *
  * @author BML Team
@@ -59,7 +60,7 @@ public class BmlLicenseHolder {
     }
 
     /** 旧版本许可证存储目录（用于自动迁移） */
-    private static final String[] LEGACY_STORAGE_DIRS = {"./data/license", "./config/license"};
+    private static final String[] LEGACY_STORAGE_DIRS = {"./License", "./data/license", "./config/license"};
 
     @PostConstruct
     public void init() {
@@ -244,7 +245,9 @@ public class BmlLicenseHolder {
      * @return 许可证文件路径
      */
     public Path resolveLicensePath() {
-        return Path.of(licenseProperties.getStorageDir(), licenseProperties.getFileName());
+        return BmlRuntimePaths.resolveRuntimePath(licenseProperties.getStorageDir())
+                .resolve(licenseProperties.getFileName())
+                .normalize();
     }
 
     /** 备份文件时间戳格式 */

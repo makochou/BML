@@ -22,6 +22,7 @@ import com.bml.module.system.service.SysLoginService;
 import com.bml.module.system.service.SysMenuService;
 import com.bml.module.system.service.SysRoleService;
 import com.bml.module.system.service.SysUserService;
+import com.bml.module.system.util.AdminRouterFilter;
 import com.bml.module.system.vo.RouterVO;
 import com.bml.module.system.vo.SysUserVO;
 import com.bml.module.system.vo.UserInfoVO;
@@ -446,6 +447,15 @@ public class AuthController {
      * 直接返回所有正常状态的菜单，不走角色关联查询。
      * </p>
      *
+     * <h3>业务系统菜单过滤：</h3>
+     * <p>
+     * 中台管理平台（/admin/**）与业务系统（/**）共用同一套 {@code sys_menu} 数据表，
+     * 但业务系统的所有菜单都挂载在 {@code path='system'} 的顶级 M 目录下。
+     * 中台管理平台不需要展示业务系统的菜单，故在此处通过
+     * {@link AdminRouterFilter#filterBusinessSystemRoot(List)} 对返回结果进行过滤，
+     * 仅保留中台自身的菜单（工作台、资产目录、授权治理等）。
+     * </p>
+     *
      * @return 菜单树列表
      */
     @Operation(summary = "获取路由菜单", description = "返回当前用户的菜单树，用于前端路由生成")
@@ -470,7 +480,13 @@ public class AuthController {
         } else {
             menus = menuService.selectMenuTreeByUserId(userId);
         }
-        return Result.ok(menuService.buildMenus(menus));
+        List<RouterVO> routers = menuService.buildMenus(menus);
+
+        // 中台管理平台用户：过滤掉业务系统的菜单子树，避免中台侧边栏出现"系统管理"目录
+        if (AdminRouterFilter.isAdminPlatformUser(loginUser)) {
+            routers = AdminRouterFilter.filterBusinessSystemRoot(routers);
+        }
+        return Result.ok(routers);
     }
 
     /**

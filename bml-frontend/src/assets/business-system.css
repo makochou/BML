@@ -51,7 +51,7 @@
    让列表舞台在纵向弹性布局下自动撑满下方空间，
    避免数据较少时列表区域底部留白。
    ───────────────────────────────────────────────────────────── */
-.page-wrapper > .governance-list-stage {
+.page-wrapper>.governance-list-stage {
     flex: 1;
     min-height: 0;
     /*
@@ -228,9 +228,11 @@
     .biz-query-form-primary {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
+
     .biz-query-form-grid-4 {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
+
     .biz-query-form-extra {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
@@ -238,11 +240,13 @@
 
 /* 响应式降级：窄屏 1 列 */
 @media (max-width: 768px) {
+
     .biz-query-form-primary,
     .biz-query-form-grid-4,
     .biz-query-form-extra {
         grid-template-columns: 1fr;
     }
+
     .biz-query-form-span-2 {
         grid-column: span 1;
     }
@@ -378,9 +382,11 @@
 .biz-table-footer__stats .stat-normal {
     color: #16a34a;
 }
+
 .biz-table-footer__stats .stat-disabled {
     color: #ef4444;
 }
+
 /* 锁定状态颜色（用户管理） */
 .biz-table-footer__stats .stat-locked {
     color: #f59e0b;
@@ -509,6 +515,89 @@
     color: #dc2626;
 }
 
+/* ─────────────────────────────────────────────────────────────
+   警告/授权类常驻按钮（授权、冻结、重置密码等）
+   ─────────────────────────────────────────────────────────────
+   设计理念（与 --danger 按钮保持对称视觉语言）：
+     1. 常规态：半透明白底 + 琥珀色文字 + 琥珀色细描边，确保在任何底色（包括绿色/蓝色主题）下都有足够对比度
+     2. 悬浮态：轻量琥珀色溢出填充 + 描边加深 + 文字加深，形成清晰交互反馈
+     3. 不使用 Arco 的 status="warning" —— 它会应用全填充样式，在选中行（白色文字行）上会与主色冲突
+     4. 颜色使用固定 HEX 值而非 CSS 变量，避免在不同主题切换时被覆盖导致"选中时文字变白不可见"问题
+
+   颜色体系（Amber / Warm Orange）：
+     正常文字 #f59e0b（琥珀 500）
+     描边     rgba(245, 158, 11, 0.35)
+     悬浮文字 #d97706（琥珀 600，加深 1 级）
+     悬浮填充 rgba(245, 158, 11, 0.06)
+   ───────────────────────────────────────────────────────────── */
+.table-action-btn--warning.arco-btn {
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    background: rgba(255, 255, 255, 0.9);
+    color: #f59e0b;
+}
+
+.table-action-btn--warning.arco-btn:hover {
+    border-color: #f59e0b;
+    background: rgba(245, 158, 11, 0.06);
+    color: #d97706;
+}
+
+/*
+ * 选中行（.bml-row-active）下的常驻按钮样式保护。
+ * ─────────────────────────────────────────────────────────────
+ * 背景：
+ *   业务列表选中行由 useTableRowHighlight composable 标记为 .bml-row-active，
+ *   其行背景为主题色浅色 rgba(primary, 0.06)，行文字色为主题主色，
+ *   而全局有一条高优先级规则：
+ *     .arco-table-tr.bml-row-active .table-row-actions .arco-btn { color: unset; font-weight: unset; }
+ *   它会把所有操作按钮的颜色还原为"继承"，导致本该保留警告色/危险色的按钮
+ *   （授权 / 删除）在选中行上被重置为淡淡的主题色文字 + 白底，出现"按钮文字看不清"。
+ *
+ * 修复策略：
+ *   对 --warning / --danger / --more 三类常驻按钮，显式重申其正常/悬浮状态下的颜色，
+ *   选择器特异性高于上游 reset 规则（均为 .arco-table-tr.bml-row-active 开头 + 按钮复合类名），
+ *   同时将背景提升为纯白以避免半透明白底与选中行浅色底色叠加发灰。
+ *
+ * 选择器说明：
+ *   .arco-table-tr.bml-row-active （行级锚点，和 reset 规则对齐）
+ *   .table-action-btn--xxx.arco-btn （按钮级复合类名，把颜色限定到具体按钮语义）
+ */
+.arco-table-tr.bml-row-active .table-action-btn--warning.arco-btn {
+    background: #ffffff !important;
+    border-color: rgba(245, 158, 11, 0.55) !important;
+    color: #f59e0b !important;
+}
+
+.arco-table-tr.bml-row-active .table-action-btn--warning.arco-btn:hover {
+    background: rgba(245, 158, 11, 0.08) !important;
+    border-color: #f59e0b !important;
+    color: #d97706 !important;
+}
+
+.arco-table-tr.bml-row-active .table-action-btn--danger.arco-btn {
+    background: #ffffff !important;
+    border-color: rgba(239, 68, 68, 0.55) !important;
+    color: #ef4444 !important;
+}
+
+.arco-table-tr.bml-row-active .table-action-btn--danger.arco-btn:hover {
+    background: rgba(239, 68, 68, 0.08) !important;
+    border-color: #ef4444 !important;
+    color: #dc2626 !important;
+}
+
+.arco-table-tr.bml-row-active .table-action-btn--more.arco-btn {
+    background: #ffffff !important;
+    border-color: rgba(203, 213, 225, 0.9) !important;
+    color: #64748b !important;
+}
+
+.arco-table-tr.bml-row-active .table-action-btn--more.arco-btn:hover {
+    background: var(--bml-hover-bg, rgba(59, 130, 246, 0.06)) !important;
+    border-color: var(--bml-border-active, rgba(59, 130, 246, 0.45)) !important;
+    color: var(--bml-primary, #3b82f6) !important;
+}
+
 /* 更多操作按钮（下拉菜单触发器） */
 .table-action-btn--more.arco-btn {
     width: 22px;
@@ -598,8 +687,8 @@
  * Arco Table 的 th > .arco-table-cell 内部可能嵌套自定义组件，
  * 需要确保其 display: block 以使 overflow: hidden 生效。
  */
-.governance-list-stage .arco-table-th .arco-table-cell > *,
-.page-wrapper .arco-table-th .arco-table-cell > * {
+.governance-list-stage .arco-table-th .arco-table-cell>*,
+.page-wrapper .arco-table-th .arco-table-cell>* {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -624,8 +713,8 @@
 .governance-list-stage .arco-table-th,
 .page-wrapper .arco-table-th {
     --bml-table-fixed-layer-bg: linear-gradient(180deg,
-        rgba(var(--bml-primary-rgb, 22, 93, 255), 0.06),
-        rgba(var(--bml-primary-rgb, 22, 93, 255), 0.03)),
+            rgba(var(--bml-primary-rgb, 22, 93, 255), 0.06),
+            rgba(var(--bml-primary-rgb, 22, 93, 255), 0.03)),
         #ffffff;
     --bml-table-fixed-mask-color: #f8fbff;
 }
@@ -1218,6 +1307,7 @@
         opacity: 0;
         transform: translateY(-6px) scale(0.96);
     }
+
     to {
         opacity: 1;
         transform: translateY(0) scale(1);
@@ -1498,9 +1588,9 @@ body[arco-theme='dark'] .bml-dropdown-user-role {
  * 同时覆盖 td、col-fixed-left、col-fixed-right，
  * 确保固定列不会出现颜色断层或内容透视。
  */
-.arco-table-tr.bml-row-active > .arco-table-td,
-.arco-table-tr.bml-row-active > .arco-table-col-fixed-left,
-.arco-table-tr.bml-row-active > .arco-table-col-fixed-right {
+.arco-table-tr.bml-row-active>.arco-table-td,
+.arco-table-tr.bml-row-active>.arco-table-col-fixed-left,
+.arco-table-tr.bml-row-active>.arco-table-col-fixed-right {
     --bml-table-fixed-layer-bg: #f1f7ff;
     --bml-table-fixed-mask-color: #f1f7ff;
     background-color: #f1f7ff !important;
@@ -1511,9 +1601,9 @@ body[arco-theme='dark'] .bml-dropdown-user-role {
  * 选中行 hover 覆盖 — 稍加深至 10%，
  * 防止 Arco 默认 hover 灰色覆盖选中高亮。
  */
-.arco-table-tr.bml-row-active:hover > .arco-table-td,
-.arco-table-tr.bml-row-active:hover > .arco-table-col-fixed-left,
-.arco-table-tr.bml-row-active:hover > .arco-table-col-fixed-right {
+.arco-table-tr.bml-row-active:hover>.arco-table-td,
+.arco-table-tr.bml-row-active:hover>.arco-table-col-fixed-left,
+.arco-table-tr.bml-row-active:hover>.arco-table-col-fixed-right {
     --bml-table-fixed-layer-bg: #e8f2ff;
     --bml-table-fixed-mask-color: #e8f2ff;
     background-color: #e8f2ff !important;
@@ -1524,7 +1614,7 @@ body[arco-theme='dark'] .bml-dropdown-user-role {
  * 使用 inset box-shadow 实现 3px 竖条，
  * 不改变单元格尺寸，不破坏表格布局。
  */
-.arco-table-tr.bml-row-active > .arco-table-td:first-child {
+.arco-table-tr.bml-row-active>.arco-table-td:first-child {
     box-shadow: inset 3px 0 0 var(--bml-primary, #165dff);
 }
 
@@ -1532,7 +1622,7 @@ body[arco-theme='dark'] .bml-dropdown-user-role {
  * 选中行文字样式增强
  * 加粗 + 主色文字，确保在浅色底色上清晰可辨。
  */
-.arco-table-tr.bml-row-active > .arco-table-td .arco-table-cell {
+.arco-table-tr.bml-row-active>.arco-table-td .arco-table-cell {
     color: var(--bml-primary-dark, #104acd);
     font-weight: 600;
 }
@@ -1541,7 +1631,7 @@ body[arco-theme='dark'] .bml-dropdown-user-role {
  * 选中行下边框 — 主色 15% 不透明度
  * 替代 Arco 默认的灰色分割线，与底色形成呼应。
  */
-.arco-table-tr.bml-row-active > .arco-table-td {
+.arco-table-tr.bml-row-active>.arco-table-td {
     border-bottom-color: rgba(var(--bml-primary-rgb, 22, 93, 255), 0.15) !important;
 }
 
@@ -1568,26 +1658,26 @@ body[arco-theme='dark'] .bml-dropdown-user-role {
  * 暗色模式：选中行底色使用主色 12% 不透明度
  * 暗色背景下需要更高不透明度才能看清选中效果。
  */
-body[arco-theme='dark'] .arco-table-tr.bml-row-active > .arco-table-td,
-body[arco-theme='dark'] .arco-table-tr.bml-row-active > .arco-table-col-fixed-left,
-body[arco-theme='dark'] .arco-table-tr.bml-row-active > .arco-table-col-fixed-right {
+body[arco-theme='dark'] .arco-table-tr.bml-row-active>.arco-table-td,
+body[arco-theme='dark'] .arco-table-tr.bml-row-active>.arco-table-col-fixed-left,
+body[arco-theme='dark'] .arco-table-tr.bml-row-active>.arco-table-col-fixed-right {
     --bml-table-fixed-layer-bg: #1f2f4a;
     --bml-table-fixed-mask-color: #1f2f4a;
     background-color: #1f2f4a !important;
 }
 
-body[arco-theme='dark'] .arco-table-tr.bml-row-active:hover > .arco-table-td,
-body[arco-theme='dark'] .arco-table-tr.bml-row-active:hover > .arco-table-col-fixed-left,
-body[arco-theme='dark'] .arco-table-tr.bml-row-active:hover > .arco-table-col-fixed-right {
+body[arco-theme='dark'] .arco-table-tr.bml-row-active:hover>.arco-table-td,
+body[arco-theme='dark'] .arco-table-tr.bml-row-active:hover>.arco-table-col-fixed-left,
+body[arco-theme='dark'] .arco-table-tr.bml-row-active:hover>.arco-table-col-fixed-right {
     --bml-table-fixed-layer-bg: #263a5c;
     --bml-table-fixed-mask-color: #263a5c;
     background-color: #263a5c !important;
 }
 
-body[arco-theme='dark'] .arco-table-tr.bml-row-active > .arco-table-td .arco-table-cell {
+body[arco-theme='dark'] .arco-table-tr.bml-row-active>.arco-table-td .arco-table-cell {
     color: var(--bml-primary-light, #5b8fff);
 }
 
-body[arco-theme='dark'] .arco-table-tr.bml-row-active > .arco-table-td {
+body[arco-theme='dark'] .arco-table-tr.bml-row-active>.arco-table-td {
     border-bottom-color: rgba(var(--bml-primary-rgb, 22, 93, 255), 0.25) !important;
 }
