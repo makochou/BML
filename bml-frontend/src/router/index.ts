@@ -530,6 +530,17 @@ router.beforeEach(async (to, _from, next) => {
         return;
     }
 
+    // ── 中台登录页在许可证校验之前放行，避免与许可证重定向形成循环 ──
+    if (to.path === '/admin/login') {
+        if (token) {
+            next('/admin');
+            return;
+        }
+        resetPermissionState();
+        next();
+        return;
+    }
+
     // ── 许可证校验（所有页面均需） ──
     const hasLicense = await ensureLicenseValid();
     if (!hasLicense) {
@@ -580,17 +591,6 @@ router.beforeEach(async (to, _from, next) => {
 
     // ── 其他非 /admin 路径：直接放行 ──
     if (!to.path.startsWith('/admin')) {
-        next();
-        return;
-    }
-
-    // ── 中台管理平台登录页 ──
-    if (to.path === '/admin/login') {
-        if (token) {
-            next('/admin');
-            return;
-        }
-        resetPermissionState();
         next();
         return;
     }

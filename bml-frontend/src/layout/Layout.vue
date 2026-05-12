@@ -187,7 +187,7 @@ import { useTagsViewStore } from '../store/tagsView';
 import { useAppStore } from '../store/app';
 import { useNotificationStore } from '../store/notification';
 import { usePermissionStore, type SidebarMenuItem } from '../store/permission';
-import { clearAuthTokens } from '../utils/auth';
+import { clearAuthTokens, getAccessToken } from '../utils/auth';
 import { resetDynamicRoutes } from '../router';
 import { useAdminIdleTimeout } from '../composables/useAdminIdleTimeout';
 
@@ -321,8 +321,10 @@ onMounted(() => {
     appStore.initTheme();
     // 启动中台管理员空闲超时检测
     startIdleWatch();
-    // 启动告警通知轮询（每 30 秒拉取增量告警，驱动铃铛 Badge 和 Toast 弹窗）
-    notificationStore.startPolling();
+    // 仅在已登录时启动告警通知轮询（未登录时 Layout 可能因许可证页面被渲染，此时不应发起需认证的请求）
+    if (getAccessToken()) {
+        notificationStore.startPolling();
+    }
 });
 
 onUnmounted(() => {

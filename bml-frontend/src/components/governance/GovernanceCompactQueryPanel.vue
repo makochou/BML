@@ -295,10 +295,11 @@ const hasFooter = computed(() => Boolean(props.noteTitle || props.noteText || sl
 }
 
 .governance-compact-query-panel__header {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
+  display: flex;
+  justify-content: space-between;
+  /* 确保右侧操作按钮相对于左侧标题区域垂直居中 */
   align-items: center;
+  gap: 10px;
 }
 
 .governance-compact-query-panel__heading {
@@ -306,6 +307,7 @@ const hasFooter = computed(() => Boolean(props.noteTitle || props.noteText || sl
   flex-direction: column;
   gap: 6px;
   min-width: 0;
+  flex: 1;
 }
 
 .governance-compact-query-panel__eyebrow {
@@ -380,6 +382,8 @@ const hasFooter = computed(() => Boolean(props.noteTitle || props.noteText || sl
 
 .governance-compact-query-panel__actions {
   justify-content: flex-end;
+  align-items: center;
+  flex-shrink: 0;
 }
 
 .governance-compact-query-panel__actions :deep(.arco-btn) {
@@ -558,7 +562,7 @@ const hasFooter = computed(() => Boolean(props.noteTitle || props.noteText || sl
 
 @media (max-width: 1280px) {
   .governance-compact-query-panel__header {
-    grid-template-columns: 1fr;
+    flex-direction: column;
     align-items: stretch;
   }
 
