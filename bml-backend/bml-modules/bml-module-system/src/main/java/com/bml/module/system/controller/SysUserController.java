@@ -162,4 +162,47 @@ public class SysUserController extends BaseController {
         userService.resetUserPassword(userId, password);
         return Result.ok();
     }
+
+    /**
+     * 查询用户个人功能授权的菜单 ID 列表。
+     * <p>
+     * 返回该用户在 sys_user_menu 表中已分配的菜单 ID，
+     * 分为完全勾选（halfCheck=0）和半选（halfCheck=1）两组。
+     * </p>
+     *
+     * @param userId 用户 ID
+     * @return 包含 menuIds 和 halfCheckMenuIds 的 Map
+     */
+    @Operation(summary = "查询用户个人功能授权")
+    @PreAuthorize("@ss.hasPermi('system:user:assignPerms')")
+    @GetMapping("/{userId}/menuIds")
+    public Result<Map<String, Object>> getUserMenuIds(@PathVariable Long userId) {
+        return Result.ok(userService.selectUserMenuIds(userId));
+    }
+
+    /**
+     * 保存用户个人功能授权。
+     * <p>
+     * 先删除该用户在 sys_user_menu 中的所有记录，再重新插入。
+     * 支持 menuIds（完全勾选）和 halfCheckMenuIds（半选）两组数据。
+     * </p>
+     *
+     * @param userId 用户 ID
+     * @param body   包含 menuIds 和 halfCheckMenuIds 的请求体
+     * @return 操作结果
+     */
+    @Operation(summary = "保存用户个人功能授权")
+    @OperationLog(title = "用户管理", businessType = BusinessType.GRANT)
+    @PreAuthorize("@ss.hasPermi('system:user:assignPerms')")
+    @PostMapping("/{userId}/assignMenus")
+    public Result<Void> assignUserMenus(@PathVariable Long userId, @RequestBody Map<String, Object> body) {
+        @SuppressWarnings("unchecked")
+        List<Long> menuIds = ((List<Number>) body.getOrDefault("menuIds", List.of()))
+                .stream().map(Number::longValue).toList();
+        @SuppressWarnings("unchecked")
+        List<Long> halfCheckMenuIds = ((List<Number>) body.getOrDefault("halfCheckMenuIds", List.of()))
+                .stream().map(Number::longValue).toList();
+        userService.assignUserMenus(userId, menuIds, halfCheckMenuIds);
+        return Result.ok();
+    }
 }

@@ -235,6 +235,12 @@ const staticRoutes: RouteRecordRaw[] = [
                 name: 'SystemConfig',
                 component: () => import('../views/system/config/index.vue'),
                 meta: { title: '系统配置', icon: 'settings' }
+            },
+            {
+                path: 'monitor',
+                name: 'AdminMonitor',
+                component: () => import('../views/monitor/server/index.vue'),
+                meta: { title: '系统监控', icon: 'desktop' }
             }
         ]
     }
@@ -500,11 +506,20 @@ let businessPermissionsLoaded = false;
 const ensureBusinessPermissionsLoaded = async (): Promise<void> => {
     if (businessPermissionsLoaded) return;
     try {
+        // 先刷新 Redis 中的权限缓存，确保角色/权限变更后实时生效
+        await request.post('/auth/refresh-permissions').catch(() => { /* 忽略 */ });
+
         const res = await request.get('/auth/info') as any;
         const perms: string[] = res.data?.permissions || [];
         const permissionStore = usePermissionStore();
         permissionStore.setButtonPermissions(perms);
-    } catch { /* 忽略，后续请求将由 BusinessLayout 重新加载 */ }
+    } catch {
+        // 即使请求失败，也标记权限为已加载（空权限），避免 hasPermission 默认放行
+        const permissionStore = usePermissionStore();
+        if (!permissionStore.buttonPermissionsLoaded) {
+            permissionStore.setButtonPermissions([]);
+        }
+    }
     businessPermissionsLoaded = true;
 };
 

@@ -46,6 +46,9 @@ public class SysUserServiceImpl extends BaseServiceImpl<SysUserMapper, SysUser> 
     @Resource
     private LicenseQuotaChecker licenseQuotaChecker;
 
+    @Resource
+    private SysUserMenuMapper userMenuMapper;
+
     @Override
     @DataScope(deptColumn = "dept_id", orgColumn = "org_id", userColumn = "id", creatorColumn = "create_by")
     public List<SysUserVO> selectUserList(SysUserDTO user) {
@@ -343,5 +346,77 @@ public class SysUserServiceImpl extends BaseServiceImpl<SysUserMapper, SysUser> 
         baseMapper.update(null, new LambdaUpdateWrapper<SysUser>()
                 .eq(SysUser::getId, userId)
                 .set(SysUser::getPassword, encrypted));
+    }
+
+    /**
+     * 查询用户个人功能授权的菜单 ID 列表。
+     * <p>
+     * 从 sys_user_menu 表中查询该用户已分配的菜单 ID，
+     * 按 half_check 字段分为完全勾选和半选两组返回。
+     * </p>
+     *
+     * @param userId 用户 ID
+     * @return 包含 menuIds（完全勾选）和 halfCheckMenuIds（半选）的 Map
+     */
+    @Override
+    public Map<String, Object> selectUserMenuIds(Long userId) {
+        List<SysUserMenu> userMenus = userMenuMapper.selectList(
+                new LambdaQueryWrapper<SysUserMenu>().eq(SysUserMenu::getUserId, userId));
+
+        List<Long> menuIds = userMenus.stream()
+                .filter(um -> um.getHalfCheck() == null || um.getHalfCheck() == 0)
+                .map(SysUserMenu::getMenuId)
+                .toList();
+
+        List<Long> halfCheckMenuIds = userMenus.stream()
+                .filter(um -> um.getHalfCheck() != null && um.getHalfCheck() == 1)
+                .map(SysUserMenu::getMenuId)
+                .toList();
+
+        Map<String, Object> result = new HashMap<>(4);
+        result.put("menuIds", menuIds);
+        result.put("halfCheckMenuIds", halfCheckMenuIds);
+        return result;
+    }
+
+    /**
+     * 保存用户个人功能授权。
+     * <p>
+     * 先删除该用户在 sys_user_menu 中的所有记录，再重新批量插入。
+     * 整个操作在事务中执行，保证数据一致性。
+     * </p>
+     *
+     * @param userId           用户 ID
+     * @param menuIds          完全勾选的菜单 ID 列表
+     * @param halfCheckMenuIds 半选的菜单 ID 列表
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void assignUserMenus(Long userId, List<Long> menuIds, List<Long> halfCheckMenuIds) {
+        // 1. 删除该用户所有已有的个人菜单权限
+        userMenuMapper.delete(
+                new LambdaQueryWrapper<SysUserMenu>().eq(SysUserMenu::getUserId, userId));
+
+        // 2. 批量插入完全勾选的菜单
+        if (menuIds != null && !menuIds.isEmpty()) {
+            for (Long menuId : menuIds) {
+                SysUserMenu um = new SysUserMenu();
+                um.setUserId(userId);
+                um.setMenuId(menuId);
+                um.setHalfCheck(0);
+                userMenuMapper.insert(um);
+            }
+        }
+
+        // 3. 批量插入半选的菜单
+        if (halfCheckMenuIds != null && !halfCheckMenuIds.isEmpty()) {
+            for (Long menuId : halfCheckMenuIds) {
+                SysUserMenu um = new SysUserMenu();
+                um.setUserId(userId);
+                um.setMenuId(menuId);
+                um.setHalfCheck(1);
+                userMenuMapper.insert(um);
+            }
+        }
     }
 }

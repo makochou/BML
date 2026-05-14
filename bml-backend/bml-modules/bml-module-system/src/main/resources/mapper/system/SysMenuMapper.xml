@@ -24,9 +24,17 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 
     <!--
         根据用户ID查询菜单权限标识
-        关联关系：sys_menu -> sys_role_menu -> sys_user_role -> sys_role
+        权限来源：
+          1. 角色权限：sys_menu -> sys_role_menu -> sys_user_role -> sys_role
+          2. 个人权限：sys_menu -> sys_user_menu（用户个人功能授权）
+        两者取并集（UNION），确保用户同时拥有角色权限和个人额外权限。
         过滤条件：菜单和角色均为正常状态且未删除，perms 非空
         注意：此处使用原生 SQL 查询，@TableLogic 不生效，需手动加 deleted=0
+
+        严格模式说明：
+          只有在 sys_role_menu / sys_user_menu 中明确关联的菜单权限才会返回。
+          角色只勾选了 C 菜单但未勾选其下 B/F 按钮/字段时，
+          用户不会获得 B/F 的权限标识，前端对应的按钮和字段列将被隐藏。
     -->
     <select id="selectMenuPermsByUserId" parameterType="Long" resultType="String">
         SELECT DISTINCT m.perms
@@ -37,13 +45,23 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
          WHERE m.status = 1 AND m.deleted = 0
            AND r.status = 1 AND r.deleted = 0
            AND ur.user_id = #{userId}
+           AND rm.half_check = 0
+           AND m.perms IS NOT NULL
+           AND m.perms != ''
+        UNION
+        SELECT DISTINCT m.perms
+          FROM sys_menu m
+         INNER JOIN sys_user_menu um ON m.id = um.menu_id
+         WHERE m.status = 1 AND m.deleted = 0
+           AND um.user_id = #{userId}
+           AND um.half_check = 0
            AND m.perms IS NOT NULL
            AND m.perms != ''
     </select>
 
     <!--
         根据用户ID查询菜单树（目录+菜单，不含按钮）
-        关联关系同上
+        关联关系同上，包含完全勾选和半选状态的菜单（M 目录半选时仍需显示）
         注意：此处使用原生 SQL 查询，@TableLogic 不生效，需手动加 deleted=0
     -->
     <select id="selectMenuTreeByUserId" parameterType="Long" resultMap="SysMenuResult">

@@ -66,15 +66,15 @@
       :meta-items="tableMetaItems"
     >
       <template #actions>
-        <a-button v-if="hasPermission('system:operlog:export')" type="primary" status="success" @click="handleExport">
+        <a-button type="primary" status="success" :disabled="permDisabled('system:operlog:export')" @click="handleExport">
           <template #icon><icon-download /></template>
           导出 CSV
         </a-button>
-        <a-button v-if="hasPermission('system:operlog:remove')" status="danger" :disabled="!selectedRowKeys.length" @click="confirmBatchDelete">
+        <a-button status="danger" :disabled="permDisabled('system:operlog:remove') || !selectedRowKeys.length" @click="confirmBatchDelete">
           <template #icon><icon-delete /></template>
           批量删除
         </a-button>
-        <a-button v-if="hasPermission('system:operlog:clean')" status="danger" @click="confirmClean">
+        <a-button status="danger" :disabled="permDisabled('system:operlog:clean')" @click="confirmClean">
           <template #icon><icon-delete /></template>
           清空日志
         </a-button>
@@ -148,11 +148,11 @@
         </template>
         <template #actions="{ record }">
           <div class="table-row-actions" @click.stop @dblclick.stop>
-            <a-button v-if="hasPermission('system:operlog:query')" type="primary" size="mini" class="table-action-btn table-action-btn--primary" @click="handleView(record)">
+            <a-button type="primary" size="mini" class="table-action-btn table-action-btn--primary" :disabled="permDisabled('system:operlog:query')" @click="handleView(record)">
               <template #icon><icon-eye /></template>
               详情
             </a-button>
-            <a-button v-if="hasPermission('system:operlog:remove')" size="mini" class="table-action-btn table-action-btn--danger" @click="confirmDelete(record)">
+            <a-button size="mini" class="table-action-btn table-action-btn--danger" :disabled="permDisabled('system:operlog:remove')" @click="confirmDelete(record)">
               <template #icon><icon-delete /></template>
               删除
             </a-button>
@@ -250,7 +250,7 @@ const selectedRowKeys = ref<number[]>([]);
 const detailVisible = ref(false);
 const currentDetail = ref<OperationLogVO | null>(null);
 const timeRange = ref<string[]>([]);
-const { hasPermission } = useButtonPermission();
+const { hasPermission, permDisabled } = useButtonPermission();
 
 const pagination = reactive({ current: 1, pageSize: 20, total: 0 });
 const queryParams = reactive<OperationLogQuery>({

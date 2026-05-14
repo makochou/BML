@@ -523,26 +523,27 @@ export function useBusinessTableColumns(
     /**
      * 根据当前可见列宽度之和计算表格横向滚动区域总宽度。
      * <p>
-     * <b>设计目的：</b>
-     * Arco Design 树形表格使用 {@code scroll: { x: 'max-content' }} 时，
-     * 树形展开缩进会导致 body 首列实际宽度大于 header 首列宽度，
-     * 进而导致后续所有列的边框与表头不对齐。
-     * 使用确定的数值宽度可以让 header 与 body 共用相同的 {@code <colgroup>}，
-     * 从根本上解决列对齐问题。
+     * <b>自适应填充策略：</b>
+     * 使用 CSS {@code max()} 函数取"列总宽度"和"100%容器宽度"中的较大值。
+     * - 当列较少时（如用户无字段权限），表格自动撑满容器，不留空白；
+     * - 当列较多时（总宽度超过容器），启用横向滚动，保证列对齐。
      * </p>
      * <p>
      * <b>使用方式：</b>
      * <pre>{@code :scroll="{ x: scrollX, y: '100%' }"}</pre>
-     * <b>注意：</b> scroll.x 必须精确等于 scrollX，不可添加任何额外缓冲。
-     * 若 scroll.x ≠ 列宽之和，table-layout: fixed 会将差值分摊到各列，
-     * 导致 Arco sticky 列偏移量与实际列位置不匹配，横向滚动时表头数据列错位。
      * </p>
      */
-    const scrollX = computed((): number => {
-        return visibleColumns.value.reduce(
+    const scrollX = computed((): string => {
+        const totalWidth = visibleColumns.value.reduce(
             (sum, col) => sum + ((col.width as number) || 100),
             0
         );
+        /*
+         * 使用 CSS max() 确保表格宽度永远不小于容器宽度：
+         * - 列少时：100% 生效，表格撑满容器，列按比例分配，视觉饱满
+         * - 列多时：像素值生效，启用横向滚动，保证列对齐
+         */
+        return `max(${totalWidth}px, 100%)`;
     });
 
     /* ──────────────────────────────────────────────────────────
@@ -565,7 +566,7 @@ export function useBusinessTableColumns(
      *   <a-table :style="tableStyle" ...>
      * ────────────────────────────────────────────────────────── */
     const tableStyle = computed(() => ({
-        '--bml-table-scroll-width': `${scrollX.value}px`,
+        '--bml-table-scroll-width': scrollX.value,
     }));
 
     /* ──────────────────────────────────────────────────────────
@@ -603,11 +604,12 @@ export function useBusinessTableColumns(
     /**
      * 将 scrollX 精确应用到所有 .arco-table-element（header + body 各一个）。
      * 使用 style.setProperty 的第三参数 'important' 确保覆盖一切 CSS 规则。
+     * scrollX 使用 CSS max() 函数，确保表格宽度不小于容器宽度。
      */
     const applyTableElementWidth = (): void => {
         const el = tableRef.value?.$el as HTMLElement | undefined;
         if (!el) return;
-        const w = `${scrollX.value}px`;
+        const w = scrollX.value;
         isApplying = true;
         el.querySelectorAll<HTMLElement>('.arco-table-element').forEach((table) => {
             table.style.setProperty('width', w, 'important');

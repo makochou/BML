@@ -78,7 +78,7 @@ public class SysMenuController extends BaseController {
      * @return 扁平菜单列表（仅业务系统菜单）
      */
     @Operation(summary = "获取权限分配面板数据（角色授权三面板专用）")
-    @PreAuthorize("@ss.hasPermi('system:role:list') or @ss.hasPermi('system:role:edit') or @ss.hasPermi('system:role:add')")
+    @PreAuthorize("@ss.hasPermi('system:role:list') or @ss.hasPermi('system:role:edit') or @ss.hasPermi('system:role:add') or @ss.hasPermi('system:user:assignPerms')")
     @GetMapping("/permissionData")
     public Result<List<SysMenuVO>> permissionData() {
         return Result.ok(MenuConverter.INSTANCE.toVOList(

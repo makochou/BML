@@ -52,11 +52,11 @@
 
     <GovernanceListStage density="ultra" body-fill>
       <template #actions>
-        <a-button v-if="hasPermission('system:role:add')" type="primary" @click="handleAdd">
+        <a-button type="primary" :disabled="permDisabled('system:role:add')" @click="handleAdd">
           <template #icon><icon-plus /></template>
           新增角色
         </a-button>
-        <a-button v-if="hasPermission('system:role:assignUser')" class="toolbar-btn--binduser" :disabled="!selectedRole" @click="handleUserAssignFromToolbar">
+        <a-button class="toolbar-btn--binduser" :disabled="permDisabled('system:role:assignUser') || !selectedRole" @click="handleUserAssignFromToolbar">
           <template #icon><icon-user-group /></template>
           绑定用户
         </a-button>
@@ -89,11 +89,11 @@
         </template>
         <template #actions="{ record }">
           <div class="table-row-actions" @click.stop @dblclick.stop>
-            <a-button v-if="hasPermission('system:role:edit')" type="primary" size="mini" class="table-action-btn table-action-btn--primary" @click="handleEdit(record)">
+            <a-button type="primary" size="mini" class="table-action-btn table-action-btn--primary" :disabled="permDisabled('system:role:edit')" @click="handleEdit(record)">
               <template #icon><icon-edit /></template>
               编辑
             </a-button>
-            <a-button v-if="hasPermission('system:role:assign')" size="mini" class="table-action-btn table-action-btn--warning" @click="handlePermAssign(record)">
+            <a-button size="mini" class="table-action-btn table-action-btn--warning" :disabled="permDisabled('system:role:assign')" @click="handlePermAssign(record)">
               <template #icon><icon-safe /></template>
               授权
             </a-button>
@@ -297,7 +297,7 @@ const formRef = ref();
 
 /** 表单只读模式 */
 const formReadonly = ref(false);
-const { hasPermission } = useButtonPermission();
+const { hasPermission, permDisabled } = useButtonPermission();
 const canEditRole = computed(() => hasPermission('system:role:edit'));
 
 const queryParams = reactive({ roleName: '', roleCode: '', status: undefined as number | undefined, dataScope: undefined as number | undefined });

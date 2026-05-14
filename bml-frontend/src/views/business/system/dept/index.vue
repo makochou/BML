@@ -66,7 +66,7 @@
 
     <GovernanceListStage density="ultra" body-fill>
       <template #actions>
-        <a-button v-if="hasPermission('system:dept:add')" type="primary" @click="handleAdd()">
+        <a-button type="primary" :disabled="permDisabled('system:dept:add')" @click="handleAdd()">
           <template #icon><icon-plus /></template>
           新增部门
         </a-button>
@@ -106,11 +106,11 @@
         </template>
         <template #actions="{ record }">
           <div class="table-row-actions" @click.stop @dblclick.stop>
-            <a-button v-if="hasPermission('system:dept:edit')" type="primary" size="mini" class="table-action-btn table-action-btn--primary" @click="handleEdit(record)">
+            <a-button type="primary" size="mini" class="table-action-btn table-action-btn--primary" :disabled="permDisabled('system:dept:edit')" @click="handleEdit(record)">
               <template #icon><icon-edit /></template>
               编辑
             </a-button>
-            <a-button v-if="hasPermission('system:dept:remove')" size="mini" class="table-action-btn table-action-btn--danger" @click="confirmDelete(record.id)">
+            <a-button size="mini" class="table-action-btn table-action-btn--danger" :disabled="permDisabled('system:dept:remove')" @click="confirmDelete(record.id)">
               <template #icon><icon-delete /></template>
               删除
             </a-button>
@@ -428,7 +428,7 @@ const formRef = ref();
 
 /** 表单只读模式：双击行无编辑权限时以查看模式打开 */
 const formReadonly = ref(false);
-const { hasPermission } = useButtonPermission();
+const { hasPermission, permDisabled } = useButtonPermission();
 const canEditDept = computed(() => hasPermission('system:dept:edit'));
 
 const queryParams = reactive({

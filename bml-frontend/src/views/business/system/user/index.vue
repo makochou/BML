@@ -71,9 +71,13 @@
 
     <GovernanceListStage density="ultra" body-fill>
       <template #actions>
-        <a-button v-if="hasPermission('system:user:add')" type="primary" @click="handleAdd">
+        <a-button type="primary" :disabled="permDisabled('system:user:add')" @click="handleAdd">
           <template #icon><icon-plus /></template>
           新增用户
+        </a-button>
+        <a-button :disabled="permDisabled('system:user:assignPerms') || !activeRowId" @click="openUserPermissionFromToolbar">
+          <template #icon><icon-safe /></template>
+          功能授权
         </a-button>
         <a-popover trigger="click" position="br"
           :content-style="{ padding: '0', background: 'transparent', boxShadow: 'none', border: 'none' }">
@@ -99,6 +103,7 @@
         <template #th-orgName><TableColumnSearch title="所属机构" v-model="columnFilters['orgName']" /></template>
         <template #th-deptName><TableColumnSearch title="部门" v-model="columnFilters['deptName']" /></template>
         <template #th-postName><TableColumnSearch title="岗位" v-model="columnFilters['postName']" /></template>
+        <template #th-roleNames><TableColumnSearch title="角色" v-model="columnFilters['roleNames']" /></template>
         <template #th-phone><TableColumnSearch title="手机号" v-model="columnFilters['phone']" /></template>
         <template #th-status><TableColumnSearch title="状态" v-model="columnFilters['status']" /></template>
         <template #th-createTime><TableColumnSearch title="创建时间" v-model="columnFilters['createTime']" /></template>
@@ -111,16 +116,22 @@
         <template #employeeNo="{ record }">
           {{ record.employeeNo || '—' }}
         </template>
+        <template #roleNames="{ record }">
+          <template v-if="record.roleNames && record.roleNames.length">
+            <a-tag v-for="name in record.roleNames" :key="name" size="small" color="arcoblue" style="margin: 1px 2px;">{{ name }}</a-tag>
+          </template>
+          <span v-else class="text-placeholder">—</span>
+        </template>
         <template #status="{ record }">
           <a-tag :color="USER_STATUS_MAP[record.status]?.color" size="small">{{ USER_STATUS_MAP[record.status]?.label }}</a-tag>
         </template>
         <template #actions="{ record }">
           <div class="table-row-actions" @click.stop @dblclick.stop>
-            <a-button v-if="hasPermission('system:user:edit')" type="primary" size="mini" class="table-action-btn table-action-btn--primary" @click="handleEdit(record)">
+            <a-button type="primary" size="mini" class="table-action-btn table-action-btn--primary" :disabled="permDisabled('system:user:edit')" @click="handleEdit(record)">
               <template #icon><icon-edit /></template>
               编辑
             </a-button>
-            <a-button v-if="hasPermission('system:user:remove')" size="mini" class="table-action-btn table-action-btn--danger" @click="confirmDelete(record.id)">
+            <a-button size="mini" class="table-action-btn table-action-btn--danger" :disabled="permDisabled('system:user:remove')" @click="confirmDelete(record.id)">
               <template #icon><icon-delete /></template>
               删除
             </a-button>
@@ -333,6 +344,14 @@
         <a-button type="primary" :loading="userDsSubmitting" @click="handleSubmitUserDs">保存</a-button>
       </template>
     </BmlModal>
+
+    <!-- 用户个人功能授权弹窗（三面板权限分配，与角色授权一致） -->
+    <UserPermissionDialog
+      v-model:visible="userPermDialogVisible"
+      :user-id="currentPermUserId"
+      :user-name="currentPermUserName"
+      @saved="loadData"
+    />
   </div>
 </template>
 
@@ -349,6 +368,7 @@ import {
   type UserVO, type UserForm, type RoleVO, type OrgVO, type DeptVO, type PostVO, type UserDataScopeForm
 } from '../../../../api/system';
 import BmlModal from '../../../../components/BmlModal.vue';
+import UserPermissionDialog from './UserPermissionDialog.vue';
 import GovernanceCompactQueryPanel from '../../../../components/governance/GovernanceCompactQueryPanel.vue';
 import GovernanceListStage from '../../../../components/governance/GovernanceListStage.vue';
 import BusinessTableColumnSetting from '../../../../components/business/BusinessTableColumnSetting.vue';
@@ -374,7 +394,7 @@ const queryExpanded = ref(false);
  * 选中行自动附加 .bml-row-active 类名，底色跟随主题色。
  * 全局样式定义在 business-system.css 第 24 节。
  */
-const { handleRowClick, getRowClass } = useTableRowHighlight();
+const { activeRowId, handleRowClick, getRowClass } = useTableRowHighlight();
 
 /**
  * 用户列默认配置（与授权治理列管理模式一致）：
@@ -384,7 +404,7 @@ const { handleRowClick, getRowClass } = useTableRowHighlight();
 /** 列头搜索筛选条件 */
 const columnFilters = reactive<Record<string, string>>({
   username: '', nickname: '', employeeNo: '', orgName: '', deptName: '', postName: '',
-  phone: '', status: '', createTime: '', entryDate: '', email: '',
+  roleNames: '', phone: '', status: '', createTime: '', entryDate: '', email: '',
   loginIp: '', loginDate: '', remark: '',
 });
 
@@ -396,6 +416,7 @@ const defaultColumns: BusinessTableColumn[] = [
   { key: 'orgName',    title: '所属机构', dataIndex: 'orgName',    width: 150, visible: true, sortable: true, titleSlotName: 'th-orgName', permission: 'system:user:field:orgId' },
   { key: 'deptName',   title: '部门',     dataIndex: 'deptName',   width: 120, visible: true, sortable: true, titleSlotName: 'th-deptName', permission: 'system:user:field:deptId' },
   { key: 'postName',   title: '岗位',     dataIndex: 'postName',   width: 110, visible: true, sortable: true, titleSlotName: 'th-postName', permission: 'system:user:field:postId' },
+  { key: 'roleNames',  title: '角色',     slotName: 'roleNames',   width: 150, visible: true, sortable: true, titleSlotName: 'th-roleNames', permission: 'system:user:field:roleIds' },
   { key: 'phone',      title: '手机号',   dataIndex: 'phone',      width: 140, visible: true, sortable: true, titleSlotName: 'th-phone', permission: 'system:user:field:phone' },
   { key: 'status',     title: '状态',     slotName: 'status',      width: 90,  visible: true, align: 'center', sortable: true, titleSlotName: 'th-status' },
   { key: 'createTime', title: '创建时间', dataIndex: 'createTime', width: 180, visible: true, sortable: true, titleSlotName: 'th-createTime' },
@@ -421,6 +442,7 @@ const tableData = ref<UserVO[]>([]);
 /** 列头搜索值格式化器：将非文本字段转换为可搜索的展示文本 */
 const columnFilterFormatters: Record<string, (val: any) => string> = {
   status: (val) => USER_STATUS_MAP[val]?.label || '',
+  roleNames: (val) => Array.isArray(val) ? val.join(',') : '',
 };
 /** 列头搜索过滤后的表格数据 */
 const { filteredData } = useColumnFilter(tableData, columnFilters, columnFilterFormatters);
@@ -435,7 +457,7 @@ const formRef = ref();
 
 /** 表单只读模式 */
 const formReadonly = ref(false);
-const { hasPermission } = useButtonPermission();
+const { hasPermission, permDisabled } = useButtonPermission();
 const canEditUser = computed(() => hasPermission('system:user:edit'));
 const pagination = reactive({ current: 1, pageSize: 20, total: 0 });
 
@@ -572,6 +594,38 @@ const defaultUserDsForm = (): UserDataScopeForm => ({
   customDeptIds: '', status: 1, expireTime: undefined, remark: ''
 });
 const userDsForm = reactive<UserDataScopeForm>(defaultUserDsForm());
+
+/* ──────────────────── 用户个人功能授权 ──────────────────── */
+/** 用户功能授权弹窗可见状态 */
+const userPermDialogVisible = ref(false);
+/** 当前授权的用户 ID */
+const currentPermUserId = ref<number | undefined>(undefined);
+/** 当前授权的用户名称（弹窗标题用） */
+const currentPermUserName = ref('');
+
+/** 从操作列下拉菜单打开用户功能授权弹窗 */
+const openUserPermission = (record: UserVO) => {
+  currentPermUserId.value = record.id;
+  currentPermUserName.value = record.nickname || record.username;
+  userPermDialogVisible.value = true;
+};
+
+/**
+ * 从工具栏按钮打开用户功能授权弹窗（需先选中表格行）。
+ * 通过 activeRowId 获取当前选中行，从 tableData 中查找对应用户信息。
+ */
+const openUserPermissionFromToolbar = () => {
+  if (!activeRowId.value) {
+    Message.warning('请先点击选中一条用户记录');
+    return;
+  }
+  const record = filteredData.value.find(r => r.id === activeRowId.value);
+  if (!record) {
+    Message.warning('未找到选中的用户记录');
+    return;
+  }
+  openUserPermission(record);
+};
 
 const openUserDataScope = async (record: UserVO) => {
   currentDsUserId.value = record.id;

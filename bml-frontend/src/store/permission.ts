@@ -120,6 +120,13 @@ const STATIC_SIDEBAR_ITEMS_FRONT: SidebarMenuItem[] = [
 /** 前端静态菜单项 — 末尾位置（追加到菜单列表最后） */
 const STATIC_SIDEBAR_ITEMS_TAIL: SidebarMenuItem[] = [
     {
+        name: 'AdminMonitor',
+        title: '系统监控',
+        icon: 'desktop',
+        hidden: false,
+        children: []
+    },
+    {
         name: 'SystemConfig',
         title: '系统配置',
         icon: 'settings',

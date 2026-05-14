@@ -32,9 +32,9 @@
 
     <GovernanceListStage density="ultra" body-fill :meta-items="tableMetaItems">
       <template #actions>
-        <a-button type="primary" status="success" @click="handleExport"><template #icon><icon-download /></template>导出 CSV</a-button>
-        <a-button status="danger" :disabled="!selectedRowKeys.length" @click="confirmBatchDelete"><template #icon><icon-delete /></template>批量删除</a-button>
-        <a-button status="danger" @click="confirmClean"><template #icon><icon-delete /></template>清空日志</a-button>
+        <a-button type="primary" status="success" :disabled="permDisabled('system:loginlog:export')" @click="handleExport"><template #icon><icon-download /></template>导出 CSV</a-button>
+        <a-button status="danger" :disabled="permDisabled('system:loginlog:remove') || !selectedRowKeys.length" @click="confirmBatchDelete"><template #icon><icon-delete /></template>批量删除</a-button>
+        <a-button status="danger" :disabled="permDisabled('system:loginlog:clean')" @click="confirmClean"><template #icon><icon-delete /></template>清空日志</a-button>
       </template>
 
       <a-table
@@ -113,6 +113,9 @@ import GovernanceCompactQueryPanel from '../../../../components/governance/Gover
 import GovernanceListStage from '../../../../components/governance/GovernanceListStage.vue';
 import { cleanLoginLogs, deleteLoginLogs, exportLoginLogs, fetchLoginLogPage, type LoginLogQuery, type LoginLogVO } from '../../../../api/system';
 import { normalizePageResult } from '../../../../utils/pageResult';
+import { useButtonPermission } from '../../../../composables/useButtonPermission';
+
+const { permDisabled } = useButtonPermission();
 
 const loading = ref(false);
 const tableData = ref<LoginLogVO[]>([]);

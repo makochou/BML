@@ -81,7 +81,7 @@
          ════════════════════════════════════════════════ -->
     <GovernanceListStage density="ultra" body-fill>
       <template #actions>
-        <a-button v-if="hasPermission('system:org:add')" type="primary" @click="handleAdd()">
+        <a-button type="primary" :disabled="permDisabled('system:org:add')" @click="handleAdd()">
           <template #icon><icon-plus /></template>
           新增机构
         </a-button>
@@ -198,11 +198,11 @@
         </template>
         <template #actions="{ record }">
           <div class="table-row-actions" @click.stop @dblclick.stop>
-            <a-button v-if="hasPermission('system:org:edit')" type="primary" size="mini" class="table-action-btn table-action-btn--primary" @click="handleEdit(record)">
+            <a-button type="primary" size="mini" class="table-action-btn table-action-btn--primary" :disabled="permDisabled('system:org:edit')" @click="handleEdit(record)">
               <template #icon><icon-edit /></template>
               编辑
             </a-button>
-            <a-button v-if="hasPermission('system:org:remove')" size="mini" class="table-action-btn table-action-btn--danger" @click="confirmDelete(record)">
+            <a-button size="mini" class="table-action-btn table-action-btn--danger" :disabled="permDisabled('system:org:remove')" @click="confirmDelete(record)">
               <template #icon><icon-delete /></template>
               删除
             </a-button>
@@ -696,7 +696,7 @@ const formRef = ref();
 const formReadonly = ref(false);
 
 /* 按钮级权限检查 */
-const { hasPermission } = useButtonPermission();
+const { hasPermission, permDisabled } = useButtonPermission();
 /** 是否拥有机构编辑权限 */
 const canEditOrg = computed(() => hasPermission('system:org:edit'));
 

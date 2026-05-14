@@ -138,11 +138,6 @@
                   <template #icon><icon-idcard /></template>
                   个人信息
                 </a-doption>
-                <!-- 修改密码 -->
-                <a-doption @click="goProfile">
-                  <template #icon><icon-lock /></template>
-                  修改密码
-                </a-doption>
                 <!-- 分割线 -->
                 <div class="bml-dropdown-divider"></div>
                 <!-- 退出登录 -->
@@ -336,8 +331,13 @@ const visibleMenuGroups = computed(() => {
     .filter(group => group.children.length > 0);
 });
 
-/** 默认展开的一级分组 key：与可见分组保持一致，确保超管首次进入即可看到全部授权菜单入口。 */
-const defaultOpenKeys = computed(() => visibleMenuGroups.value.map(group => group.key));
+/**
+ * 默认展开的一级分组 key。
+ * 设为空数组表示所有模块默认收起，用户按需手动展开。
+ * 配合 :auto-open-selected="true"，当前路由所在的分组仍会自动展开，
+ * 确保用户能看到当前页面对应的菜单高亮状态。
+ */
+const defaultOpenKeys = computed<string[]>(() => []);
 
 /** 菜单渲染 key：权限异步加载后强制重建菜单，使 defaultOpenKeys 在首次有效数据到达时正确生效。 */
 const businessMenuRenderKey = computed(() => defaultOpenKeys.value.join('|'));
@@ -372,6 +372,9 @@ const toggleFullscreen = () => {
 const loadUserInfo = async () => {
   if (!getAccessToken()) return;
   try {
+    // 先刷新 Redis 中的权限缓存，确保角色变更后权限实时生效（无需重新登录）
+    await request.post('/auth/refresh-permissions').catch(() => { /* 忽略刷新失败 */ });
+
     const res = await request.get('/auth/info') as any;
     if (res.data?.user) {
       userInfo.value = { id: res.data.user.id, username: res.data.user.username, nickname: res.data.user.nickname };

@@ -78,4 +78,24 @@ public interface SysUserService extends BaseService<SysUser> {
      * @param newPassword 新密码（明文）
      */
     void changePassword(Long userId, String oldPassword, String newPassword);
+
+    /**
+     * 查询用户个人功能授权的菜单 ID 列表。
+     *
+     * @param userId 用户 ID
+     * @return 包含 menuIds（完全勾选）和 halfCheckMenuIds（半选）的 Map
+     */
+    java.util.Map<String, Object> selectUserMenuIds(Long userId);
+
+    /**
+     * 保存用户个人功能授权。
+     * <p>
+     * 先删除该用户在 sys_user_menu 中的所有记录，再重新插入。
+     * </p>
+     *
+     * @param userId           用户 ID
+     * @param menuIds          完全勾选的菜单 ID 列表
+     * @param halfCheckMenuIds 半选的菜单 ID 列表
+     */
+    void assignUserMenus(Long userId, java.util.List<Long> menuIds, java.util.List<Long> halfCheckMenuIds);
 }

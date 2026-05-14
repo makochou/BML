@@ -1175,6 +1175,14 @@ export interface UserDataScopeForm {
 export const fetchUserDataScope = (userId: number) =>
   request.get<UserDataScopeVO>(`/system/user/datascope/${userId}`);
 
+/** 查询用户个人功能授权的菜单 ID */
+export const fetchUserMenuIds = (userId: number) =>
+  request.get<{ menuIds: number[]; halfCheckMenuIds: number[] }>(`/system/user/${userId}/menuIds`);
+
+/** 保存用户个人功能授权 */
+export const saveUserMenuIds = (userId: number, data: { menuIds: number[]; halfCheckMenuIds: number[] }) =>
+  request.post(`/system/user/${userId}/assignMenus`, data);
+
 /** 保存用户个人数据权限 */
 export const saveUserDataScope = (data: UserDataScopeForm) =>
   request.post('/system/user/datascope', data);
