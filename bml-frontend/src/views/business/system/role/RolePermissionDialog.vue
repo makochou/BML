@@ -1,6 +1,6 @@
 <template>
   <!--
-    角色权限分配弹窗（V2.5.0 重新设计）
+    角色功能授权弹窗（V2.18.0 优化）
     ════════════════════════════════════
     三面板联动设计：
       左面板 — 模块菜单（M 目录 + C 菜单），树形勾选，按侧边栏顺序显示
@@ -16,10 +16,11 @@
       - 组件完全解耦，通过 props / emits 与父页面通信
       - 内部不直接调用保存 API，仅通过 @save 事件抛出数据，由调用方决定如何保存
       - 弹窗尺寸加大至 1200x720，确保三面板内容充分展示
+      - 入口从表格操作列移至工具栏，需先选中角色行再点击"功能授权"按钮
   -->
   <BmlModal
     :visible="visible"
-    :title="`权限分配 — ${roleName}`"
+    :title="`功能授权 — ${roleName}`"
     :width="1200"
     :height="720"
     :min-width="900"
@@ -216,7 +217,7 @@
 
 <script lang="ts" setup>
 /**
- * 角色权限分配弹窗组件
+ * 角色功能授权弹窗组件
  *
  * 功能说明：
  *   1. 从后端 /system/menu/permissionData 获取扁平菜单列表
@@ -229,7 +230,7 @@
  *     v-model:visible="permDialogVisible"
  *     :role-id="currentRoleId"
  *     :role-name="currentRoleName"
- *     @save="handlePermSave"
+ *     @saved="handlePermSaved"
  *   />
  */
 

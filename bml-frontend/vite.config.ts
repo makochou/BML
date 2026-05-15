@@ -1,7 +1,6 @@
 import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
 import { resolve } from 'path';
-import { viteThemeBootstrap } from './plugins/vite-plugin-theme-bootstrap';
 
 /**
  * 将 Arco Design 图标独立拆包。
@@ -31,11 +30,6 @@ function resolveArcoChunkName(id: string): string {
  */
 export default defineConfig({
   plugins: [
-    // 主题首屏防 FOUC 引导脚本注入器：
-    // 在 <head> 顶部内联 window.__BML_PRESET_BEST__ + 同步 IIFE，
-    // 从 localStorage 命中即刻应用 ThemeProfile，否则回退到 PRESET_BEST。
-    // 详见 plugins/vite-plugin-theme-bootstrap.ts 文件头注释。
-    viteThemeBootstrap(),
     vue(),
   ],
 

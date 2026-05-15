@@ -316,13 +316,13 @@ const goApiAccountManage = () => {
 .feature-card h2 {
   margin-top: 18px;
   font-size: 24px;
-  color: #1f2d3d;
+  color: var(--bml-color-text-1, #1f2d3d);
 }
 
 .feature-card p,
 .step-card p,
 .bullet-list li {
-  color: #5b6b7f;
+  color: var(--bml-color-text-2, #5b6b7f);
   line-height: 1.8;
 }
 
@@ -341,11 +341,11 @@ const goApiAccountManage = () => {
 
 .section-heading h2 {
   font-size: 28px;
-  color: #1f2d3d;
+  color: var(--bml-color-text-1, #1f2d3d);
 }
 
 .heading-icon {
-  color: #0f6cff;
+  color: var(--bml-color-primary, #0f6cff);
   font-size: 24px;
 }
 
@@ -373,7 +373,7 @@ const goApiAccountManage = () => {
   height: 32px;
   border-radius: 999px;
   background: rgba(15, 108, 255, 0.12);
-  color: #0f6cff;
+  color: var(--bml-color-primary, #0f6cff);
   font-weight: 700;
 }
 
@@ -381,7 +381,7 @@ const goApiAccountManage = () => {
   display: block;
   margin-top: 14px;
   font-size: 20px;
-  color: #16324f;
+  color: var(--bml-color-text-1, #16324f);
   line-height: 1.6;
   word-break: break-all;
 }

@@ -3,8 +3,7 @@
     <!-- 不使用 collapsible / breakpoint，避免 Arco 进入 drawer 模式生成 mask 遮罩层拦截点击事件。
          折叠由自定义 collapse-btn 按钮控制。 -->
     <a-layout-sider 
-        :collapsed="collapsed" 
-        :class="[`sidebar-${sidebarStyleClass}`]"
+        :collapsed="collapsed"
     >
       <!-- 点击 Logo 返回中台工作台首页 -->
       <div class="logo" style="cursor: pointer;" @click="$router.push('/admin')">BML中台管理</div>
@@ -61,7 +60,7 @@
 
     </a-layout-sider>
     <a-layout>
-      <a-layout-header :class="[`header-${headerStyleClass}`]">
+      <a-layout-header>
         <!-- 左侧：纯净标题区 -->
         <div class="header-left">
           <div class="page-title-area">
@@ -80,11 +79,6 @@
         <!-- 右侧：悬浮控制坞 (Glass Dock) -->
         <div class="header-right">
             <div class="glass-dock">
-                <!-- 主题配置 -->
-                <div class="dock-item" @click="appStore.toggleSettings(true)" title="主题设置">
-                    <icon-palette />
-                </div>
-
                 <!-- 全屏 -->
                 <div class="dock-item" @click="toggleFullscreen">
                     <component :is="isFullscreen ? IconFullscreenExit : IconFullscreen" />
@@ -149,8 +143,6 @@
         </div>
       </a-layout-content>
     </a-layout>
-    <ThemeSettings />
-
     <!-- 右上角告警弹窗（新告警自动弹出） -->
     <AlertToast />
 
@@ -176,16 +168,14 @@ import { Message } from '@arco-design/web-vue';
 import {
     IconList, IconBug, IconApps, IconExport, IconDashboard,
     IconLeft, IconRight, IconNotification, IconFullscreen, IconFullscreenExit, IconUser, IconDown,
-    IconSettings, IconPalette, IconSafe, IconLayers, IconDesktop, IconIdcard, IconBranch
+    IconSettings, IconSafe, IconLayers, IconDesktop, IconIdcard, IconBranch
 } from '@arco-design/web-vue/es/icon';
 import request from '../utils/request';
 import TagsView from '../components/TagsView.vue';
-import ThemeSettings from '../components/ThemeSettings.vue';
 import AlertToast from '../components/AlertToast.vue';
 import NotificationPanel from '../components/NotificationPanel.vue';
 import { useTagsViewStore } from '../store/tagsView';
 import { useAppStore } from '../store/app';
-import { useThemeStore } from '../store/theme';
 import { useNotificationStore } from '../store/notification';
 import { usePermissionStore, type SidebarMenuItem } from '../store/permission';
 import { clearAuthTokens, getAccessToken } from '../utils/auth';
@@ -199,27 +189,9 @@ const isFullscreen = ref(false);
 
 const tagsViewStore = useTagsViewStore();
 const appStore = useAppStore();
-const themeStore = useThemeStore();
 const notificationStore = useNotificationStore();
 const permissionStore = usePermissionStore();
 
-/**
- * 当前 ADMIN 作用域生效的侧边栏 / 顶栏风格 class 后缀。
- * ───────────────────────────────────────────────
- * 主题状态由 `useThemeStore()` 管理，CSS class 命名沿用旧版（`white` / `dark`
- * / `primary` / `transparent` / `light`），便于 `:deep` 选择器与既有暗色模式
- * 兼容样式无需调整。
- */
-const sidebarStyleClass = computed<string>(() => {
-    /* SidebarStyle 枚举值（LIGHT / DARK / TRANSPARENT / PRIMARY）映射为旧
-       class 后缀（white / dark / transparent / primary），保持模板/样式一致。 */
-    const style = themeStore.admin.sidebarStyle;
-    return style === 'LIGHT' ? 'white' : String(style).toLowerCase();
-});
-const headerStyleClass = computed<string>(() => {
-    /* HeaderStyle 枚举值统一转小写后即与旧 class 一一对应。 */
-    return String(themeStore.admin.headerStyle).toLowerCase();
-});
 const cachedViews = computed(() => tagsViewStore.cachedViews);
 const sidebarMenus = computed(() => permissionStore.sidebarMenus);
 
@@ -336,9 +308,6 @@ const { start: startIdleWatch, stop: stopIdleWatch } = useAdminIdleTimeout({
 
 /**
  * 生命周期：恢复非主题偏好（色弱滤镜等）并启动空闲检测。
- *
- * 主题（明暗模式 / 主色 / 侧边栏 / 顶栏风格等）由 `useThemeStore().hydrate('ADMIN')`
- * 在更上层（路由守卫 / `main.ts`，task 17.3）统一接管，本布局不再调用主题初始化。
  */
 onMounted(() => {
     appStore.initAppPreferences();
@@ -362,10 +331,9 @@ onUnmounted(() => {
 .layout-demo {
   height: 100vh;
   width: 100vw;
-  background-color: #f7f8fa; /* Extremely light grey for depth */
+  background-color: var(--bml-color-bg-2, #f7f8fa);
   display: flex;
   overflow: hidden;
-  /* 背景纹理 - 更加细腻 */
   /* 背景纹理跟随主题色 */
   background-image: 
     radial-gradient(circle at 10% 20%, rgba(var(--bml-primary-rgb, 22, 93, 255), 0.06) 0%, transparent 40%),
@@ -429,7 +397,7 @@ onUnmounted(() => {
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    color: #4e5969;
+    color: var(--bml-color-text-2, #4e5969);
     font-size: 16px;
     transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
     z-index: 101;
@@ -439,7 +407,7 @@ onUnmounted(() => {
     width: 48px;
     height: 48px;
     background: #fff;
-    color: var(--bml-primary, #165dff);
+    color: var(--bml-color-primary, #165dff);
     box-shadow: 0 12px 32px rgba(var(--bml-primary-rgb, 22, 93, 255), 0.25);
 }
 
@@ -502,7 +470,7 @@ onUnmounted(() => {
     width: 92%;
     margin-left: 4%;
     border-radius: 12px;
-    color: #4e5969;
+    color: var(--bml-color-text-2, #4e5969);
     font-weight: 500;
     transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
     border: 1px solid transparent;
@@ -512,7 +480,7 @@ onUnmounted(() => {
 }
 .layout-demo :deep(.arco-menu-item:hover) {
     background-color: rgba(255, 255, 255, 0.6);
-    color: #1d2129;
+    color: var(--bml-color-text-1, #1d2129);
     transform: translateX(4px);
 }
 .layout-demo :deep(.arco-menu-item.arco-menu-selected) {
@@ -644,18 +612,18 @@ onUnmounted(() => {
 }
 .modern-breadcrumb .breadcrumb-root {
     font-size: 14px;
-    color: #86909c;
+    color: var(--bml-color-text-3, #86909c);
     font-weight: 400;
 }
 .modern-breadcrumb .breadcrumb-active {
     font-size: 18px; /* Large Title */
-    color: #1d2129;
+    color: var(--bml-color-text-1, #1d2129);
     font-weight: 600; /* Bold */
     letter-spacing: 0.2px;
 }
 /* Override Arcos separator */
 .modern-breadcrumb :deep(.arco-breadcrumb-item-separator) {
-    color: #c9cdd4;
+    color: var(--bml-color-text-4, #c9cdd4);
     margin: 0 8px;
 }
 
@@ -698,7 +666,7 @@ onUnmounted(() => {
     align-items: center;
     justify-content: center;
     margin: 0 4px;
-    color: #4e5969; /* Soft grey */
+    color: var(--bml-color-text-2, #4e5969);
     font-size: 16px;
     cursor: pointer;
     transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -706,7 +674,7 @@ onUnmounted(() => {
 
 .dock-item:hover {
     background: rgba(0, 0, 0, 0.06);
-    color: #1d2129;
+    color: var(--bml-color-text-1, #1d2129);
     transform: scale(1.05); /* Gentle pop */
 }
 
@@ -730,14 +698,14 @@ onUnmounted(() => {
 .user-arrow {
     font-size: 10px;
     margin-left: 4px;
-    color: #86909c;
+    color: var(--bml-color-text-3, #86909c);
 }
 
 /* Divider inside Dock */
 .dock-divider {
     width: 1px;
     height: 16px;
-    background: #e5e6eb;
+    background: var(--bml-color-border, #e5e6eb);
     margin: 0 8px;
 }
 
@@ -798,7 +766,7 @@ onUnmounted(() => {
     align-items: center;
     justify-content: center;
     font-size: 20px;
-    color: #4e5969;
+    color: var(--bml-color-text-2, #4e5969);
     cursor: pointer;
     transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
     position: relative;
@@ -833,7 +801,7 @@ onUnmounted(() => {
 .sidebar-dark .collapse-btn {
     background: rgba(60, 60, 62, 0.85);
     border-color: rgba(255,255,255,0.1);
-    color: #c9cdd4;
+    color: var(--bml-color-text-4, #c9cdd4);
 }
 .sidebar-dark .collapse-btn:hover {
     background: rgba(80, 80, 84, 0.95);
@@ -850,7 +818,7 @@ onUnmounted(() => {
     color: #fff;
 }
 /* 暗色侧边栏 mini dock 活动状态 */
-.sidebar-dark .mini-item { color: #c9cdd4; }
+.sidebar-dark .mini-item { color: var(--bml-color-text-4, #c9cdd4); }
 .sidebar-dark .mini-item:hover { background: rgba(255,255,255,0.08); color: #fff; }
 /* 主色侧边栏 mini dock 活动状态 */
 .sidebar-primary .mini-item { color: rgba(255,255,255,0.8); }
@@ -875,12 +843,12 @@ onUnmounted(() => {
         0 8px 16px -2px rgba(0, 0, 0, 0.3),
         inset 0 0 0 1px rgba(255, 255, 255, 0.1);
 }
-:global(body[arco-theme='dark']) .dock-item { color: #86909c; }
+:global(body[arco-theme='dark']) .dock-item { color: var(--bml-color-text-3, #86909c); }
 :global(body[arco-theme='dark']) .dock-item:hover {
     background: rgba(255, 255, 255, 0.1);
     color: #f2f3f5;
 }
-:global(body[arco-theme='dark']) .dock-divider { background: #3a3a3b; }
+:global(body[arco-theme='dark']) .dock-divider { background: var(--bml-color-border, #3a3a3b); }
 
 /* =================================================================
    Dynamic Theme Styles (New)
@@ -924,9 +892,53 @@ onUnmounted(() => {
     background: #232324 !important;
     border-right: 1px solid rgba(255,255,255,0.05) !important;
 }
-.sidebar-dark :deep(.arco-menu-item) { color: #c9cdd4 !important; }
-.sidebar-dark :deep(.arco-menu-item:hover) { background: rgba(255,255,255,0.05) !important; color: #fff !important; }
-.sidebar-dark .logo { color: #fff !important; }
+/* ── 暗色侧边栏：菜单项文字、图标、子菜单标题全量适配 ── */
+.sidebar-dark :deep(.arco-menu-item) { color: rgba(255, 255, 255, 0.7) !important; }
+.sidebar-dark :deep(.arco-menu-item .arco-icon) { color: rgba(255, 255, 255, 0.6) !important; }
+.sidebar-dark :deep(.arco-menu-item:hover) { background: rgba(255,255,255,0.08) !important; color: #fff !important; }
+.sidebar-dark :deep(.arco-menu-item:hover .arco-icon) { color: #fff !important; }
+.sidebar-dark :deep(.arco-menu-item.arco-menu-selected) { 
+    background: rgba(22, 93, 255, 0.25) !important; 
+    color: #fff !important; 
+}
+.sidebar-dark :deep(.arco-menu-item.arco-menu-selected .arco-icon) { color: #fff !important; }
+/* 子菜单标题（展开/折叠的父级菜单项） */
+.sidebar-dark :deep(.arco-menu-inline-header) { 
+    color: rgba(255, 255, 255, 0.7) !important; 
+}
+.sidebar-dark :deep(.arco-menu-inline-header .arco-icon) { 
+    color: rgba(255, 255, 255, 0.6) !important; 
+}
+.sidebar-dark :deep(.arco-menu-inline-header .arco-menu-icon-suffix) { 
+    color: rgba(255, 255, 255, 0.4) !important; 
+}
+.sidebar-dark :deep(.arco-menu-inline-header:hover) { 
+    background: rgba(255,255,255,0.08) !important; 
+    color: #fff !important; 
+    transform: none;
+}
+.sidebar-dark :deep(.arco-menu-inline-header:hover .arco-icon),
+.sidebar-dark :deep(.arco-menu-inline-header:hover .arco-menu-icon-suffix) { 
+    color: #fff !important; 
+}
+.sidebar-dark :deep(.arco-menu-inline-header.arco-menu-selected) {
+    background: rgba(22, 93, 255, 0.15) !important;
+    color: #fff !important;
+}
+.sidebar-dark :deep(.arco-menu-inline-header.arco-menu-selected .arco-icon),
+.sidebar-dark :deep(.arco-menu-inline-header.arco-menu-selected .arco-menu-icon-suffix) {
+    color: #fff !important;
+}
+/* 子菜单展开区域背景 */
+.sidebar-dark :deep(.arco-menu-inline-content) {
+    background: transparent !important;
+}
+/* 分组标题 */
+.sidebar-dark :deep(.arco-menu-group-title) {
+    color: rgba(255, 255, 255, 0.35) !important;
+}
+/* Logo */
+.sidebar-dark .logo { color: #fff !important; background: none !important; -webkit-text-fill-color: #fff !important; }
 
 .sidebar-primary {
     background: var(--bml-gradient-alt, linear-gradient(180deg, var(--arcoblue-6) 0%, var(--arcoblue-5) 100%)) !important;

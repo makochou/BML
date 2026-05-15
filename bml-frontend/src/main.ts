@@ -1,8 +1,4 @@
 import { createApp } from 'vue';
-// 主题引擎全局 Design Token 默认值（必须先于其它样式引入，
-// 以保证 `:root` 上的 `--bml-*` / `--arcoblue-*` 出厂默认值进入级联，
-// 杜绝主题首屏未上色 / FOUC。详见 styles/tokens.scss 文件头注释。
-import './styles/tokens.scss';
 import './style.css';
 import './assets/business-system.css';
 import App from './App.vue';
@@ -34,7 +30,8 @@ try {
   // 注册 Arco Design 图标库（支持 <icon-xxx /> 全局使用）
   app.use(ArcoVueIcon);
   // 注册 Pinia 状态管理
-  app.use(createPinia());
+  const pinia = createPinia();
+  app.use(pinia);
   // 注册 Vue Router
   app.use(router);
 

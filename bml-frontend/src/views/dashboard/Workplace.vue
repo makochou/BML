@@ -38,28 +38,28 @@
 
     <!-- 核心运行指标 -->
     <div class="stats-grid">
-      <div class="stat-card" style="--card-theme: #165dff">
+      <div class="stat-card" style="--card-theme: var(--bml-color-primary, #165dff)">
         <div class="stat-icon"><icon-layers /></div>
         <div class="stat-info">
           <div class="stat-value">{{ dashboardSummary.apiRegistry.total }}</div>
           <div class="stat-label">资产总数 (纳管API)</div>
         </div>
       </div>
-      <div class="stat-card" style="--card-theme: #00b42a">
+      <div class="stat-card" style="--card-theme: var(--bml-color-success, #00b42a)">
         <div class="stat-icon"><icon-safe /></div>
         <div class="stat-info">
           <div class="stat-value">{{ dashboardSummary.apiAccount.enabled }} <span class="stat-sub">/ {{ dashboardSummary.apiAccount.total }}</span></div>
           <div class="stat-label">启用账号 / 账号总数</div>
         </div>
       </div>
-      <div class="stat-card" style="--card-theme: #ff7d00">
+      <div class="stat-card" style="--card-theme: var(--bml-color-warning, #ff7d00)">
         <div class="stat-icon"><icon-notification /></div>
         <div class="stat-info">
           <div class="stat-value">{{ dashboardSummary.alert.unresolved }} <span class="stat-sub">件</span></div>
           <div class="stat-label">当前未处理告警</div>
         </div>
       </div>
-      <div class="stat-card" style="--card-theme: #722ed1">
+      <div class="stat-card" style="--card-theme: var(--bml-color-accent, #722ed1)">
         <div class="stat-icon"><icon-sync /></div>
         <div class="stat-info">
           <div class="stat-value">{{ dashboardSummary.alert.todayTotal }} <span class="stat-sub">次</span></div>
@@ -102,15 +102,15 @@
         <div class="monitor-items">
           <div class="monitor-item">
             <div class="m-label">CPU占用 <span class="m-val">{{ dashboardSummary.monitor.cpuPercent.toFixed(1) }}%</span></div>
-            <a-progress :percent="dashboardSummary.monitor.cpuPercent / 100" color="#165dff" :stroke-width="8" :show-text="false" />
+            <a-progress :percent="dashboardSummary.monitor.cpuPercent / 100" :color="'var(--bml-color-primary, #165dff)'" :stroke-width="8" :show-text="false" />
           </div>
           <div class="monitor-item">
             <div class="m-label">内存占用 <span class="m-val">{{ dashboardSummary.monitor.memPercent.toFixed(1) }}%</span></div>
-            <a-progress :percent="dashboardSummary.monitor.memPercent / 100" color="#00b42a" :stroke-width="8" :show-text="false" />
+            <a-progress :percent="dashboardSummary.monitor.memPercent / 100" :color="'var(--bml-color-success, #00b42a)'" :stroke-width="8" :show-text="false" />
           </div>
           <div class="monitor-item">
             <div class="m-label">磁盘占用 <span class="m-val">{{ dashboardSummary.monitor.diskPercent.toFixed(1) }}%</span></div>
-            <a-progress :percent="dashboardSummary.monitor.diskPercent / 100" color="#ff7d00" :stroke-width="8" :show-text="false" />
+            <a-progress :percent="dashboardSummary.monitor.diskPercent / 100" :color="'var(--bml-color-warning, #ff7d00)'" :stroke-width="8" :show-text="false" />
           </div>
         </div>
       </div>
@@ -180,7 +180,7 @@ const quickActions = [
     desc: '全源 API 映射与发现',
     path: '/admin/api/list',
     icon: IconLayers,
-    gradient: 'linear-gradient(135deg, #165dff 0%, #4a8dff 100%)',
+    gradient: 'linear-gradient(135deg, var(--bml-color-primary, #165dff) 0%, var(--bml-color-primary-5, #4080ff) 100%)',
   },
   {
     label: '授权治理',
@@ -257,7 +257,7 @@ onUnmounted(() => {
   height: 100%;
   box-sizing: border-box;
   padding: 12px 16px;
-  background: #f2f3f5;
+  background: var(--bml-color-bg-2, #f2f3f5);
   overflow: hidden;
   gap: 10px;
 }
@@ -268,8 +268,8 @@ onUnmounted(() => {
 .welcome-banner {
   flex-shrink: 0;
   height: 84px;
-  background: linear-gradient(135deg, #165dff 0%, #632ef3 100%);
-  border-radius: 12px;
+  background: linear-gradient(135deg, var(--bml-color-primary, #165dff) 0%, #632ef3 100%);
+  border-radius: var(--bml-radius-lg, 12px);
   padding: 0 28px;
   color: white;
   position: relative;
@@ -366,17 +366,17 @@ onUnmounted(() => {
   font-size: 20px; flex-shrink: 0;
 }
 .stat-info { flex: 1; }
-.stat-value { font-size: 22px; font-weight: 800; color: #1d2129; line-height: 1.1; font-family: 'Inter', sans-serif; }
-.stat-sub { font-size: 13px; font-weight: 500; color: #86909c; }
-.stat-label { font-size: 12px; color: #86909c; margin-top: 4px; }
+.stat-value { font-size: 22px; font-weight: 800; color: var(--bml-color-text-1, #1d2129); line-height: 1.1; font-family: 'Inter', sans-serif; }
+.stat-sub { font-size: 13px; font-weight: 500; color: var(--bml-color-text-3, #86909c); }
+.stat-label { font-size: 12px; color: var(--bml-color-text-3, #86909c); margin-top: 4px; }
 
 /* ══════════════════════════════════════════════════════════════════
    快捷入口区块 — 紧凑版
    ══════════════════════════════════════════════════════════════════ */
 .section-title {
   flex-shrink: 0;
-  font-size: 14px; font-weight: 600; color: #1d2129;
-  padding-left: 10px; border-left: 3px solid #165dff;
+  font-size: 14px; font-weight: 600; color: var(--bml-color-text-1, #1d2129);
+  padding-left: 10px; border-left: 3px solid var(--bml-color-primary, #165dff);
   margin: 0;
 }
 .quick-actions {
@@ -396,10 +396,10 @@ onUnmounted(() => {
   font-size: 18px; color: white; flex-shrink: 0;
 }
 .action-text { flex: 1; }
-.action-title { font-size: 14px; font-weight: 600; color: #1d2129; margin-bottom: 2px; }
-.action-desc { font-size: 11px; color: #86909c; }
-.action-arrow { color: #c9cdd4; font-size: 16px; transition: transform 0.2s; }
-.action-card:hover .action-arrow { color: #165dff; transform: translateX(3px); }
+.action-title { font-size: 14px; font-weight: 600; color: var(--bml-color-text-1, #1d2129); margin-bottom: 2px; }
+.action-desc { font-size: 11px; color: var(--bml-color-text-3, #86909c); }
+.action-arrow { color: var(--bml-color-text-4, #c9cdd4); font-size: 16px; transition: transform 0.2s; }
+.action-card:hover .action-arrow { color: var(--bml-color-primary, #165dff); transform: translateX(3px); }
 
 /* ══════════════════════════════════════════════════════════════════
    底部双面板 — 动态填充剩余高度
@@ -419,7 +419,7 @@ onUnmounted(() => {
   display: flex; justify-content: space-between; align-items: center;
   margin-bottom: 12px; flex-shrink: 0;
 }
-.panel-title { font-size: 15px; font-weight: 600; color: #1d2129; }
+.panel-title { font-size: 15px; font-weight: 600; color: var(--bml-color-text-1, #1d2129); }
 
 /* 主机运行指标 */
 .monitor-items {
@@ -427,8 +427,8 @@ onUnmounted(() => {
 }
 .monitor-item { margin-bottom: 6px; }
 .monitor-item:last-child { margin-bottom: 0; }
-.m-label { display: flex; justify-content: space-between; font-size: 13px; color: #4e5969; margin-bottom: 6px; }
-.m-val { font-weight: 700; color: #1d2129; font-family: 'Inter', sans-serif; }
+.m-label { display: flex; justify-content: space-between; font-size: 13px; color: var(--bml-color-text-2, #4e5969); margin-bottom: 6px; }
+.m-val { font-weight: 700; color: var(--bml-color-text-1, #1d2129); font-family: 'Inter', sans-serif; }
 
 /* 近期告警日志 — 超出面板高度时出内部滚动条 */
 .activity-list {
@@ -436,13 +436,13 @@ onUnmounted(() => {
   padding-right: 6px;
   /* 细滚动条（仅此区域可内滚，主框架 Zero-Scroll） */
   scrollbar-width: thin;
-  scrollbar-color: #e5e6eb transparent;
+  scrollbar-color: var(--bml-color-border, #e5e6eb) transparent;
 }
 .activity-list::-webkit-scrollbar { width: 4px; }
-.activity-list::-webkit-scrollbar-thumb { background: #e5e6eb; border-radius: 2px; }
-.activity-list::-webkit-scrollbar-thumb:hover { background: #c9cdd4; }
+.activity-list::-webkit-scrollbar-thumb { background: var(--bml-color-border, #e5e6eb); border-radius: 2px; }
+.activity-list::-webkit-scrollbar-thumb:hover { background: var(--bml-color-text-4, #c9cdd4); }
 .activity-item { display: flex; align-items: center; gap: 10px; padding: 2px 0; flex-shrink: 0; }
 .act-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; box-shadow: 0 0 0 2px rgba(255,255,255,0.8); }
-.act-text { flex: 1; font-size: 13px; color: #4e5969; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.act-time { font-size: 12px; color: #86909c; white-space: nowrap; }
+.act-text { flex: 1; font-size: 13px; color: var(--bml-color-text-2, #4e5969); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.act-time { font-size: 12px; color: var(--bml-color-text-3, #86909c); white-space: nowrap; }
 </style>

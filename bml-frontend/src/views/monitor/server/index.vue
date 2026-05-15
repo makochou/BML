@@ -176,7 +176,7 @@
             <div class="gauges-row">
               <!-- CPU 环 -->
               <div class="gauge-cell">
-                <div class="ring ring-sm" :style="getGaugeStyle(serverInfo?.cpu?.used, '#165dff')">
+                <div class="ring ring-sm" :style="getGaugeStyle(serverInfo?.cpu?.used, 'var(--bml-color-primary, #165dff)')">
                   <div class="ring-inner">
                     <span class="ring-pct">{{ serverInfo?.cpu?.used ?? 0 }}%</span>
                     <span class="ring-tag">CPU</span>
@@ -552,7 +552,7 @@ onUnmounted(() => {
 .traffic-node { display: flex; align-items: center; gap: 7px; }
 .traffic-node .label { font-size: 9px; font-weight: 800; color: #94a3b8; }
 .traffic-node .value { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 800; }
-.traffic-node .value.up      { color: #165dff; }
+.traffic-node .value.up      { color: var(--bml-color-primary, #165dff); }
 .traffic-node .value.down    { color: #00b42a; }
 .traffic-node .value.neutral { color: #475569; }
 .node-gap { width: 1px; height: 14px; background: #e2e8f0; margin: 0 10px; }
@@ -571,7 +571,7 @@ onUnmounted(() => {
   font-size: 9px; font-weight: 800; color: #64748b;
   padding: 1px 5px; background: rgba(15,23,42,0.04); border-radius: 4px; flex-shrink: 0;
 }
-.ip-item .chip.pub { color: #165dff; background: rgba(22,93,255,0.07); }
+.ip-item .chip.pub { color: var(--bml-color-primary, #165dff); background: rgba(22,93,255,0.07); }
 .ip-item .addr { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; color: #334155; }
 
 /* ══ 主视口 ══ */
@@ -618,14 +618,14 @@ onUnmounted(() => {
 
 /* 顶部彩色条 */
 .lv-card__accent           { position: absolute; top: 0; left: 0; right: 0; height: 3px; }
-.lv-card__accent--blue     { background: linear-gradient(90deg,#165dff,#6aa1ff); }
+.lv-card__accent--blue     { background: linear-gradient(90deg, var(--bml-color-primary, #165dff), var(--bml-color-primary-4, #6aa1ff)); }
 .lv-card__accent--teal     { background: linear-gradient(90deg,#14c9c9,#6ee7b7); }
 .lv-card__accent--gold     { background: linear-gradient(90deg,#ff7d00,#ffb454); }
 .lv-card__accent--purple   { background: linear-gradient(90deg,#722ed1,#b37feb); }
 
 /* 卡片标题行 */
 .card-title-sc { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
-.card-title-sc .arco-icon { color: #165dff; font-size: 14px; }
+.card-title-sc .arco-icon { color: var(--bml-color-primary, #165dff); font-size: 14px; }
 .card-title-sc span { font-size: 13px; font-weight: 800; color: #0f172a; }
 
 /* ══ 左侧：系统环境卡片排版 ══
@@ -672,7 +672,7 @@ onUnmounted(() => {
  * 侧栏 360px - 左右 padding(28px) - 标签宽度(~52px) - gap(8px) ≈ 272px
  */
 .text-ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 240px; display: block; }
-.tint-blue   { color: #165dff !important; }
+.tint-blue   { color: var(--bml-color-primary, #165dff) !important; }
 .tint-purple { color: #722ed1 !important; }
 .tint-green  { color: #00b42a !important; }
 
@@ -767,7 +767,7 @@ onUnmounted(() => {
   border-radius: 8px; padding: 4px 10px; min-width: 44px;
 }
 .lp-label { font-size: 8px; font-weight: 800; color: #94a3b8; }
-.lp-val   { font-size: 14px; font-weight: 900; color: #165dff; font-family: 'JetBrains Mono', monospace; line-height: 1.2; }
+.lp-val   { font-size: 14px; font-weight: 900; color: var(--bml-color-primary, #165dff); font-family: 'JetBrains Mono', monospace; line-height: 1.2; }
 
 /* ══ 中间：三环仪表盘（紧凑版） ══ */
 .gauges-row {
@@ -820,9 +820,9 @@ onUnmounted(() => {
   display: flex; align-items: center; gap: 7px;
   font-size: 11px; font-weight: 800; color: #475569; margin-bottom: 10px;
 }
-.cpu-icon { color: #165dff; font-size: 13px; }
+.cpu-icon { color: var(--bml-color-primary, #165dff); font-size: 13px; }
 .cpu-core-badge {
-  margin-left: auto; font-size: 9px; font-weight: 800; color: #165dff;
+  margin-left: auto; font-size: 9px; font-weight: 800; color: var(--bml-color-primary, #165dff);
   background: rgba(22,93,255,0.08); padding: 1px 7px; border-radius: 20px;
 }
 .prog-list { display: flex; flex-direction: column; gap: 7px; }
@@ -830,7 +830,7 @@ onUnmounted(() => {
 .prog-label { font-size: 10px; font-weight: 700; color: #64748b; }
 .prog-track { height: 5px; background: #e2e8f0; border-radius: 999px; overflow: hidden; }
 .prog-fill  { height: 100%; border-radius: 999px; transition: width 0.8s ease-in-out; }
-.fill-sys  { background: linear-gradient(90deg,#165dff,#6aa1ff); }
+.fill-sys  { background: linear-gradient(90deg, var(--bml-color-primary, #165dff), var(--bml-color-primary-4, #6aa1ff)); }
 .fill-user { background: linear-gradient(90deg,#14c9c9,#6ee7b7); }
 .fill-io   { background: linear-gradient(90deg,#722ed1,#b37feb); }
 .fill-idle { background: linear-gradient(90deg,#e2e8f0,#f1f5f9); }
@@ -852,12 +852,12 @@ onUnmounted(() => {
   display: flex; align-items: center; gap: 6px;
   font-size: 11px; color: #64748b; font-weight: 600;
 }
-.footer-tip strong { color: #165dff; }
-.tip-icon { color: #165dff; font-size: 13px; flex-shrink: 0; }
+.footer-tip strong { color: var(--bml-color-primary, #165dff); }
+.tip-icon { color: var(--bml-color-primary, #165dff); font-size: 13px; flex-shrink: 0; }
 .gc-btn {
   font-weight: 700 !important;
   border-radius: 8px !important;
-  background: linear-gradient(135deg, #165dff, #722ed1) !important;
+  background: linear-gradient(135deg, var(--bml-color-primary, #165dff), #722ed1) !important;
   border: none !important;
   box-shadow: 0 4px 12px rgba(22,93,255,0.3) !important;
   transition: box-shadow 0.2s, transform 0.15s !important;
@@ -895,7 +895,7 @@ onUnmounted(() => {
   display: flex; align-items: center; gap: 3px;
   font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 4px;
 }
-.io-chip.read  { color: #165dff; background: rgba(22,93,255,0.06); }
+.io-chip.read  { color: var(--bml-color-primary, #165dff); background: rgba(22,93,255,0.06); }
 .io-chip.write { color: #00b42a; background: rgba(0,180,42,0.06); }
 .io-chip .arco-icon { font-size: 10px; }
 .disk-empty { text-align: center; color: #94a3b8; font-size: 12px; padding: 20px 0; }
@@ -910,7 +910,7 @@ onUnmounted(() => {
   width: 34px; height: 34px; border-radius: 9px;
   display: flex; align-items: center; justify-content: center; flex-shrink: 0;
 }
-.net-icon-wrap.tcp { background: rgba(22,93,255,0.1); color: #165dff; }
+.net-icon-wrap.tcp { background: rgba(22,93,255,0.1); color: var(--bml-color-primary, #165dff); }
 .net-icon-wrap.udp { background: rgba(114,46,209,0.1); color: #722ed1; }
 .net-icon-wrap .arco-icon { font-size: 16px; }
 .net-text { display: flex; flex-direction: column; gap: 2px; }

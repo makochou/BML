@@ -13,7 +13,7 @@
   <a-layout class="biz-layout">
     <!-- 注意：不使用 collapsible / breakpoint，避免 Arco 进入 drawer 模式导致生成 mask 遮罩层拦截点击事件。
          折叠由自定义 collapse-btn 按钮控制。 -->
-    <a-layout-sider :collapsed="collapsed" :collapsed-width="64" :class="[`sidebar-${sidebarStyleClass}`]">
+    <a-layout-sider :collapsed="collapsed" :collapsed-width="64">
       <!-- 点击 Logo 返回业务系统工作台首页 -->
       <div class="logo" @click="goHome">
         <!-- 若配置了侧边栏 Logo 图片则显示图片，否则回退为渐变文字 -->
@@ -79,7 +79,7 @@
 
     <a-layout>
       <!-- 顶部栏：透明 + Glass Dock -->
-      <a-layout-header :class="[`header-${headerStyleClass}`]">
+      <a-layout-header>
         <!-- 左侧：纯净标题区 -->
         <div class="header-left">
           <div class="page-title-area">
@@ -99,11 +99,6 @@
         <!-- 右侧：悬浮控制坞 (Glass Dock) -->
         <div class="header-right">
           <div class="glass-dock">
-            <!-- 主题配置 -->
-            <div class="dock-item" @click="appStore.toggleSettings(true)" title="主题设置">
-              <icon-palette />
-            </div>
-
             <!-- 全屏 -->
             <div class="dock-item" @click="toggleFullscreen" title="全屏切换">
               <component :is="isFullscreen ? IconFullscreenExit : IconFullscreen" />
@@ -165,8 +160,6 @@
         </div>
       </a-layout-content>
     </a-layout>
-    <!-- 主题设置抽屉（与中台管理共用同一组件） -->
-    <ThemeSettings />
   </a-layout>
 </template>
 
@@ -198,10 +191,8 @@ import { clearAuthTokens, getAccessToken } from '../utils/auth';
 import { resetBusinessPermissionsCache } from '../router/index';
 import { fetchLoginConfig } from '../api/auth';
 import TagsView from '../components/TagsView.vue';
-import ThemeSettings from '../components/ThemeSettings.vue';
 import { useTagsViewStore } from '../store/tagsView';
 import { useAppStore } from '../store/app';
-import { useThemeStore } from '../store/theme';
 import { usePermissionStore } from '../store/permission';
 import { useIdleTimeout } from '../composables/useIdleTimeout';
 
@@ -209,23 +200,7 @@ const router = useRouter();
 const route = useRoute();
 const tagsViewStore = useTagsViewStore();
 const appStore = useAppStore();
-const themeStore = useThemeStore();
 const permissionStore = usePermissionStore();
-
-/**
- * 当前 BUSINESS 作用域生效的侧边栏 / 顶栏风格 class 后缀。
- * ───────────────────────────────────────────────
- * 与中台管理 `Layout.vue` 保持完全一致的 class 命名约定，便于复用既有样式。
- */
-const sidebarStyleClass = computed<string>(() => {
-    /* SidebarStyle: LIGHT → 'white'（保留旧 class 命名以兼容样式选择器），
-       DARK / TRANSPARENT / PRIMARY 直接转小写。 */
-    const style = themeStore.business.sidebarStyle;
-    return style === 'LIGHT' ? 'white' : String(style).toLowerCase();
-});
-const headerStyleClass = computed<string>(() => {
-    return String(themeStore.business.headerStyle).toLowerCase();
-});
 
 /** keep-alive 缓存的视图列表 */
 const cachedViews = computed(() => tagsViewStore.cachedViews);
@@ -475,7 +450,7 @@ onUnmounted(() => {
 .biz-layout {
   height: 100vh;
   width: 100vw;
-  background-color: #f7f8fa;
+  background-color: var(--bml-color-bg-2, #f7f8fa);
   display: flex;
   overflow: hidden;
   /* 背景纹理跟随主题色 */
@@ -599,7 +574,7 @@ onUnmounted(() => {
   width: 92%;
   margin-left: 4%;
   border-radius: 12px;
-  color: #4e5969;
+  color: var(--bml-color-text-2, #4e5969);
   font-weight: 500;
   transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
   border: 1px solid transparent;
@@ -609,7 +584,7 @@ onUnmounted(() => {
 }
 .biz-layout :deep(.arco-menu-item:hover) {
   background-color: rgba(255, 255, 255, 0.6);
-  color: #1d2129;
+  color: var(--bml-color-text-1, #1d2129);
   transform: translateX(4px);
 }
 .biz-layout :deep(.arco-menu-item.arco-menu-selected) {
@@ -676,7 +651,7 @@ onUnmounted(() => {
 }
 .biz-layout :deep(.arco-menu-inline-header:hover) {
   background-color: rgba(255, 255, 255, 0.6);
-  color: #1d2129;
+  color: var(--bml-color-text-1, #1d2129);
   transform: translateX(4px);
 }
 
@@ -712,7 +687,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: #4e5969;
+  color: var(--bml-color-text-2, #4e5969);
   font-size: 16px;
   transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
   z-index: 101;
@@ -721,7 +696,7 @@ onUnmounted(() => {
   width: 48px;
   height: 48px;
   background: #fff;
-  color: var(--bml-primary, #165dff);
+  color: var(--bml-color-primary, #165dff);
   box-shadow: 0 12px 32px rgba(var(--bml-primary-rgb, 22, 93, 255), 0.25);
 }
 
@@ -744,7 +719,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   font-size: 20px;
-  color: #4e5969;
+  color: var(--bml-color-text-2, #4e5969);
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
   position: relative;
@@ -794,24 +769,24 @@ onUnmounted(() => {
 }
 .modern-breadcrumb .breadcrumb-root {
   font-size: 14px;
-  color: #86909c;
+  color: var(--bml-color-text-3, #86909c);
   font-weight: 400;
 }
 .modern-breadcrumb .breadcrumb-active {
   font-size: 18px;
-  color: #1d2129;
+  color: var(--bml-color-text-1, #1d2129);
   font-weight: 600;
   letter-spacing: 0.2px;
 }
 /* 无父级菜单时的独立标题样式（如工作台） */
 .modern-breadcrumb .breadcrumb-active-solo {
   font-size: 18px;
-  color: #1d2129;
+  color: var(--bml-color-text-1, #1d2129);
   font-weight: 600;
   letter-spacing: 0.2px;
 }
 .modern-breadcrumb :deep(.arco-breadcrumb-item-separator) {
-  color: #c9cdd4;
+  color: var(--bml-color-text-4, #c9cdd4);
   margin: 0 8px;
 }
 
@@ -852,14 +827,14 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   margin: 0 4px;
-  color: #4e5969;
+  color: var(--bml-color-text-2, #4e5969);
   font-size: 16px;
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 .dock-item:hover {
   background: rgba(0, 0, 0, 0.06);
-  color: #1d2129;
+  color: var(--bml-color-text-1, #1d2129);
   transform: scale(1.05);
 }
 
@@ -884,7 +859,7 @@ onUnmounted(() => {
 }
 .user-name {
   font-size: 14px;
-  color: #1d2129;
+  color: var(--bml-color-text-1, #1d2129);
   font-weight: 500;
   max-width: 120px;
   overflow: hidden;
@@ -894,14 +869,14 @@ onUnmounted(() => {
 .user-arrow {
   font-size: 10px;
   margin-left: 2px;
-  color: #86909c;
+  color: var(--bml-color-text-3, #86909c);
 }
 
 /* Dock 分割线 */
 .dock-divider {
   width: 1px;
   height: 16px;
-  background: #e5e6eb;
+  background: var(--bml-color-border, #e5e6eb);
   margin: 0 8px;
 }
 
@@ -993,8 +968,50 @@ onUnmounted(() => {
   border-right: 1px solid rgba(255,255,255,0.05) !important;
   backdrop-filter: none;
 }
-.sidebar-dark :deep(.arco-menu-item) { color: #c9cdd4 !important; }
-.sidebar-dark :deep(.arco-menu-item:hover) { background: rgba(255,255,255,0.05) !important; color: #fff !important; }
+.sidebar-dark :deep(.arco-menu-item) { color: rgba(255, 255, 255, 0.7) !important; }
+.sidebar-dark :deep(.arco-menu-item .arco-icon) { color: rgba(255, 255, 255, 0.6) !important; }
+.sidebar-dark :deep(.arco-menu-item:hover) { background: rgba(255,255,255,0.08) !important; color: #fff !important; }
+.sidebar-dark :deep(.arco-menu-item:hover .arco-icon) { color: #fff !important; }
+.sidebar-dark :deep(.arco-menu-item.arco-menu-selected) { 
+    background: rgba(22, 93, 255, 0.25) !important; 
+    color: #fff !important; 
+}
+.sidebar-dark :deep(.arco-menu-item.arco-menu-selected .arco-icon) { color: #fff !important; }
+/* 子菜单标题（展开/折叠的父级菜单项） */
+.sidebar-dark :deep(.arco-menu-inline-header) { 
+    color: rgba(255, 255, 255, 0.7) !important; 
+}
+.sidebar-dark :deep(.arco-menu-inline-header .arco-icon) { 
+    color: rgba(255, 255, 255, 0.6) !important; 
+}
+.sidebar-dark :deep(.arco-menu-inline-header .arco-menu-icon-suffix) { 
+    color: rgba(255, 255, 255, 0.4) !important; 
+}
+.sidebar-dark :deep(.arco-menu-inline-header:hover) { 
+    background: rgba(255,255,255,0.08) !important; 
+    color: #fff !important; 
+    transform: none;
+}
+.sidebar-dark :deep(.arco-menu-inline-header:hover .arco-icon),
+.sidebar-dark :deep(.arco-menu-inline-header:hover .arco-menu-icon-suffix) { 
+    color: #fff !important; 
+}
+.sidebar-dark :deep(.arco-menu-inline-header.arco-menu-selected) {
+    background: rgba(22, 93, 255, 0.15) !important;
+    color: #fff !important;
+}
+.sidebar-dark :deep(.arco-menu-inline-header.arco-menu-selected .arco-icon),
+.sidebar-dark :deep(.arco-menu-inline-header.arco-menu-selected .arco-menu-icon-suffix) {
+    color: #fff !important;
+}
+/* 子菜单展开区域背景 */
+.sidebar-dark :deep(.arco-menu-inline-content) {
+    background: transparent !important;
+}
+/* 分组标题 */
+.sidebar-dark :deep(.arco-menu-group-title) {
+    color: rgba(255, 255, 255, 0.35) !important;
+}
 .sidebar-dark .logo { color: #fff !important; }
 .sidebar-dark .logo-text { color: #fff !important; -webkit-text-fill-color: #fff; background: none !important; }
 .sidebar-dark .collapse-btn {

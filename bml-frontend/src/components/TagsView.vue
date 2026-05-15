@@ -335,7 +335,7 @@ onMounted(() => {
   padding: 0 12px;
   border-radius: 6px;
   font-size: 13px;
-  color: #4e5969;
+  color: var(--bml-color-text-2, #4e5969);
   white-space: nowrap;
   background: rgba(255, 255, 255, 0.5);
   border: 1px solid transparent;
@@ -348,7 +348,7 @@ onMounted(() => {
 
 .tags-view-item:hover {
   background: #fff;
-  color: #1d2129;
+  color: var(--bml-color-text-1, #1d2129);
 }
 
 .tags-view-item.active {
@@ -387,22 +387,22 @@ onMounted(() => {
   border-radius: 50%;
   transition: all 0.2s;
   font-size: 8px;
-  color: #86909c;
+  color: var(--bml-color-text-3, #86909c);
 }
 
 .tag-close-icon:hover {
   background: rgba(0, 0, 0, 0.06);
-  color: #1d2129;
+  color: var(--bml-color-text-1, #1d2129);
 }
 
 /* 暗色模式适配 */
 :global(body[arco-theme='dark']) .tags-view-item {
   background: rgba(255, 255, 255, 0.04);
-  color: #86909c;
+  color: var(--bml-color-text-3, #86909c);
 }
 :global(body[arco-theme='dark']) .tags-view-item:hover {
   background: rgba(255, 255, 255, 0.08);
-  color: #e5e6eb;
+  color: var(--bml-color-border, #e5e6eb);
 }
 :global(body[arco-theme='dark']) .tags-view-item.active {
   background: rgba(255, 255, 255, 0.1);
@@ -418,6 +418,6 @@ onMounted(() => {
 }
 
 .tags-dropdown-label.danger {
-  color: #c53434;
+  color: var(--bml-color-error, #c53434);
 }
 </style>

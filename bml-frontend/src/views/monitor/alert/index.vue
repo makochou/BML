@@ -723,14 +723,14 @@ onUnmounted(() => {
 .stat-val.danger   { color: #f53f3f; }
 .stat-val.critical { color: #f53f3f; }
 .stat-val.warning  { color: #ff7d00; }
-.stat-val.info     { color: #165dff; }
+.stat-val.info     { color: var(--bml-color-primary, #165dff); }
 .stat-gap { width: 1px; height: 20px; background: #e2e8f0; margin: 0 14px; }
 
 /* 操作按钮 */
 .header-right { align-self: center; }
 .btn-read-all {
   font-weight: 700 !important; border-radius: 8px !important;
-  border-color: rgba(22,93,255,0.3) !important; color: #165dff !important;
+  border-color: rgba(22,93,255,0.3) !important; color: var(--bml-color-primary, #165dff) !important;
 }
 
 /* ══ 主视口 ══ */
@@ -773,7 +773,7 @@ onUnmounted(() => {
   transition: all 0.15s;
 }
 .filter-tab:hover { background: #f8fafc; color: #334155; }
-.filter-tab.active { background: rgba(22,93,255,0.08); color: #165dff; }
+.filter-tab.active { background: rgba(22,93,255,0.08); color: var(--bml-color-primary, #165dff); }
 .tab-dot {
   width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
 }

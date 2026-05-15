@@ -60,6 +60,10 @@
           <template #icon><icon-user-group /></template>
           绑定用户
         </a-button>
+        <a-button class="toolbar-btn--perm" :disabled="permDisabled('system:role:assign') || !selectedRole" @click="handlePermAssignFromToolbar">
+          <template #icon><icon-safe /></template>
+          功能授权
+        </a-button>
         <a-popover trigger="click" position="br"
           :content-style="{ padding: '0', background: 'transparent', boxShadow: 'none', border: 'none' }">
           <a-button class="table-column-setting-btn">
@@ -93,21 +97,10 @@
               <template #icon><icon-edit /></template>
               编辑
             </a-button>
-            <a-button size="mini" class="table-action-btn table-action-btn--warning" :disabled="permDisabled('system:role:assign')" @click="handlePermAssign(record)">
-              <template #icon><icon-safe /></template>
-              授权
+            <a-button size="mini" class="table-action-btn table-action-btn--danger" :disabled="permDisabled('system:role:remove')" @click="confirmDelete(record.id)">
+              <template #icon><icon-delete /></template>
+              删除
             </a-button>
-            <a-dropdown v-if="hasPermission('system:role:remove')" trigger="click" position="br">
-              <a-button size="mini" class="table-action-btn table-action-btn--more">
-                <template #icon><icon-more /></template>
-              </a-button>
-              <template #content>
-                <a-doption @click="confirmDelete(record.id)">
-                  <template #icon><icon-delete /></template>
-                  删除角色
-                </a-doption>
-              </template>
-            </a-dropdown>
           </div>
         </template>
       </a-table>
@@ -216,7 +209,7 @@ defineOptions({ name: 'SystemRole' });
 
 import { ref, reactive, computed, onMounted } from 'vue';
 import { Message, Modal } from '@arco-design/web-vue';
-import { IconPlus, IconEdit, IconSettings, IconUp, IconDown, IconDelete, IconSafe, IconMore, IconUserGroup } from '@arco-design/web-vue/es/icon';
+import { IconPlus, IconEdit, IconSettings, IconUp, IconDown, IconDelete, IconSafe, IconUserGroup } from '@arco-design/web-vue/es/icon';
 import { fetchRolePage, fetchRoleDetail, createRole, updateRole, deleteRole, fetchOrgList, fetchDeptList, type RoleVO, type RoleForm, type OrgVO, type DeptVO } from '../../../../api/system';
 import RolePermissionDialog from './RolePermissionDialog.vue';
 import RoleUserDialog from './RoleUserDialog.vue';
@@ -348,6 +341,15 @@ const handlePermAssign = (row: RoleVO) => {
   permRoleId.value = row.id;
   permRoleName.value = row.roleName;
   permDialogVisible.value = true;
+};
+
+/** 从工具栏打开功能授权弹窗（依赖行选中） */
+const handlePermAssignFromToolbar = () => {
+  if (!selectedRole.value) {
+    Message.warning('请先选择一个角色');
+    return;
+  }
+  handlePermAssign(selectedRole.value);
 };
 const formData = reactive<RoleForm>(defaultForm());
 
@@ -490,6 +492,34 @@ onMounted(() => { loadData(); loadOrgTree(); loadDeptTree(); });
   color: #FFAD42 !important;
   background: #FFE4BA !important;
   border-color: #FFCF8B !important;
+  cursor: not-allowed;
+}
+
+/**
+ * 工具栏「功能授权」按钮
+ * ──────────────────
+ * 采用紫色系填充背景（与橙色"绑定用户"和蓝色"新增角色"区分），
+ * 视觉上醒目且语义明确——紫色代表权限/安全相关操作。
+ *
+ * 颜色方案（Arco Purple 色阶）：
+ *   正常态 #722ED1（Purple 6） + 白字
+ *   Hover  #551DB0 加深
+ *   禁用态 #E8DFFF 浅紫底 + #9B6FE8 紫色文字
+ */
+.toolbar-btn--perm {
+  color: #fff !important;
+  background: #722ED1 !important;
+  border-color: #722ED1 !important;
+  font-weight: 600 !important;
+}
+.toolbar-btn--perm:hover:not(:disabled) {
+  background: #551DB0 !important;
+  border-color: #551DB0 !important;
+}
+.toolbar-btn--perm:disabled {
+  color: #9B6FE8 !important;
+  background: #E8DFFF !important;
+  border-color: #D3BFFF !important;
   cursor: not-allowed;
 }
 

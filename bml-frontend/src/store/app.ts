@@ -1,18 +1,11 @@
 /**
- * BML 全局应用状态管理（非主题部分）
+ * BML 全局应用状态管理
  * ──────────────────────────────────────────────────────
- * 管理与“布局 / 可访问性 / 偏好抽屉可见性”相关的全局状态：
+ * 管理与"布局 / 可访问性 / 偏好抽屉可见性"相关的全局状态：
  *   - 侧边菜单折叠 / 显隐；
  *   - 顶部导航 / 页脚显隐；
  *   - 色弱滤镜（无障碍特性）；
  *   - 偏好设置抽屉可见性。
- *
- * 本 store **不再** 承载任何主题维度（主色、明暗模式、侧边栏 / 顶栏风格、
- * 主题色等），所有主题字段已迁移至 `useThemeStore()`（参见 `src/store/theme.ts`）。
- * 业务页面应直接使用 `useThemeStore()` 读取 / 修改主题维度，使用 `useThemeStore()
- * .patch(scope, partial)` 完成本地 + DOM + localStorage + 跨标签广播的三方写入。
- *
- * 关联需求：Requirements 8.6 / 8.7（任务 13.2 - 主题字段迁移）。
  */
 import { defineStore } from 'pinia';
 
@@ -20,7 +13,7 @@ import { defineStore } from 'pinia';
    常量
    ═══════════════════════════════════════════════════════ */
 
-/** localStorage 中保存非主题偏好设置的 key。 */
+/** localStorage 中保存偏好设置的 key。 */
 const SETTINGS_STORAGE_KEY = 'bml-app-settings';
 
 /* ═══════════════════════════════════════════════════════
@@ -28,13 +21,10 @@ const SETTINGS_STORAGE_KEY = 'bml-app-settings';
    ═══════════════════════════════════════════════════════ */
 
 /**
- * 应用全局状态（非主题部分）。
- *
- * 主题相关字段（明暗模式 / 主题色 / 侧边栏 / 顶栏风格 / 圆角 / 字体等）
- * 已迁移至 {@link useThemeStore}，请勿在此处新增主题维度字段。
+ * 应用全局状态。
  */
 export interface AppState {
-    /** 色弱滤镜开关（无障碍特性，与主题维度独立）。 */
+    /** 色弱滤镜开关（无障碍特性）。 */
     colorWeek: boolean;
     /** 是否显示顶部导航栏。 */
     navbar: boolean;
@@ -131,10 +121,7 @@ export const useAppStore = defineStore('app', {
             savePersistedSettings(this.$state);
         },
         /**
-         * 应用启动时初始化非主题偏好（当前仅恢复色弱滤镜）。
-         *
-         * 主题（明暗模式 / 主题色 / 侧边栏 / 顶栏风格等）由
-         * `useThemeStore().hydrate(scope)` 接管，详见 `src/store/theme.ts`。
+         * 应用启动时初始化偏好（当前仅恢复色弱滤镜）。
          */
         initAppPreferences() {
             try {
