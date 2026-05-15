@@ -14,6 +14,43 @@ type ApiResponse<T = unknown> = {
     traceId?: string;
 };
 
+/**
+ * 携带后端结构化错误信息的请求异常。
+ *
+ * 当后端通过统一异常处理器返回失败 `Result` 时，前端拦截器会将业务错误码
+ * 与原始 `data` 字段附加到该 Error 上，便于上层 API 层（例如主题模块的
+ * `THEME_INVALID_PROFILE` 字段级错误）按需反序列化为 `FieldError[]` 等
+ * 业务专属结构。该增强对所有现有调用方完全向后兼容（仍可读取 `message`）。
+ */
+export interface ApiError extends Error {
+    /** 后端业务错误码（即 `Result.code`），网络错误时为 `undefined` */
+    code?: number;
+    /** 后端 `Result.data`，可能携带 `FieldError[]` 等结构化错误明细 */
+    data?: unknown;
+    /** 后端 `Result.traceId`，便于联调追踪 */
+    traceId?: string;
+}
+
+/**
+ * 构造结构化的 {@link ApiError}，将后端业务错误码与 data 携带到 reject 链路。
+ *
+ * @param payload 后端原始响应体
+ * @returns 增强后的 Error
+ */
+const buildApiError = (payload?: Pick<ApiResponse, 'code' | 'message' | 'data' | 'traceId'>): ApiError => {
+    const err = new Error(payload?.message || 'Request Error') as ApiError;
+    if (payload?.code !== undefined) {
+        err.code = payload.code;
+    }
+    if (payload && 'data' in payload) {
+        err.data = payload.data;
+    }
+    if (payload?.traceId) {
+        err.traceId = payload.traceId;
+    }
+    return err;
+};
+
 type RetryableRequestConfig = InternalAxiosRequestConfig & {
     _retry?: boolean;
     _skipAuthRefresh?: boolean;
@@ -175,7 +212,7 @@ service.interceptors.request.use(
                 if (!config?._skipErrorMessage) {
                     Message.error(payload.message || '无权访问');
                 }
-                return Promise.reject(new Error(payload.message || '无权访问'));
+                return Promise.reject(buildApiError(payload));
             }
         }
 
@@ -185,12 +222,12 @@ service.interceptors.request.use(
             if (currentPath !== '/admin/license') {
                 window.location.href = '/admin/license';
             }
-            return Promise.reject(new Error(payload.message || '许可证无效'));
+            return Promise.reject(buildApiError(payload));
         }
 
         // 许可证功能模块未授权（2212）→ 静默处理，不弹出错误提示
         if (payload.code === 2212) {
-            return Promise.reject(new Error(payload.message || '许可证未授权该功能模块'));
+            return Promise.reject(buildApiError(payload));
         }
 
         logTraceId(payload);
@@ -198,7 +235,7 @@ service.interceptors.request.use(
         if (!config?._skipErrorMessage) {
             Message.error(message);
         }
-        return Promise.reject(new Error(message));
+        return Promise.reject(buildApiError(payload));
     },
     async (error: AxiosError<ApiResponse>) => {
         const config = error.config as RetryableRequestConfig | undefined;

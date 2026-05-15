@@ -106,6 +106,23 @@ public class Result<T> implements Serializable {
     }
 
     /**
+     * 快捷构造：使用自定义状态码、消息与附加数据载荷构造失败响应。
+     * <p>
+     * 适用于需要在错误响应中携带结构化信息的场景，
+     * 例如字段级校验错误清单 {@code List<FieldError>}。
+     * </p>
+     *
+     * @param code    自定义业务状态码
+     * @param message 错误提示消息
+     * @param data    附加数据载荷
+     * @param <T>     数据类型
+     * @return 包含自定义错误信息与数据载荷的 Result 实例
+     */
+    public static <T> Result<T> fail(int code, String message, T data) {
+        return build(code, message, data);
+    }
+
+    /**
      * 快捷构造：构造一个参数校验失败或请求不合法的响应 (400)。
      *
      * @param message 失败细节描述

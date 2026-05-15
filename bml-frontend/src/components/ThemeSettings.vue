@@ -8,6 +8,11 @@
          3. 侧边栏主题 — 白色 / 暗色 / 主色 三种外观
          4. 头部栏主题 — 透明 / 白色 / 暗色 / 主色 四种外观
          5. 实验室    — 色弱滤镜等辅助功能
+
+       说明：本组件是任务 13.2 迁移后的“过渡版本”，
+       主题维度（主色、明暗、侧边栏、顶栏）已改为 `useThemeStore()`，
+       色弱滤镜与抽屉可见性仍由 `useAppStore()` 维护。
+       该组件将在任务 16.5 中被完整 `ThemeSettingsPanel.vue` 替换。
        ══════════════════════════════════════════════════════ -->
   <a-drawer
     class="bml-settings-drawer"
@@ -58,12 +63,12 @@
             <div
               v-for="color in themeColors" :key="color.value"
               class="s-color-item"
-              :class="{ active: appStore.themeColor === color.value }"
+              :class="{ active: currentProfile.primaryColor.toUpperCase() === color.value.toUpperCase() }"
               @click="handleColorChange(color.value)"
             >
               <div class="s-color-swatch" :style="{ background: color.value }">
                 <transition name="s-check-fade">
-                  <icon-check v-if="appStore.themeColor === color.value" class="s-check-icon" />
+                  <icon-check v-if="currentProfile.primaryColor.toUpperCase() === color.value.toUpperCase()" class="s-check-icon" />
                 </transition>
               </div>
               <span class="s-color-name">{{ color.name }}</span>
@@ -84,8 +89,8 @@
           <div class="s-mode-row">
             <div
               class="s-mode-card"
-              :class="{ active: appStore.theme === 'light' }"
-              @click="appStore.toggleTheme(false)"
+              :class="{ active: currentProfile.mode === 'LIGHT' }"
+              @click="handleModeChange('LIGHT')"
             >
               <div class="s-mode-preview s-mode-light">
                 <div class="s-mp-sidebar"></div>
@@ -98,8 +103,8 @@
             </div>
             <div
               class="s-mode-card"
-              :class="{ active: appStore.theme === 'dark' }"
-              @click="appStore.toggleTheme(true)"
+              :class="{ active: currentProfile.mode === 'DARK' }"
+              @click="handleModeChange('DARK')"
             >
               <div class="s-mode-preview s-mode-dark">
                 <div class="s-mp-sidebar"></div>
@@ -127,10 +132,10 @@
             <div
               v-for="opt in sidebarOptions" :key="opt.value"
               class="s-mode-card"
-              :class="{ active: appStore.sidebarTheme === opt.value }"
+              :class="{ active: currentProfile.sidebarStyle === opt.value }"
               @click="handleSidebarChange(opt.value)"
             >
-              <div class="s-mode-preview" :class="'s-sidebar-' + opt.value">
+              <div class="s-mode-preview" :class="'s-sidebar-' + opt.classKey">
                 <div class="s-mp-sidebar"></div>
                 <div class="s-mp-main">
                   <div class="s-mp-header"></div>
@@ -156,10 +161,10 @@
             <div
               v-for="opt in headerOptions" :key="opt.value"
               class="s-mode-card"
-              :class="{ active: appStore.headerTheme === opt.value }"
+              :class="{ active: currentProfile.headerStyle === opt.value }"
               @click="handleHeaderChange(opt.value)"
             >
-              <div class="s-mode-preview" :class="'s-header-' + opt.value">
+              <div class="s-mode-preview" :class="'s-header-' + opt.classKey">
                 <div class="s-mp-sidebar"></div>
                 <div class="s-mp-main">
                   <div class="s-mp-header"></div>
@@ -211,15 +216,33 @@
 
 <script lang="ts" setup>
 /**
- * BML 偏好设置抽屉组件
+ * BML 偏好设置抽屉组件（过渡版本）
  * ──────────────────────────────────────
- * 提供主题色、暗色模式、侧边栏/头部栏外观、色弱滤镜等配置。
- * 所有设置通过 appStore 管理，自动持久化。
+ * 提供主题色、明暗模式、侧边栏 / 顶栏外观、色弱滤镜配置。
+ *
+ * 任务 13.2 迁移说明：
+ *   - 主题维度（`primaryColor` / `mode` / `sidebarStyle` / `headerStyle`）
+ *     现在通过 `useThemeStore()` 读取并通过 `themeStore.patch(scope, partial)`
+ *     更新；写入会自动完成 store + DOM CSS 变量 + localStorage + 跨标签广播
+ *     的三方一致性；
+ *   - 抽屉可见性 (`settingsVisible`) 与色弱滤镜 (`colorWeek`) 仍由
+ *     `useAppStore()` 维护；
+ *   - 当前作用域通过路由路径推断（`/admin*` → ADMIN，否则 BUSINESS），
+ *     与 `themeBootstrap.ts` 引导脚本中的判定保持一致；
+ *   - 任务 16.5 将以新版 `ThemeSettingsPanel.vue` 完整替换本组件。
  */
 import { computed } from 'vue';
+import { useRoute } from 'vue-router';
 import { useAppStore } from '../store/app';
-import type { AppState } from '../store/app';
-import { themeColors, applyThemeColor } from '../utils/theme';
+import { useThemeStore } from '../store/theme';
+import { themeColors } from '../utils/theme';
+import type {
+    HeaderStyle,
+    SidebarStyle,
+    ThemeMode,
+    ThemeProfile,
+    ThemeScope,
+} from '../types/theme';
 import {
     IconClose, IconCheck, IconSun,
     IconExperiment, IconEye, IconStarFill,
@@ -227,46 +250,74 @@ import {
 } from '@arco-design/web-vue/es/icon';
 
 const appStore = useAppStore();
+const themeStore = useThemeStore();
+const route = useRoute();
+
+/**
+ * 根据当前路由推断主题作用域。
+ *
+ * - 路径以 `/admin` 开头时取 `ADMIN`；
+ * - 其它（含 `/`、`/dashboard`、`/system/*` 等业务系统路由）取 `BUSINESS`；
+ * - 与 `themeBootstrap.ts` 引导脚本及 `useTheme` Composable 的推断逻辑一致。
+ */
+const currentScope = computed<ThemeScope>(() => {
+    const path = route.path || '';
+    return path.startsWith('/admin') ? 'ADMIN' : 'BUSINESS';
+});
+
+/** 当前作用域生效的 ThemeProfile（响应式只读视图）。 */
+const currentProfile = computed<ThemeProfile>(() =>
+    currentScope.value === 'ADMIN' ? themeStore.admin : themeStore.business,
+);
 
 /* ── 当前选中的主题色名称 ── */
 const currentColorName = computed(() =>
-    themeColors.find(c => c.value === appStore.themeColor)?.name || '自定义'
+    themeColors.find(c => c.value.toUpperCase() === currentProfile.value.primaryColor.toUpperCase())
+        ?.name || '自定义',
 );
 
-/* ── 侧边栏外观选项 ── */
-const sidebarOptions: { value: AppState['sidebarTheme']; label: string }[] = [
-    { value: 'white', label: '白色' },
-    { value: 'dark', label: '暗色' },
-    { value: 'primary', label: '主色' },
+/* ── 侧边栏外观选项 ──
+   `value` 为 SidebarStyle 枚举值（写入 themeStore），
+   `classKey` 为缩略图样式类后缀（沿用旧版 white / dark / primary）。 */
+const sidebarOptions: { value: SidebarStyle; classKey: string; label: string }[] = [
+    { value: 'LIGHT', classKey: 'white', label: '白色' },
+    { value: 'DARK', classKey: 'dark', label: '暗色' },
+    { value: 'PRIMARY', classKey: 'primary', label: '主色' },
 ];
 
 /* ── 头部栏外观选项 ── */
-const headerOptions: { value: AppState['headerTheme']; label: string }[] = [
-    { value: 'transparent', label: '透明' },
-    { value: 'light', label: '白色' },
-    { value: 'dark', label: '暗色' },
-    { value: 'primary', label: '主色' },
+const headerOptions: { value: HeaderStyle; classKey: string; label: string }[] = [
+    { value: 'TRANSPARENT', classKey: 'transparent', label: '透明' },
+    { value: 'LIGHT', classKey: 'light', label: '白色' },
+    { value: 'DARK', classKey: 'dark', label: '暗色' },
+    { value: 'PRIMARY', classKey: 'primary', label: '主色' },
 ];
 
 /* ── 事件处理 ── */
 
-/** 切换主题色 */
+/** 切换主题色：写入 themeStore.primaryColor。 */
 const handleColorChange = (color: string) => {
-    appStore.updateSettings({ themeColor: color });
-    applyThemeColor(color);
+    /* themeColors 中的 value 形如 '#165DFF'，与后端 @HexColor 校验格式一致，
+       直接 patch 即可触发 applyTokens 重新生成 10 级色阶。 */
+    themeStore.patch(currentScope.value, { primaryColor: color });
 };
 
-/** 切换侧边栏主题 */
-const handleSidebarChange = (value: AppState['sidebarTheme']) => {
-    appStore.updateSettings({ sidebarTheme: value });
+/** 切换明暗模式（仅在抽屉中提供 LIGHT / DARK，AUTO 走系统订阅）。 */
+const handleModeChange = (value: ThemeMode) => {
+    themeStore.patch(currentScope.value, { mode: value });
 };
 
-/** 切换头部栏主题 */
-const handleHeaderChange = (value: AppState['headerTheme']) => {
-    appStore.updateSettings({ headerTheme: value });
+/** 切换侧边栏风格。 */
+const handleSidebarChange = (value: SidebarStyle) => {
+    themeStore.patch(currentScope.value, { sidebarStyle: value });
 };
 
-/** 色弱滤镜 */
+/** 切换头部栏风格。 */
+const handleHeaderChange = (value: HeaderStyle) => {
+    themeStore.patch(currentScope.value, { headerStyle: value });
+};
+
+/** 色弱滤镜（无障碍特性，仍由 appStore 管理）。 */
 const handleColorWeekChange = (val: boolean | string | number) => {
     appStore.toggleColorWeek(!!val);
 };

@@ -4,7 +4,7 @@
          折叠由自定义 collapse-btn 按钮控制。 -->
     <a-layout-sider 
         :collapsed="collapsed" 
-        :class="[`sidebar-${appStore.sidebarTheme}`]"
+        :class="[`sidebar-${sidebarStyleClass}`]"
     >
       <!-- 点击 Logo 返回中台工作台首页 -->
       <div class="logo" style="cursor: pointer;" @click="$router.push('/admin')">BML中台管理</div>
@@ -61,7 +61,7 @@
 
     </a-layout-sider>
     <a-layout>
-      <a-layout-header :class="[`header-${appStore.headerTheme}`]">
+      <a-layout-header :class="[`header-${headerStyleClass}`]">
         <!-- 左侧：纯净标题区 -->
         <div class="header-left">
           <div class="page-title-area">
@@ -185,6 +185,7 @@ import AlertToast from '../components/AlertToast.vue';
 import NotificationPanel from '../components/NotificationPanel.vue';
 import { useTagsViewStore } from '../store/tagsView';
 import { useAppStore } from '../store/app';
+import { useThemeStore } from '../store/theme';
 import { useNotificationStore } from '../store/notification';
 import { usePermissionStore, type SidebarMenuItem } from '../store/permission';
 import { clearAuthTokens, getAccessToken } from '../utils/auth';
@@ -198,8 +199,27 @@ const isFullscreen = ref(false);
 
 const tagsViewStore = useTagsViewStore();
 const appStore = useAppStore();
+const themeStore = useThemeStore();
 const notificationStore = useNotificationStore();
 const permissionStore = usePermissionStore();
+
+/**
+ * 当前 ADMIN 作用域生效的侧边栏 / 顶栏风格 class 后缀。
+ * ───────────────────────────────────────────────
+ * 主题状态由 `useThemeStore()` 管理，CSS class 命名沿用旧版（`white` / `dark`
+ * / `primary` / `transparent` / `light`），便于 `:deep` 选择器与既有暗色模式
+ * 兼容样式无需调整。
+ */
+const sidebarStyleClass = computed<string>(() => {
+    /* SidebarStyle 枚举值（LIGHT / DARK / TRANSPARENT / PRIMARY）映射为旧
+       class 后缀（white / dark / transparent / primary），保持模板/样式一致。 */
+    const style = themeStore.admin.sidebarStyle;
+    return style === 'LIGHT' ? 'white' : String(style).toLowerCase();
+});
+const headerStyleClass = computed<string>(() => {
+    /* HeaderStyle 枚举值统一转小写后即与旧 class 一一对应。 */
+    return String(themeStore.admin.headerStyle).toLowerCase();
+});
 const cachedViews = computed(() => tagsViewStore.cachedViews);
 const sidebarMenus = computed(() => permissionStore.sidebarMenus);
 
@@ -315,10 +335,13 @@ const { start: startIdleWatch, stop: stopIdleWatch } = useAdminIdleTimeout({
 });
 
 /**
- * 生命周期：恢复主题并启动空闲检测
+ * 生命周期：恢复非主题偏好（色弱滤镜等）并启动空闲检测。
+ *
+ * 主题（明暗模式 / 主色 / 侧边栏 / 顶栏风格等）由 `useThemeStore().hydrate('ADMIN')`
+ * 在更上层（路由守卫 / `main.ts`，task 17.3）统一接管，本布局不再调用主题初始化。
  */
 onMounted(() => {
-    appStore.initTheme();
+    appStore.initAppPreferences();
     // 启动中台管理员空闲超时检测
     startIdleWatch();
     // 仅在已登录时启动告警通知轮询（未登录时 Layout 可能因许可证页面被渲染，此时不应发起需认证的请求）

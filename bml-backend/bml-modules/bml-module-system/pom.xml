@@ -47,6 +47,84 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
+
+        <!--
+            jqwik 属性测试框架
+            ─────────────────────────────────────────────────────────────
+            版本由父 POM <dependencyManagement> 统一锁定（1.9.3）。
+            用于实现 ThemeProfileValidatorPropertyTest 等属性测试，
+            自动注册到 JUnit Platform 上，与既有 JUnit5 单元测试共存。
+            需要在 surefire 的 includes 中保留 *PropertyTest.java，
+            该 artifact 命名以 *Test 结尾，已被默认规则匹配。
+        -->
+        <dependency>
+            <groupId>net.jqwik</groupId>
+            <artifactId>jqwik</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!--
+            Testcontainers + Flyway 集成测试依赖
+            ─────────────────────────────────────────────────────────────
+            版本由 Spring Boot 3.3.6 通过 testcontainers-bom（1.19.8）统一管理；
+            Flyway / MariaDB 驱动版本由父 POM <dependencyManagement> 锁定。
+            仅用于 ThemeMigrationIT 等迁移脚本集成测试，运行时需要 Docker。
+        -->
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>mariadb</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-mysql</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mariadb.jdbc</groupId>
+            <artifactId>mariadb-java-client</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
+
+    <!--
+        Surefire 包含规则扩展：
+        ─────────────────────────────────────────────────────────────────
+        默认 Surefire 仅匹配 *Test.java，本模块需要额外拾取以 *IT.java 命名的
+        集成测试（如 ThemeMigrationIT），便于通过 `mvn test` 一次性运行单元测试
+        与迁移脚本集成测试。版本与公共参数继承自父 POM 的 pluginManagement。
+    -->
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <includes>
+                        <include>**/Test*.java</include>
+                        <include>**/*Test.java</include>
+                        <include>**/*Tests.java</include>
+                        <include>**/*TestCase.java</include>
+                        <include>**/*IT.java</include>
+                    </includes>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 
 </project>

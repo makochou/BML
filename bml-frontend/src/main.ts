@@ -1,4 +1,8 @@
 import { createApp } from 'vue';
+// 主题引擎全局 Design Token 默认值（必须先于其它样式引入，
+// 以保证 `:root` 上的 `--bml-*` / `--arcoblue-*` 出厂默认值进入级联，
+// 杜绝主题首屏未上色 / FOUC。详见 styles/tokens.scss 文件头注释。
+import './styles/tokens.scss';
 import './style.css';
 import './assets/business-system.css';
 import App from './App.vue';

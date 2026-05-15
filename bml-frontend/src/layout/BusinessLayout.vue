@@ -13,7 +13,7 @@
   <a-layout class="biz-layout">
     <!-- 注意：不使用 collapsible / breakpoint，避免 Arco 进入 drawer 模式导致生成 mask 遮罩层拦截点击事件。
          折叠由自定义 collapse-btn 按钮控制。 -->
-    <a-layout-sider :collapsed="collapsed" :collapsed-width="64" :class="[`sidebar-${appStore.sidebarTheme}`]">
+    <a-layout-sider :collapsed="collapsed" :collapsed-width="64" :class="[`sidebar-${sidebarStyleClass}`]">
       <!-- 点击 Logo 返回业务系统工作台首页 -->
       <div class="logo" @click="goHome">
         <!-- 若配置了侧边栏 Logo 图片则显示图片，否则回退为渐变文字 -->
@@ -79,7 +79,7 @@
 
     <a-layout>
       <!-- 顶部栏：透明 + Glass Dock -->
-      <a-layout-header :class="[`header-${appStore.headerTheme}`]">
+      <a-layout-header :class="[`header-${headerStyleClass}`]">
         <!-- 左侧：纯净标题区 -->
         <div class="header-left">
           <div class="page-title-area">
@@ -201,6 +201,7 @@ import TagsView from '../components/TagsView.vue';
 import ThemeSettings from '../components/ThemeSettings.vue';
 import { useTagsViewStore } from '../store/tagsView';
 import { useAppStore } from '../store/app';
+import { useThemeStore } from '../store/theme';
 import { usePermissionStore } from '../store/permission';
 import { useIdleTimeout } from '../composables/useIdleTimeout';
 
@@ -208,7 +209,23 @@ const router = useRouter();
 const route = useRoute();
 const tagsViewStore = useTagsViewStore();
 const appStore = useAppStore();
+const themeStore = useThemeStore();
 const permissionStore = usePermissionStore();
+
+/**
+ * 当前 BUSINESS 作用域生效的侧边栏 / 顶栏风格 class 后缀。
+ * ───────────────────────────────────────────────
+ * 与中台管理 `Layout.vue` 保持完全一致的 class 命名约定，便于复用既有样式。
+ */
+const sidebarStyleClass = computed<string>(() => {
+    /* SidebarStyle: LIGHT → 'white'（保留旧 class 命名以兼容样式选择器），
+       DARK / TRANSPARENT / PRIMARY 直接转小写。 */
+    const style = themeStore.business.sidebarStyle;
+    return style === 'LIGHT' ? 'white' : String(style).toLowerCase();
+});
+const headerStyleClass = computed<string>(() => {
+    return String(themeStore.business.headerStyle).toLowerCase();
+});
 
 /** keep-alive 缓存的视图列表 */
 const cachedViews = computed(() => tagsViewStore.cachedViews);
@@ -440,7 +457,7 @@ const loadIdleConfig = async () => {
 };
 
 onMounted(() => {
-  appStore.initTheme();
+  appStore.initAppPreferences();
   loadUserInfo();
   loadSidebarLogo();
   loadIdleConfig();

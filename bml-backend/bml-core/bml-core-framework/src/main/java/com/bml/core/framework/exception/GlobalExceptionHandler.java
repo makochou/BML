@@ -35,14 +35,25 @@ public class GlobalExceptionHandler {
 
     /**
      * 处理业务异常。
+     * <p>
+     * 当异常携带附加载荷（{@link BusinessException#getData()}）时，
+     * 将其作为 {@code Result.data} 一并下发，便于前端按字段定位非法输入
+     * （例如主题模块的 {@code List<FieldError>} 全量校验场景）。
+     * </p>
      *
      * @param exception 业务异常
      * @param request   当前请求
      * @return 统一失败响应
      */
     @ExceptionHandler(BusinessException.class)
+    @SuppressWarnings({"rawtypes", "unchecked"})
     public Result<Void> handleBusinessException(BusinessException exception, HttpServletRequest request) {
         log.warn("业务异常: {} {}", request.getRequestURI(), exception.getMessage());
+        if (exception.getData() != null) {
+            // 通过原始类型回退实现把附加载荷塞入泛型 Result<Void>，前端按 data 字段消费即可
+            Result raw = Result.fail(exception.getCode(), exception.getMessage(), exception.getData());
+            return raw;
+        }
         return Result.fail(exception.getCode(), exception.getMessage());
     }
 
