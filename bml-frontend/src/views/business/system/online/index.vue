@@ -17,7 +17,7 @@
           <a-table-column title="过期时间" data-index="expireTime" :width="180" />
           <a-table-column title="剩余秒数" data-index="ttlSeconds" :width="120" />
           <a-table-column title="会话标识" data-index="userKey" ellipsis tooltip />
-          <a-table-column title="操作" :width="120" align="center" fixed="right"><template #cell="{ record }"><a-button size="mini" type="text" status="danger" :disabled="!hasPermission('system:online:forceLogout')" @click="kickRow(record)">强退</a-button></template></a-table-column>
+          <a-table-column title="操作" :width="120" align="center" fixed="right"><template #cell="{ record }"><a-button size="mini" type="text" status="danger" v-if="hasPermission('system:online:forceLogout')" @click="kickRow(record)">强退</a-button></template></a-table-column>
         </template>
       </a-table>
     </a-card>

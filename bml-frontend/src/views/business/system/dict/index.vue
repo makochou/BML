@@ -40,7 +40,7 @@
       >
         <template #actions>
           <a-space>
-            <a-button type="primary" :disabled="!hasPermission('system:dict:add')" @click="openTypeDialog('add')">
+            <a-button type="primary" v-if="hasPermission('system:dict:add')" @click="openTypeDialog('add')">
               <template #icon><icon-plus /></template>
               新增类型
             </a-button>
@@ -81,11 +81,12 @@
                 <a-badge :status="record.status === 1 ? 'success' : 'warning'" :text="record.status === 1 ? '正常' : '停用'" />
               </template>
             </a-table-column>
+            <a-table-column title="创建时间" data-index="createTime" :width="160" />
             <a-table-column title="操作" :width="130" align="center">
               <template #cell="{ record }">
                 <a-space size="mini">
-                  <a-button size="mini" type="text" :disabled="!hasPermission('system:dict:edit')" @click.stop="openTypeDialog('edit', record)">编辑</a-button>
-                  <a-button size="mini" type="text" status="danger" :disabled="!hasPermission('system:dict:remove')" @click.stop="removeType(record)">删除</a-button>
+                  <a-button size="mini" type="text" v-if="hasPermission('system:dict:edit')" @click.stop="openTypeDialog('edit', record)">编辑</a-button>
+                  <a-button size="mini" type="text" status="danger" v-if="hasPermission('system:dict:remove')" @click.stop="removeType(record)">删除</a-button>
                 </a-space>
               </template>
             </a-table-column>
@@ -149,8 +150,8 @@
             <a-table-column title="操作" :width="140" align="center">
               <template #cell="{ record }">
                 <a-space size="mini">
-                  <a-button size="mini" type="text" :disabled="!hasPermission('system:dict:edit')" @click="openDataDialog('edit', record)">编辑</a-button>
-                  <a-button size="mini" type="text" status="danger" :disabled="!hasPermission('system:dict:remove')" @click="removeData(record)">删除</a-button>
+                  <a-button size="mini" type="text" v-if="hasPermission('system:dict:edit')" @click="openDataDialog('edit', record)">编辑</a-button>
+                  <a-button size="mini" type="text" status="danger" v-if="hasPermission('system:dict:remove')" @click="removeData(record)">删除</a-button>
                 </a-space>
               </template>
             </a-table-column>
@@ -160,6 +161,7 @@
     </div>
 
     <a-modal v-model:visible="typeDialog.visible" :title="typeDialog.mode === 'add' ? '新增字典类型' : '编辑字典类型'" width="560px" @ok="submitType" @cancel="closeTypeDialog">
+      <AuditInfoFooter :data="typeForm" style="margin-bottom: 12px;" />
       <a-form ref="typeFormRef" :model="typeForm" :rules="typeRules" layout="vertical">
         <a-form-item field="dictName" label="字典名称"><a-input v-model="typeForm.dictName" allow-clear placeholder="请输入字典名称" /></a-form-item>
         <a-form-item field="dictType" label="字典编码"><a-input v-model="typeForm.dictType" allow-clear placeholder="如 sys_user_gender" /></a-form-item>
@@ -189,6 +191,7 @@ import GovernanceCompactQueryPanel from '../../../../components/governance/Gover
 import GovernanceListStage from '../../../../components/governance/GovernanceListStage.vue';
 import { normalizePageResult } from '../../../../utils/pageResult';
 import { useButtonPermission } from '../../../../composables/useButtonPermission';
+import AuditInfoFooter from '../../../../components/common/AuditInfoFooter.vue';
 import {
   createDictData,
   createDictType,

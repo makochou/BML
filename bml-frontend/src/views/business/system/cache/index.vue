@@ -14,9 +14,9 @@
     </a-row>
     <a-card class="table-card" :bordered="false">
       <template #title>缓存键列表</template>
-      <template #extra><a-space><a-input v-model="clearPrefixValue" allow-clear placeholder="清理前缀" style="width: 180px" /><a-button status="danger" :disabled="!hasPermission('system:cache:clear')" @click="clearPrefixRows">按前缀清理</a-button></a-space></template>
+      <template #extra><a-space><a-input v-model="clearPrefixValue" allow-clear placeholder="清理前缀" style="width: 180px" /><a-button status="danger" v-if="hasPermission('system:cache:clear')" @click="clearPrefixRows">按前缀清理</a-button></a-space></template>
       <a-table row-key="key" :loading="loading" :data="keyRows" :pagination="{ pageSize: 12 }">
-        <template #columns><a-table-column title="Key" data-index="key" ellipsis tooltip /><a-table-column title="操作" :width="120" align="center"><template #cell="{ record }"><a-button size="mini" type="text" status="danger" :disabled="!hasPermission('system:cache:remove')" @click="deleteRow(record.key)">删除</a-button></template></a-table-column></template>
+        <template #columns><a-table-column title="Key" data-index="key" ellipsis tooltip /><a-table-column title="操作" :width="120" align="center"><template #cell="{ record }"><a-button size="mini" type="text" status="danger" v-if="hasPermission('system:cache:remove')" @click="deleteRow(record.key)">删除</a-button></template></a-table-column></template>
       </a-table>
     </a-card>
   </div>

@@ -11,20 +11,22 @@
 
     <a-card class="table-card" :bordered="false">
       <template #title>定时任务</template>
-      <template #extra><a-button type="primary" :disabled="!hasPermission('system:job:add')" @click="openDialog('add')"><template #icon><icon-plus /></template>新增任务</a-button></template>
+      <template #extra><a-button type="primary" v-if="hasPermission('system:job:add')" @click="openDialog('add')"><template #icon><icon-plus /></template>新增任务</a-button></template>
       <a-table row-key="id" :loading="loading" :data="tableData" :pagination="pagination" @page-change="onPageChange" @page-size-change="onPageSizeChange">
         <template #columns>
           <a-table-column title="任务名称" data-index="jobName" :width="180" />
           <a-table-column title="分组" data-index="jobGroup" :width="120" />
           <a-table-column title="调用目标" data-index="invokeTarget" :width="260" ellipsis tooltip />
           <a-table-column title="Cron" data-index="cronExpression" :width="150" />
-          <a-table-column title="状态" :width="100" align="center"><template #cell="{ record }"><a-switch :model-value="record.status === 1" size="small" :disabled="!hasPermission('system:job:changeStatus')" @change="changeStatusRow(record, $event)" /></template></a-table-column>
-          <a-table-column title="操作" :width="220" align="center" fixed="right"><template #cell="{ record }"><a-space size="mini"><a-button size="mini" type="text" :disabled="!hasPermission('system:job:run')" @click="runRow(record)">运行</a-button><a-button size="mini" type="text" :disabled="!hasPermission('system:job:edit')" @click="openDialog('edit', record)">编辑</a-button><a-button size="mini" type="text" status="danger" :disabled="!hasPermission('system:job:remove')" @click="removeRow(record)">删除</a-button></a-space></template></a-table-column>
+          <a-table-column title="状态" :width="100" align="center"><template #cell="{ record }"><a-switch :model-value="record.status === 1" size="small" v-if="hasPermission('system:job:changeStatus')" @change="changeStatusRow(record, $event)" /></template></a-table-column>
+          <a-table-column title="创建时间" data-index="createTime" :width="170" />
+          <a-table-column title="操作" :width="220" align="center" fixed="right"><template #cell="{ record }"><a-space size="mini"><a-button size="mini" type="text" v-if="hasPermission('system:job:run')" @click="runRow(record)">运行</a-button><a-button size="mini" type="text" v-if="hasPermission('system:job:edit')" @click="openDialog('edit', record)">编辑</a-button><a-button size="mini" type="text" status="danger" v-if="hasPermission('system:job:remove')" @click="removeRow(record)">删除</a-button></a-space></template></a-table-column>
         </template>
       </a-table>
     </a-card>
 
     <a-modal v-model:visible="dialog.visible" :title="dialog.mode === 'add' ? '新增任务' : '编辑任务'" width="720px" :mask-closable="false" @ok="submitForm" @cancel="closeDialog">
+      <AuditInfoFooter :data="form" style="margin-bottom: 12px;" />
       <a-form ref="formRef" :model="form" :rules="rules" layout="vertical">
         <a-form-item field="jobName" label="任务名称"><a-input v-model="form.jobName" allow-clear /></a-form-item>
         <a-form-item field="jobGroup" label="任务分组"><a-input v-model="form.jobGroup" allow-clear placeholder="DEFAULT" /></a-form-item>
@@ -43,6 +45,7 @@ import { onMounted, reactive, ref } from 'vue';
 import { Message, Modal } from '@arco-design/web-vue';
 import { normalizePageResult } from '../../../../utils/pageResult';
 import { useButtonPermission } from '../../../../composables/useButtonPermission';
+import AuditInfoFooter from '../../../../components/common/AuditInfoFooter.vue';
 import { changeJobStatus, createJob, deleteJob, fetchJobDetail, fetchJobPage, fetchJobTargets, runJob, updateJob, type JobForm, type JobQuery, type JobVO } from '../../../../api/system';
 
 const { hasPermission } = useButtonPermission();

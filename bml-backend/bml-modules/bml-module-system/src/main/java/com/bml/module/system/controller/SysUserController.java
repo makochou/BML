@@ -107,6 +107,25 @@ public class SysUserController extends BaseController {
     }
 
     /**
+     * 根据用户 ID 获取用户名称（轻量级接口，仅返回 nickname）
+     * <p>
+     * 用于审计信息展示等场景，不需要用户管理权限，仅需登录即可访问。
+     * 只返回用户昵称，不暴露其他敏感信息。
+     * </p>
+     *
+     * @param userId 用户ID
+     * @return 包含 nickname 的简要信息
+     */
+    @Operation(summary = "获取用户名称（轻量级，仅需登录）")
+    @GetMapping(value = "/{userId}/name")
+    public Result<Map<String, String>> getUserName(@PathVariable Long userId) {
+        SysUser user = userService.getById(userId);
+        Map<String, String> result = new java.util.HashMap<>(2);
+        result.put("nickname", user != null ? user.getNickname() : null);
+        return Result.ok(result);
+    }
+
+    /**
      * 新增用户
      *
      * @param dto 用户信息

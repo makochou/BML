@@ -45,7 +45,7 @@
     >
       <template #actions>
         <a-space>
-          <a-button type="primary" :disabled="!hasPermission('system:menu:add')" @click="openAddDialog()">
+          <a-button type="primary" v-if="hasPermission('system:menu:add')" @click="openAddDialog()">
             <template #icon><icon-plus /></template>
             新增菜单
           </a-button>
@@ -88,9 +88,9 @@
         </template>
         <template #actions="{ record }">
           <a-space size="mini">
-            <a-button size="mini" type="text" :disabled="!hasPermission('system:menu:add')" @click="openAddDialog(record)">新增下级</a-button>
-            <a-button size="mini" type="text" :disabled="!hasPermission('system:menu:edit')" @click="openEditDialog(record)">编辑</a-button>
-            <a-button size="mini" type="text" status="danger" :disabled="!hasPermission('system:menu:remove')" @click="handleDelete(record)">删除</a-button>
+            <a-button size="mini" type="text" v-if="hasPermission('system:menu:addChild')" @click="openAddDialog(record)">新增下级</a-button>
+            <a-button size="mini" type="text" v-if="hasPermission('system:menu:edit')" @click="openEditDialog(record)">编辑</a-button>
+            <a-button size="mini" type="text" status="danger" v-if="hasPermission('system:menu:remove')" @click="handleDelete(record)">删除</a-button>
           </a-space>
         </template>
       </a-table>
@@ -105,9 +105,10 @@
       @ok="submitForm"
       @cancel="closeDialog"
     >
+      <AuditInfoFooter :data="form" style="margin-bottom: 12px;" />
       <a-form ref="formRef" :model="form" :rules="rules" layout="vertical" class="menu-form">
         <a-grid :cols="2" :col-gap="18" :row-gap="6">
-          <a-grid-item>
+          <a-grid-item v-if="hasPermission('system:menu:field:parentId')">
             <a-form-item field="parentId" label="上级菜单">
               <a-select v-model="form.parentId" placeholder="请选择上级菜单" allow-search>
                 <a-option :value="0">根目录</a-option>
@@ -117,7 +118,7 @@
               </a-select>
             </a-form-item>
           </a-grid-item>
-          <a-grid-item>
+          <a-grid-item v-if="hasPermission('system:menu:field:menuType')">
             <a-form-item field="menuType" label="菜单类型">
               <a-radio-group v-model="form.menuType" type="button">
                 <a-radio value="M">目录</a-radio>
@@ -127,47 +128,47 @@
               </a-radio-group>
             </a-form-item>
           </a-grid-item>
-          <a-grid-item>
+          <a-grid-item v-if="hasPermission('system:menu:field:menuName')">
             <a-form-item field="menuName" label="菜单名称">
               <a-input v-model="form.menuName" allow-clear placeholder="请输入菜单名称" />
             </a-form-item>
           </a-grid-item>
-          <a-grid-item>
+          <a-grid-item v-if="hasPermission('system:menu:field:sort')">
             <a-form-item field="sort" label="显示排序">
               <a-input-number v-model="form.sort" :min="0" :max="9999" style="width: 100%" />
             </a-form-item>
           </a-grid-item>
-          <a-grid-item>
+          <a-grid-item v-if="hasPermission('system:menu:field:path')">
             <a-form-item field="path" label="路由地址">
               <a-input v-model="form.path" allow-clear placeholder="如 system/menu 或 menu" />
             </a-form-item>
           </a-grid-item>
-          <a-grid-item>
+          <a-grid-item v-if="hasPermission('system:menu:field:component')">
             <a-form-item field="component" label="组件路径">
               <a-input v-model="form.component" allow-clear placeholder="如 system/menu/index" />
             </a-form-item>
           </a-grid-item>
-          <a-grid-item>
+          <a-grid-item v-if="hasPermission('system:menu:field:perms')">
             <a-form-item field="perms" label="权限标识">
               <a-input v-model="form.perms" allow-clear placeholder="如 system:menu:list" />
             </a-form-item>
           </a-grid-item>
-          <a-grid-item>
+          <a-grid-item v-if="hasPermission('system:menu:field:icon')">
             <a-form-item field="icon" label="图标标识">
               <a-input v-model="form.icon" allow-clear placeholder="如 list、apps、settings" />
             </a-form-item>
           </a-grid-item>
-          <a-grid-item>
+          <a-grid-item v-if="hasPermission('system:menu:field:visible')">
             <a-form-item field="visible" label="是否显示">
               <a-switch v-model="form.visible" :checked-value="1" :unchecked-value="0" checked-text="显示" unchecked-text="隐藏" />
             </a-form-item>
           </a-grid-item>
-          <a-grid-item>
+          <a-grid-item v-if="hasPermission('system:menu:field:status')">
             <a-form-item field="status" label="状态">
               <a-switch v-model="form.status" :checked-value="1" :unchecked-value="0" checked-text="正常" unchecked-text="停用" />
             </a-form-item>
           </a-grid-item>
-          <a-grid-item :span="2">
+          <a-grid-item v-if="hasPermission('system:menu:field:remark')" :span="2">
             <a-form-item field="remark" label="备注">
               <a-textarea v-model="form.remark" allow-clear placeholder="请输入备注" :max-length="500" show-word-limit />
             </a-form-item>
@@ -186,6 +187,7 @@ import GovernanceCompactQueryPanel from '../../../../components/governance/Gover
 import GovernanceListStage from '../../../../components/governance/GovernanceListStage.vue';
 import { createMenu, deleteMenu, fetchMenuDetail, fetchMenuList, updateMenu, type MenuForm, type MenuQuery, type MenuVO } from '../../../../api/system';
 import { useButtonPermission } from '../../../../composables/useButtonPermission';
+import AuditInfoFooter from '../../../../components/common/AuditInfoFooter.vue';
 
 const { hasPermission } = useButtonPermission();
 const loading = ref(false);

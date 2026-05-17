@@ -52,17 +52,21 @@
 
     <GovernanceListStage density="ultra" body-fill>
       <template #actions>
-        <a-button type="primary" :disabled="permDisabled('system:role:add')" @click="handleAdd">
+        <a-button type="primary" v-if="hasPermission('system:role:add')" @click="handleAdd">
           <template #icon><icon-plus /></template>
           新增角色
         </a-button>
-        <a-button class="toolbar-btn--binduser" :disabled="permDisabled('system:role:assignUser') || !selectedRole" @click="handleUserAssignFromToolbar">
-          <template #icon><icon-user-group /></template>
-          绑定用户
-        </a-button>
-        <a-button class="toolbar-btn--perm" :disabled="permDisabled('system:role:assign') || !selectedRole" @click="handlePermAssignFromToolbar">
+        <a-button class="toolbar-btn--perm" v-if="hasPermission('system:role:assign')" :disabled="!selectedRole" @click="handlePermAssignFromToolbar">
           <template #icon><icon-safe /></template>
           功能授权
+        </a-button>
+        <a-button class="toolbar-btn--datascope" v-if="hasPermission('system:role:field:dataScope')" :disabled="!selectedRole" @click="handleDataScopeFromToolbar">
+          <template #icon><icon-lock /></template>
+          数据授权
+        </a-button>
+        <a-button class="toolbar-btn--binduser" v-if="hasPermission('system:role:assignUser')" :disabled="!selectedRole" @click="handleUserAssignFromToolbar">
+          <template #icon><icon-user-group /></template>
+          绑定用户
         </a-button>
         <a-popover trigger="click" position="br"
           :content-style="{ padding: '0', background: 'transparent', boxShadow: 'none', border: 'none' }">
@@ -75,7 +79,7 @@
           </template>
         </a-popover>
       </template>
-      <a-table :key="tableResetKey" :data="filteredData" :loading="loading" :bordered="false" :pagination="false" row-key="id" stripe size="small" :scroll="{ x: scrollX, y: '100%' }" :scrollbar="false" sticky-header :columns="visibleColumns" column-resizable ref="tableRef" :style="tableStyle" :row-class="getRowClass" @row-click="handleRowClick" @column-resize="handleColumnResize" @row-dblclick="handleRowDblClick">
+      <a-table :key="tableResetKey" :data="filteredData" :loading="loading" :bordered="false" :pagination="false" row-key="id" stripe size="small" :scroll="{ x: '100%', y: '100%' }" :scrollbar="false" sticky-header :columns="visibleColumns" :column-resizable="{ mode: 'fixed' }" ref="tableRef" :style="tableStyle" :row-class="getRowClass" @row-click="handleRowClick" @column-resize="handleColumnResize" @row-dblclick="handleRowDblClick">
         <!-- 自定义列头：每列标题旁加放大镜搜索图标（与授权治理一致） -->
         <template #th-roleName><TableColumnSearch title="角色名称" v-model="columnFilters['roleName']" /></template>
         <template #th-roleCode><TableColumnSearch title="角色编码" v-model="columnFilters['roleCode']" /></template>
@@ -91,13 +95,20 @@
         <template #status="{ record }">
           <a-tag :color="record.status === 1 ? 'green' : 'red'" size="small">{{ record.status === 1 ? '正常' : '停用' }}</a-tag>
         </template>
+        
+        <template #createBy="{ record }">
+          <UserNameCell :user-id="record.createBy" />
+        </template>
+        <template #updateBy="{ record }">
+          <UserNameCell :user-id="record.updateBy" />
+        </template>
         <template #actions="{ record }">
           <div class="table-row-actions" @click.stop @dblclick.stop>
-            <a-button type="primary" size="mini" class="table-action-btn table-action-btn--primary" :disabled="permDisabled('system:role:edit')" @click="handleEdit(record)">
+            <a-button type="primary" size="mini" class="table-action-btn table-action-btn--primary" v-if="hasPermission('system:role:edit')" @click="handleEdit(record)">
               <template #icon><icon-edit /></template>
               编辑
             </a-button>
-            <a-button size="mini" class="table-action-btn table-action-btn--danger" :disabled="permDisabled('system:role:remove')" @click="confirmDelete(record.id)">
+            <a-button size="mini" class="table-action-btn table-action-btn--danger" v-if="hasPermission('system:role:remove')" @click="confirmDelete(record.id)">
               <template #icon><icon-delete /></template>
               删除
             </a-button>
@@ -122,28 +133,31 @@
     </GovernanceListStage>
 
     <BmlModal v-model:visible="dialogVisible" :title="dialogTitle" :width="700" :height="620" :min-width="540" :min-height="440">
+      <template #header-extra>
+        <AuditInfoFooter :data="formData" />
+      </template>
       <a-form :model="formData" ref="formRef" :rules="formReadonly ? undefined : formRules" layout="vertical" :disabled="formReadonly">
         <a-tabs default-active-key="basic" size="small" class="form-tabs">
           <a-tab-pane key="basic" title="基本信息">
             <a-row :gutter="16">
-              <a-col :span="12">
+              <a-col v-if="hasPermission('system:role:field:roleName')" :span="12">
                 <a-form-item field="roleName" label="角色名称">
                   <a-input v-model="formData.roleName" placeholder="请输入角色名称" />
                 </a-form-item>
               </a-col>
-              <a-col :span="12">
+              <a-col v-if="hasPermission('system:role:field:roleCode')" :span="12">
                 <a-form-item field="roleCode" label="角色编码">
                   <a-input v-model="formData.roleCode" placeholder="请输入角色编码" />
                 </a-form-item>
               </a-col>
             </a-row>
             <a-row :gutter="16">
-              <a-col :span="12">
+              <a-col v-if="hasPermission('system:role:field:sort')" :span="12">
                 <a-form-item field="sort" label="排序">
                   <a-input-number v-model="formData.sort" :min="0" placeholder="显示顺序" style="width: 100%;" />
                 </a-form-item>
               </a-col>
-              <a-col :span="12">
+              <a-col v-if="hasPermission('system:role:field:status')" :span="12">
                 <a-form-item field="status" label="状态">
                   <a-select v-model="formData.status" placeholder="请选择">
                     <a-option :value="1">正常</a-option>
@@ -155,28 +169,6 @@
             <a-form-item v-if="hasPermission('system:role:field:remark')" field="remark" label="备注">
               <a-textarea v-model="formData.remark" placeholder="请输入备注" :auto-size="{ minRows: 2, maxRows: 4 }" />
             </a-form-item>
-          </a-tab-pane>
-          <a-tab-pane v-if="hasPermission('system:role:field:dataScope')" key="dataScope" title="数据权限">
-            <a-form-item field="dataScope" label="数据范围">
-              <a-select v-model="formData.dataScope" placeholder="请选择数据范围">
-                <a-option v-for="ds in DATA_SCOPE_OPTIONS" :key="ds.value" :value="ds.value">{{ ds.label }}</a-option>
-              </a-select>
-            </a-form-item>
-            <a-form-item v-if="formData.dataScope === 7 && hasPermission('system:role:field:customOrgIds')" label="自定义机构范围">
-              <a-tree-select v-model="formData.customOrgIds" :data="orgTreeData" :field-names="{ key: 'id', title: 'orgName', children: 'children' }" multiple tree-checkable placeholder="请选择可访问的机构范围" />
-            </a-form-item>
-            <a-form-item v-if="formData.dataScope === 7 && hasPermission('system:role:field:customDeptIds')" label="自定义部门范围">
-              <a-tree-select v-model="formData.customDeptIds" :data="deptTreeData" :field-names="{ key: 'id', title: 'deptName', children: 'children' }" multiple tree-checkable placeholder="请选择可访问的部门范围" />
-            </a-form-item>
-            <a-alert type="info" class="scope-hint">
-              <template #title>数据权限说明</template>
-              <div class="scope-desc">
-                <p v-for="ds in DATA_SCOPE_OPTIONS" :key="ds.value">
-                  <a-tag size="small" :color="dataScopeColor(ds.value)">{{ ds.label }}</a-tag>
-                  <span> — {{ ds.desc }}</span>
-                </p>
-              </div>
-            </a-alert>
           </a-tab-pane>
         </a-tabs>
       </a-form>
@@ -201,6 +193,14 @@
       :role-name="permRoleName"
       @saved="loadData"
     />
+
+    <!-- 数据授权弹窗（独立组件） -->
+    <RoleDataScopeDialog
+      v-model:visible="dataScopeDialogVisible"
+      :role-id="dataScopeRoleId"
+      :role-name="dataScopeRoleName"
+      @saved="loadData"
+    />
   </div>
 </template>
 
@@ -209,15 +209,18 @@ defineOptions({ name: 'SystemRole' });
 
 import { ref, reactive, computed, onMounted } from 'vue';
 import { Message, Modal } from '@arco-design/web-vue';
-import { IconPlus, IconEdit, IconSettings, IconUp, IconDown, IconDelete, IconSafe, IconUserGroup } from '@arco-design/web-vue/es/icon';
+import { IconPlus, IconEdit, IconSettings, IconUp, IconDown, IconDelete, IconSafe, IconUserGroup, IconLock } from '@arco-design/web-vue/es/icon';
 import { fetchRolePage, fetchRoleDetail, createRole, updateRole, deleteRole, fetchOrgList, fetchDeptList, type RoleVO, type RoleForm, type OrgVO, type DeptVO } from '../../../../api/system';
 import RolePermissionDialog from './RolePermissionDialog.vue';
+import RoleDataScopeDialog from './RoleDataScopeDialog.vue';
 import RoleUserDialog from './RoleUserDialog.vue';
 import BmlModal from '../../../../components/BmlModal.vue';
 import GovernanceCompactQueryPanel from '../../../../components/governance/GovernanceCompactQueryPanel.vue';
 import GovernanceListStage from '../../../../components/governance/GovernanceListStage.vue';
 import BusinessTableColumnSetting from '../../../../components/business/BusinessTableColumnSetting.vue';
 import TableColumnSearch from '../../../../components/common/TableColumnSearch.vue';
+import AuditInfoFooter from '../../../../components/common/AuditInfoFooter.vue';
+import UserNameCell from '../../../../components/common/UserNameCell.vue';
 import { useBusinessTableColumns, type BusinessTableColumn } from '../../../../composables/useBusinessTableColumns';
 import { useButtonPermission } from '../../../../composables/useButtonPermission';
 import { useColumnFilter, resetColumnFilters } from '../../../../composables/useColumnFilter';
@@ -253,12 +256,15 @@ const columnFilters = reactive<Record<string, string>>({
 
 const defaultColumns: BusinessTableColumn[] = [
   /* ── 核心标识（默认显示） ── */
-  { key: 'roleName',   title: '角色名称', dataIndex: 'roleName',   width: 200, visible: true, fixed: 'left', sortable: true, titleSlotName: 'th-roleName' },
-  { key: 'roleCode',   title: '角色编码', dataIndex: 'roleCode',   width: 200, visible: true, sortable: true, titleSlotName: 'th-roleCode' },
+  { key: 'roleName',   title: '角色名称', dataIndex: 'roleName',   width: 200, visible: true, fixed: 'left', sortable: true, titleSlotName: 'th-roleName', permission: 'system:role:field:roleName' },
+  { key: 'roleCode',   title: '角色编码', dataIndex: 'roleCode',   width: 200, visible: true, sortable: true, titleSlotName: 'th-roleCode', permission: 'system:role:field:roleCode' },
   { key: 'dataScope',  title: '数据权限', slotName: 'dataScope',   width: 160, visible: true, align: 'center', sortable: true, titleSlotName: 'th-dataScope', permission: 'system:role:field:dataScope' },
   { key: 'sort',       title: '排序',     dataIndex: 'sort',       width: 100, visible: true, align: 'center', sortable: true, titleSlotName: 'th-sort' },
   { key: 'status',     title: '状态',     slotName: 'status',      width: 100, visible: true, align: 'center', sortable: true, titleSlotName: 'th-status' },
   { key: 'createTime', title: '创建时间', dataIndex: 'createTime', width: 200, visible: true, sortable: true, titleSlotName: 'th-createTime' },
+  { key: 'createBy',  title: '创建人',   dataIndex: 'createBy', slotName: 'createBy',  width: 100, visible: false, sortable: true },
+  { key: 'updateTime', title: '修改时间', dataIndex: 'updateTime', width: 200, visible: false, sortable: true },
+  { key: 'updateBy',  title: '修改人',   dataIndex: 'updateBy', slotName: 'updateBy',  width: 100, visible: false, sortable: true },
   /* ── 扩展字段（默认隐藏） ── */
   { key: 'remark', title: '备注', dataIndex: 'remark', width: 240, visible: true, ellipsis: true, sortable: true, titleSlotName: 'th-remark', permission: 'system:role:field:remark' },
   /* ── 操作列（锁定） ── */
@@ -290,7 +296,7 @@ const formRef = ref();
 
 /** 表单只读模式 */
 const formReadonly = ref(false);
-const { hasPermission, permDisabled } = useButtonPermission();
+const { hasPermission } = useButtonPermission();
 const canEditRole = computed(() => hasPermission('system:role:edit'));
 
 const queryParams = reactive({ roleName: '', roleCode: '', status: undefined as number | undefined, dataScope: undefined as number | undefined });
@@ -307,6 +313,11 @@ const defaultForm = (): RoleForm => ({ id: undefined, roleName: '', roleCode: ''
 const permDialogVisible = ref(false);
 const permRoleId = ref<number>();
 const permRoleName = ref<string>();
+
+/** 数据授权弹窗状态 */
+const dataScopeDialogVisible = ref(false);
+const dataScopeRoleId = ref<number>();
+const dataScopeRoleName = ref<string>();
 
 /**
  * 行点击选中高亮（使用通用 composable）
@@ -350,6 +361,17 @@ const handlePermAssignFromToolbar = () => {
     return;
   }
   handlePermAssign(selectedRole.value);
+};
+
+/** 从工具栏打开数据授权弹窗（依赖行选中） */
+const handleDataScopeFromToolbar = () => {
+  if (!selectedRole.value) {
+    Message.warning('请先选择一个角色');
+    return;
+  }
+  dataScopeRoleId.value = selectedRole.value.id;
+  dataScopeRoleName.value = selectedRole.value.roleName;
+  dataScopeDialogVisible.value = true;
 };
 const formData = reactive<RoleForm>(defaultForm());
 
@@ -397,7 +419,9 @@ const handleEdit = async (row: RoleVO) => {
   Object.assign(formData, {
     id: row.id, roleName: row.roleName, roleCode: row.roleCode,
     sort: row.sort, dataScope: row.dataScope || 6,
-    status: row.status, menuIds: [], halfCheckMenuIds: [], customOrgIds: [], customDeptIds: [], remark: row.remark
+    status: row.status, menuIds: [], halfCheckMenuIds: [], customOrgIds: [], customDeptIds: [], remark: row.remark,
+    createTime: row.createTime, createBy: row.createBy,
+    updateTime: row.updateTime, updateBy: row.updateBy,
   });
   try {
     const res = await fetchRoleDetail(row.id) as any;
@@ -420,7 +444,9 @@ const handleRowDblClick = async (record: RoleVO) => {
     Object.assign(formData, {
       id: record.id, roleName: record.roleName, roleCode: record.roleCode,
       sort: record.sort, dataScope: record.dataScope || 6,
-      status: record.status, menuIds: [], halfCheckMenuIds: [], customOrgIds: [], customDeptIds: [], remark: record.remark
+      status: record.status, menuIds: [], halfCheckMenuIds: [], customOrgIds: [], customDeptIds: [], remark: record.remark,
+      createTime: record.createTime, createBy: record.createBy,
+      updateTime: record.updateTime, updateBy: record.updateBy,
     });
     try {
       const res = await fetchRoleDetail(record.id) as any;
@@ -468,34 +494,6 @@ onMounted(() => { loadData(); loadOrgTree(); loadDeptTree(); });
 }
 
 /**
- * 工具栏「绑定用户」按钮
- * ──────────────────
- * 采用橙色系填充背景（与绿色"新增角色"区分），
- * 视觉上醒目且一眼可辨，禁用态保留浅橙色辨识度。
- *
- * 颜色方案（Arco Orange 色阶）：
- *   正常态 #FF7D00（Orange 6） + 白字
- *   Hover  #D25F00 加深
- *   禁用态 #FFE4BA 浅橙底 + #FFAD42 橙色文字
- */
-.toolbar-btn--binduser {
-  color: #fff !important;
-  background: #FF7D00 !important;
-  border-color: #FF7D00 !important;
-  font-weight: 600 !important;
-}
-.toolbar-btn--binduser:hover:not(:disabled) {
-  background: #D25F00 !important;
-  border-color: #D25F00 !important;
-}
-.toolbar-btn--binduser:disabled {
-  color: #FFAD42 !important;
-  background: #FFE4BA !important;
-  border-color: #FFCF8B !important;
-  cursor: not-allowed;
-}
-
-/**
  * 工具栏「功能授权」按钮
  * ──────────────────
  * 采用紫色系填充背景（与橙色"绑定用户"和蓝色"新增角色"区分），
@@ -520,6 +518,62 @@ onMounted(() => { loadData(); loadOrgTree(); loadDeptTree(); });
   color: #9B6FE8 !important;
   background: #E8DFFF !important;
   border-color: #D3BFFF !important;
+  cursor: not-allowed;
+}
+
+/**
+ * 工具栏「数据授权」按钮
+ * ──────────────────
+ * 采用青色系填充背景（与紫色"功能授权"和橙色"绑定用户"区分），
+ * 视觉上代表数据/范围相关操作。
+ *
+ * 颜色方案（Arco Cyan 色阶）：
+ *   正常态 #0FC6C2（Cyan 6） + 白字
+ *   Hover  #0AA5A1 加深
+ *   禁用态 #D4F7F6 浅青底 + #3DD6D0 青色文字
+ */
+.toolbar-btn--datascope {
+  color: #fff !important;
+  background: #0FC6C2 !important;
+  border-color: #0FC6C2 !important;
+  font-weight: 600 !important;
+}
+.toolbar-btn--datascope:hover:not(:disabled) {
+  background: #0AA5A1 !important;
+  border-color: #0AA5A1 !important;
+}
+.toolbar-btn--datascope:disabled {
+  color: #3DD6D0 !important;
+  background: #D4F7F6 !important;
+  border-color: #B0EFED !important;
+  cursor: not-allowed;
+}
+
+/**
+ * 工具栏「绑定用户」按钮
+ * ──────────────────
+ * 采用橙色系填充背景（与绿色"新增角色"区分），
+ * 视觉上醒目且一眼可辨，禁用态保留浅橙色辨识度。
+ *
+ * 颜色方案（Arco Orange 色阶）：
+ *   正常态 #FF7D00（Orange 6） + 白字
+ *   Hover  #D25F00 加深
+ *   禁用态 #FFE4BA 浅橙底 + #FFAD42 橙色文字
+ */
+.toolbar-btn--binduser {
+  color: #fff !important;
+  background: #FF7D00 !important;
+  border-color: #FF7D00 !important;
+  font-weight: 600 !important;
+}
+.toolbar-btn--binduser:hover:not(:disabled) {
+  background: #D25F00 !important;
+  border-color: #D25F00 !important;
+}
+.toolbar-btn--binduser:disabled {
+  color: #FFAD42 !important;
+  background: #FFE4BA !important;
+  border-color: #FFCF8B !important;
   cursor: not-allowed;
 }
 

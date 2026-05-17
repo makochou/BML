@@ -92,4 +92,14 @@ public class SysOrgVO implements Serializable {
 
     @Schema(description = "子机构")
     private List<SysOrgVO> children = new ArrayList<>();
+
+    @Schema(description = "创建人ID")
+    private Long createBy;
+
+    @Schema(description = "更新时间")
+    private LocalDateTime updateTime;
+
+    @Schema(description = "更新人ID")
+    private Long updateBy;
+
 }

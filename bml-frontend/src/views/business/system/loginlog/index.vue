@@ -32,9 +32,9 @@
 
     <GovernanceListStage density="ultra" body-fill :meta-items="tableMetaItems">
       <template #actions>
-        <a-button type="primary" status="success" :disabled="permDisabled('system:loginlog:export')" @click="handleExport"><template #icon><icon-download /></template>导出 CSV</a-button>
-        <a-button status="danger" :disabled="permDisabled('system:loginlog:remove') || !selectedRowKeys.length" @click="confirmBatchDelete"><template #icon><icon-delete /></template>批量删除</a-button>
-        <a-button status="danger" :disabled="permDisabled('system:loginlog:clean')" @click="confirmClean"><template #icon><icon-delete /></template>清空日志</a-button>
+        <a-button type="primary" status="success" v-if="hasPermission('system:loginlog:export')" @click="handleExport"><template #icon><icon-download /></template>导出 CSV</a-button>
+        <a-button status="danger" v-if="hasPermission('system:loginlog:remove')" :disabled="!selectedRowKeys.length" @click="confirmBatchDelete"><template #icon><icon-delete /></template>批量删除</a-button>
+        <a-button status="danger" v-if="hasPermission('system:loginlog:clean')" @click="confirmClean"><template #icon><icon-delete /></template>清空日志</a-button>
       </template>
 
       <a-table
@@ -53,15 +53,15 @@
         @row-click="handleView"
       >
         <template #columns>
-          <a-table-column title="账号" data-index="username" :width="112" ellipsis tooltip />
-          <a-table-column title="IP地址" data-index="ipaddr" :width="148" ellipsis tooltip />
-          <a-table-column title="地点" data-index="loginLocation" :width="132" ellipsis tooltip />
-          <a-table-column title="浏览器" data-index="browser" :width="104" ellipsis tooltip />
-          <a-table-column title="操作系统" data-index="os" :width="112" ellipsis tooltip />
-          <a-table-column title="状态" data-index="status" :width="76">
+          <a-table-column v-if="hasPermission('system:loginlog:field:username')" title="账号" data-index="username" :width="112" ellipsis tooltip />
+          <a-table-column v-if="hasPermission('system:loginlog:field:ipaddr')" title="IP地址" data-index="ipaddr" :width="148" ellipsis tooltip />
+          <a-table-column v-if="hasPermission('system:loginlog:field:loginLocation')" title="地点" data-index="loginLocation" :width="132" ellipsis tooltip />
+          <a-table-column v-if="hasPermission('system:loginlog:field:browser')" title="浏览器" data-index="browser" :width="104" ellipsis tooltip />
+          <a-table-column v-if="hasPermission('system:loginlog:field:os')" title="操作系统" data-index="os" :width="112" ellipsis tooltip />
+          <a-table-column v-if="hasPermission('system:loginlog:field:status')" title="状态" data-index="status" :width="76">
             <template #cell="{ record }"><a-tag :color="record.status === 1 ? 'green' : 'red'">{{ record.status === 1 ? '成功' : '失败' }}</a-tag></template>
           </a-table-column>
-          <a-table-column title="消息" data-index="msg" ellipsis tooltip />
+          <a-table-column v-if="hasPermission('system:loginlog:field:msg')" title="消息" data-index="msg" ellipsis tooltip />
           <a-table-column title="时间" data-index="loginTime" :width="144" />
         </template>
       </a-table>
@@ -115,7 +115,7 @@ import { cleanLoginLogs, deleteLoginLogs, exportLoginLogs, fetchLoginLogPage, ty
 import { normalizePageResult } from '../../../../utils/pageResult';
 import { useButtonPermission } from '../../../../composables/useButtonPermission';
 
-const { permDisabled } = useButtonPermission();
+const { hasPermission } = useButtonPermission();
 
 const loading = ref(false);
 const tableData = ref<LoginLogVO[]>([]);

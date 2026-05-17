@@ -66,15 +66,15 @@
       :meta-items="tableMetaItems"
     >
       <template #actions>
-        <a-button type="primary" status="success" :disabled="permDisabled('system:operlog:export')" @click="handleExport">
+        <a-button type="primary" status="success" v-if="hasPermission('system:operlog:export')" @click="handleExport">
           <template #icon><icon-download /></template>
           导出 CSV
         </a-button>
-        <a-button status="danger" :disabled="permDisabled('system:operlog:remove') || !selectedRowKeys.length" @click="confirmBatchDelete">
+        <a-button status="danger" v-if="hasPermission('system:operlog:remove')" :disabled="!selectedRowKeys.length" @click="confirmBatchDelete">
           <template #icon><icon-delete /></template>
           批量删除
         </a-button>
-        <a-button status="danger" :disabled="permDisabled('system:operlog:clean')" @click="confirmClean">
+        <a-button status="danger" v-if="hasPermission('system:operlog:clean')" @click="confirmClean">
           <template #icon><icon-delete /></template>
           清空日志
         </a-button>
@@ -111,11 +111,11 @@
         :pagination="false"
         row-key="id"
         size="small"
-        :scroll="{ x: scrollX, y: '100%' }"
+        :scroll="{ x: '100%', y: '100%' }"
         :scrollbar="false"
         sticky-header
         :columns="visibleColumns"
-        column-resizable
+        :column-resizable="{ mode: 'fixed' }"
         :style="tableStyle"
         @column-resize="handleColumnResize"
         @row-click="handleRowClick"
@@ -148,11 +148,11 @@
         </template>
         <template #actions="{ record }">
           <div class="table-row-actions" @click.stop @dblclick.stop>
-            <a-button type="primary" size="mini" class="table-action-btn table-action-btn--primary" :disabled="permDisabled('system:operlog:query')" @click="handleView(record)">
+            <a-button type="primary" size="mini" class="table-action-btn table-action-btn--primary" v-if="hasPermission('system:operlog:query')" @click="handleView(record)">
               <template #icon><icon-eye /></template>
               详情
             </a-button>
-            <a-button size="mini" class="table-action-btn table-action-btn--danger" :disabled="permDisabled('system:operlog:remove')" @click="confirmDelete(record)">
+            <a-button size="mini" class="table-action-btn table-action-btn--danger" v-if="hasPermission('system:operlog:remove')" @click="confirmDelete(record)">
               <template #icon><icon-delete /></template>
               删除
             </a-button>
@@ -250,7 +250,7 @@ const selectedRowKeys = ref<number[]>([]);
 const detailVisible = ref(false);
 const currentDetail = ref<OperationLogVO | null>(null);
 const timeRange = ref<string[]>([]);
-const { hasPermission, permDisabled } = useButtonPermission();
+const { hasPermission } = useButtonPermission();
 
 const pagination = reactive({ current: 1, pageSize: 20, total: 0 });
 const queryParams = reactive<OperationLogQuery>({
@@ -268,13 +268,13 @@ const columnFilters = reactive<Record<string, string>>({
 });
 
 const defaultColumns: BusinessTableColumn[] = [
-  { key: 'title', title: '模块', dataIndex: 'title', width: 130, visible: true, fixed: 'left', sortable: true, titleSlotName: 'th-title' },
-  { key: 'businessType', title: '业务类型', slotName: 'businessType', width: 120, visible: true, align: 'center', sortable: true, titleSlotName: 'th-businessType' },
-  { key: 'requestMethod', title: '请求方式', slotName: 'requestMethod', width: 110, visible: true, align: 'center', sortable: true, titleSlotName: 'th-requestMethod' },
-  { key: 'operName', title: '操作人', dataIndex: 'operName', width: 130, visible: true, sortable: true, titleSlotName: 'th-operName' },
-  { key: 'operIp', title: '来源 IP', dataIndex: 'operIp', width: 150, visible: true, sortable: true, titleSlotName: 'th-operIp' },
-  { key: 'status', title: '状态', slotName: 'status', width: 90, visible: true, align: 'center', sortable: true, titleSlotName: 'th-status' },
-  { key: 'costTime', title: '耗时', slotName: 'costTime', width: 100, visible: true, align: 'right', sortable: true, titleSlotName: 'th-costTime' },
+  { key: 'title', title: '模块', dataIndex: 'title', width: 130, visible: true, fixed: 'left', sortable: true, titleSlotName: 'th-title', permission: 'system:operlog:field:title' },
+  { key: 'businessType', title: '业务类型', slotName: 'businessType', width: 120, visible: true, align: 'center', sortable: true, titleSlotName: 'th-businessType', permission: 'system:operlog:field:businessType' },
+  { key: 'requestMethod', title: '请求方式', slotName: 'requestMethod', width: 110, visible: true, align: 'center', sortable: true, titleSlotName: 'th-requestMethod', permission: 'system:operlog:field:requestMethod' },
+  { key: 'operName', title: '操作人', dataIndex: 'operName', width: 130, visible: true, sortable: true, titleSlotName: 'th-operName', permission: 'system:operlog:field:operName' },
+  { key: 'operIp', title: '来源 IP', dataIndex: 'operIp', width: 150, visible: true, sortable: true, titleSlotName: 'th-operIp', permission: 'system:operlog:field:operIp' },
+  { key: 'status', title: '状态', slotName: 'status', width: 90, visible: true, align: 'center', sortable: true, titleSlotName: 'th-status', permission: 'system:operlog:field:status' },
+  { key: 'costTime', title: '耗时', slotName: 'costTime', width: 100, visible: true, align: 'right', sortable: true, titleSlotName: 'th-costTime', permission: 'system:operlog:field:costTime' },
   { key: 'operTime', title: '操作时间', dataIndex: 'operTime', width: 180, visible: true, sortable: true, titleSlotName: 'th-operTime' },
   { key: 'operUrl', title: '请求地址', dataIndex: 'operUrl', width: 260, visible: true, ellipsis: true, sortable: true, titleSlotName: 'th-operUrl' },
   { key: 'operatorType', title: '操作类别', slotName: 'operatorType', width: 120, visible: false, align: 'center', sortable: true },

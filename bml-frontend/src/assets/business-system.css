@@ -778,6 +778,24 @@
     background: var(--bml-table-fixed-layer-bg) !important;
 }
 
+/*
+ * 固定列右侧分隔线（与普通列分隔线保持一致）
+ * 固定列被排除在普通列的 ::after 分隔线规则之外，需要单独补充。
+ */
+.governance-list-stage .arco-table-th.arco-table-col-fixed-left::after,
+.governance-list-stage .arco-table-td.arco-table-col-fixed-left::after,
+.page-wrapper .arco-table-th.arco-table-col-fixed-left::after,
+.page-wrapper .arco-table-td.arco-table-col-fixed-left::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: -1px;
+    width: 1px;
+    background: rgba(188, 205, 226, 0.34);
+    pointer-events: none;
+}
+
 /* 左侧最后一个固定列：右侧外扩遮罩，挡住底层普通列滚动到固定列下方时露出的竖线。 */
 .governance-list-stage .arco-table-col-fixed-left-last::after,
 .page-wrapper .arco-table-col-fixed-left-last::after {

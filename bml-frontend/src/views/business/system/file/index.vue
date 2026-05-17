@@ -24,7 +24,7 @@
       <template #extra>
         <a-upload :auto-upload="false" :show-file-list="false" @change="handleUpload">
           <template #upload-button>
-            <a-button type="primary" :disabled="!hasPermission('system:file:upload')"><template #icon><icon-upload /></template>上传文件</a-button>
+            <a-button type="primary" v-if="hasPermission('system:file:upload')"><template #icon><icon-upload /></template>上传文件</a-button>
           </template>
         </a-upload>
       </template>
@@ -38,8 +38,8 @@
           <a-table-column title="操作" :width="160" align="center" fixed="right">
             <template #cell="{ record }">
               <a-space size="mini">
-                <a-button size="mini" type="text" :disabled="!hasPermission('system:file:download')" @click="downloadRow(record)">下载</a-button>
-                <a-button size="mini" type="text" status="danger" :disabled="!hasPermission('system:file:remove')" @click="removeRow(record)">删除</a-button>
+                <a-button size="mini" type="text" v-if="hasPermission('system:file:download')" @click="downloadRow(record)">下载</a-button>
+                <a-button size="mini" type="text" status="danger" v-if="hasPermission('system:file:remove')" @click="removeRow(record)">删除</a-button>
               </a-space>
             </template>
           </a-table-column>

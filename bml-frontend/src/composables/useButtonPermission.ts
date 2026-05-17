@@ -7,7 +7,7 @@
  * 设计说明：
  * - 权限标识格式与后端 @PreAuthorize 一致，例如 'system:org:edit'
  * - 超级管理员（权限含 '*:*:*'）自动拥有全部权限
- * - 按钮无权限时**变灰禁用**而非隐藏，让用户能看到功能存在但无法操作
+ * - 按钮无权限时**直接隐藏**，不显示给用户（v-if 控制）
  * - 通过 `buttonPermissionsLoaded` 标记区分两种状态：
  *     1. **未加载**（首屏 /auth/info 尚未返回）→ 默认放行，避免 UI 闪烁
  *     2. **已加载**（无论权限列表是否为空）→ 严格校验
@@ -17,11 +17,11 @@
  * ```ts
  * const { hasPermission, permDisabled } = useButtonPermission();
  *
- * // 方式1：按钮始终显示，无权限时禁用变灰
- * <a-button :disabled="permDisabled('system:org:edit')" @click="handleEdit">编辑</a-button>
+ * // 推荐方式：无权限时隐藏按钮（用户看不到无权操作的按钮）
+ * <a-button v-if="hasPermission('system:org:edit')" @click="handleEdit">编辑</a-button>
  *
- * // 方式2：传统隐藏模式（用于确实需要隐藏的场景，如菜单项）
- * <a-menu-item v-if="hasPermission('system:org:edit')">编辑</a-menu-item>
+ * // 备选方式：按钮始终显示，无权限时禁用变灰（特殊场景使用）
+ * <a-button :disabled="permDisabled('system:org:edit')" @click="handleEdit">编辑</a-button>
  * ```
  */
 import { usePermissionStore } from '../store/permission';

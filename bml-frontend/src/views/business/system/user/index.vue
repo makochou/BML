@@ -71,11 +71,11 @@
 
     <GovernanceListStage density="ultra" body-fill>
       <template #actions>
-        <a-button type="primary" :disabled="permDisabled('system:user:add')" @click="handleAdd">
+        <a-button type="primary" v-if="hasPermission('system:user:add')" @click="handleAdd">
           <template #icon><icon-plus /></template>
           新增用户
         </a-button>
-        <a-button :disabled="permDisabled('system:user:assignPerms') || !activeRowId" @click="openUserPermissionFromToolbar">
+        <a-button v-if="hasPermission('system:user:assignPerms')" :disabled="!activeRowId" @click="openUserPermissionFromToolbar">
           <template #icon><icon-safe /></template>
           功能授权
         </a-button>
@@ -94,8 +94,8 @@
         </a-popover>
       </template>
       <a-table :key="tableResetKey" :data="filteredData" :loading="loading" :bordered="false" :pagination="false"
-        row-key="id" stripe size="small" :scroll="{ x: scrollX, y: '100%' }" :scrollbar="false"
-        sticky-header :columns="visibleColumns" column-resizable ref="tableRef" :style="tableStyle" :row-class="getRowClass" @row-click="handleRowClick" @column-resize="handleColumnResize" @row-dblclick="handleRowDblClick">
+        row-key="id" stripe size="small" :scroll="{ x: '100%', y: '100%' }" :scrollbar="false"
+        sticky-header :columns="visibleColumns" :column-resizable="{ mode: 'fixed' }" ref="tableRef" :style="tableStyle" :row-class="getRowClass" @row-click="handleRowClick" @column-resize="handleColumnResize" @row-dblclick="handleRowDblClick">
         <!-- 自定义列头：每列标题旁加放大镜搜索图标（与授权治理一致） -->
         <template #th-username><TableColumnSearch title="账号" v-model="columnFilters['username']" /></template>
         <template #th-nickname><TableColumnSearch title="用户名" v-model="columnFilters['nickname']" /></template>
@@ -125,13 +125,20 @@
         <template #status="{ record }">
           <a-tag :color="USER_STATUS_MAP[record.status]?.color" size="small">{{ USER_STATUS_MAP[record.status]?.label }}</a-tag>
         </template>
+        
+        <template #createBy="{ record }">
+          <UserNameCell :user-id="record.createBy" />
+        </template>
+        <template #updateBy="{ record }">
+          <UserNameCell :user-id="record.updateBy" />
+        </template>
         <template #actions="{ record }">
           <div class="table-row-actions" @click.stop @dblclick.stop>
-            <a-button type="primary" size="mini" class="table-action-btn table-action-btn--primary" :disabled="permDisabled('system:user:edit')" @click="handleEdit(record)">
+            <a-button type="primary" size="mini" class="table-action-btn table-action-btn--primary" v-if="hasPermission('system:user:edit')" @click="handleEdit(record)">
               <template #icon><icon-edit /></template>
               编辑
             </a-button>
-            <a-button size="mini" class="table-action-btn table-action-btn--danger" :disabled="permDisabled('system:user:remove')" @click="confirmDelete(record.id)">
+            <a-button size="mini" class="table-action-btn table-action-btn--danger" v-if="hasPermission('system:user:remove')" @click="confirmDelete(record.id)">
               <template #icon><icon-delete /></template>
               删除
             </a-button>
@@ -173,16 +180,19 @@
     </GovernanceListStage>
 
     <BmlModal v-model:visible="dialogVisible" :title="dialogTitle" :width="740" :height="620" :min-width="560" :min-height="440">
+      <template #header-extra>
+        <AuditInfoFooter :data="formData" />
+      </template>
       <a-form :model="formData" ref="formRef" :rules="formReadonly ? undefined : formRules" layout="vertical" :disabled="formReadonly">
         <a-tabs default-active-key="basic" size="small" class="form-tabs">
           <a-tab-pane key="basic" title="账号信息">
             <a-row :gutter="16">
-              <a-col :span="12">
+              <a-col v-if="hasPermission('system:user:field:username')" :span="12">
                 <a-form-item field="username" label="账号">
                   <a-input v-model="formData.username" placeholder="请输入账号" />
                 </a-form-item>
               </a-col>
-              <a-col :span="12">
+              <a-col v-if="hasPermission('system:user:field:nickname')" :span="12">
                 <a-form-item field="nickname" label="用户名">
                   <a-input v-model="formData.nickname" placeholder="请输入用户名" />
                 </a-form-item>
@@ -217,7 +227,7 @@
                   </a-select>
                 </a-form-item>
               </a-col>
-              <a-col :span="12">
+              <a-col v-if="hasPermission('system:user:field:status')" :span="12">
                 <a-form-item field="status" label="状态">
                   <a-select v-model="formData.status" placeholder="请选择">
                     <a-option :value="1">正常</a-option>
@@ -234,7 +244,7 @@
                   </a-select>
                 </a-form-item>
               </a-col>
-              <a-col :span="12">
+              <a-col v-if="hasPermission('system:user:field:remark')" :span="12">
                 <a-form-item field="remark" label="备注">
                   <a-input v-model="formData.remark" placeholder="请输入备注" />
                 </a-form-item>
@@ -373,6 +383,8 @@ import GovernanceCompactQueryPanel from '../../../../components/governance/Gover
 import GovernanceListStage from '../../../../components/governance/GovernanceListStage.vue';
 import BusinessTableColumnSetting from '../../../../components/business/BusinessTableColumnSetting.vue';
 import TableColumnSearch from '../../../../components/common/TableColumnSearch.vue';
+import AuditInfoFooter from '../../../../components/common/AuditInfoFooter.vue';
+import UserNameCell from '../../../../components/common/UserNameCell.vue';
 import { useBusinessTableColumns, type BusinessTableColumn } from '../../../../composables/useBusinessTableColumns';
 import { useButtonPermission } from '../../../../composables/useButtonPermission';
 import { useColumnFilter, resetColumnFilters } from '../../../../composables/useColumnFilter';
@@ -410,8 +422,8 @@ const columnFilters = reactive<Record<string, string>>({
 
 const defaultColumns: BusinessTableColumn[] = [
   /* ── 核心标识（默认显示） ── */
-  { key: 'username',   title: '账号',     dataIndex: 'username',   width: 120, visible: true, fixed: 'left', sortable: true, titleSlotName: 'th-username' },
-  { key: 'nickname',   title: '用户名',   dataIndex: 'nickname',   width: 120, visible: true, sortable: true, titleSlotName: 'th-nickname' },
+  { key: 'username',   title: '账号',     dataIndex: 'username',   width: 120, visible: true, fixed: 'left', sortable: true, titleSlotName: 'th-username', permission: 'system:user:field:username' },
+  { key: 'nickname',   title: '用户名',   dataIndex: 'nickname',   width: 120, visible: true, sortable: true, titleSlotName: 'th-nickname', permission: 'system:user:field:nickname' },
   { key: 'employeeNo', title: '工号',     slotName: 'employeeNo',  width: 100, visible: true, sortable: true, titleSlotName: 'th-employeeNo', permission: 'system:user:field:employeeNo' },
   { key: 'orgName',    title: '所属机构', dataIndex: 'orgName',    width: 150, visible: true, sortable: true, titleSlotName: 'th-orgName', permission: 'system:user:field:orgId' },
   { key: 'deptName',   title: '部门',     dataIndex: 'deptName',   width: 120, visible: true, sortable: true, titleSlotName: 'th-deptName', permission: 'system:user:field:deptId' },
@@ -420,12 +432,15 @@ const defaultColumns: BusinessTableColumn[] = [
   { key: 'phone',      title: '手机号',   dataIndex: 'phone',      width: 140, visible: true, sortable: true, titleSlotName: 'th-phone', permission: 'system:user:field:phone' },
   { key: 'status',     title: '状态',     slotName: 'status',      width: 90,  visible: true, align: 'center', sortable: true, titleSlotName: 'th-status' },
   { key: 'createTime', title: '创建时间', dataIndex: 'createTime', width: 180, visible: true, sortable: true, titleSlotName: 'th-createTime' },
+  { key: 'createBy',  title: '创建人',   dataIndex: 'createBy', slotName: 'createBy',  width: 100, visible: false, sortable: true },
+  { key: 'updateTime', title: '修改时间', dataIndex: 'updateTime', width: 180, visible: false, sortable: true },
+  { key: 'updateBy',  title: '修改人',   dataIndex: 'updateBy', slotName: 'updateBy',  width: 100, visible: false, sortable: true },
   /* ── 扩展字段（默认隐藏） ── */
   { key: 'entryDate', title: '入职日期', dataIndex: 'entryDate', width: 120, visible: false, sortable: true, titleSlotName: 'th-entryDate', permission: 'system:user:field:entryDate' },
   { key: 'email',     title: '邮箱',     dataIndex: 'email',     width: 180, visible: false, sortable: true, titleSlotName: 'th-email', permission: 'system:user:field:email' },
   { key: 'loginIp',   title: '最后登录IP', dataIndex: 'loginIp', width: 140, visible: false, sortable: true, titleSlotName: 'th-loginIp' },
   { key: 'loginDate', title: '最后登录时间', dataIndex: 'loginDate', width: 170, visible: false, sortable: true, titleSlotName: 'th-loginDate' },
-  { key: 'remark',    title: '备注',     dataIndex: 'remark',    width: 200, visible: false, ellipsis: true, sortable: true, titleSlotName: 'th-remark' },
+  { key: 'remark',    title: '备注',     dataIndex: 'remark',    width: 200, visible: false, ellipsis: true, sortable: true, titleSlotName: 'th-remark', permission: 'system:user:field:remark' },
   /* ── 操作列（锁定） ── */
   { key: 'actions', title: '操作', slotName: 'actions', width: 170, visible: true, fixed: 'right', locked: true, align: 'center' },
 ];
@@ -457,7 +472,7 @@ const formRef = ref();
 
 /** 表单只读模式 */
 const formReadonly = ref(false);
-const { hasPermission, permDisabled } = useButtonPermission();
+const { hasPermission } = useButtonPermission();
 const canEditUser = computed(() => hasPermission('system:user:edit'));
 const pagination = reactive({ current: 1, pageSize: 20, total: 0 });
 
@@ -522,7 +537,7 @@ const handleAdd = () => { formReadonly.value = false; dialogTitle.value = '新�
 const handleEdit = async (row: UserVO) => {
   formReadonly.value = false;
   dialogTitle.value = '编辑用户';
-  Object.assign(formData, { id: row.id, username: row.username, nickname: row.nickname, password: '', phone: row.phone, email: row.email, gender: row.gender, status: row.status, orgId: row.orgId || undefined, deptId: row.deptId || undefined, postId: row.postId || undefined, employeeNo: row.employeeNo || '', entryDate: row.entryDate || '', roleIds: row.roleIds || [], remark: row.remark });
+  Object.assign(formData, { id: row.id, username: row.username, nickname: row.nickname, password: '', phone: row.phone, email: row.email, gender: row.gender, status: row.status, orgId: row.orgId || undefined, deptId: row.deptId || undefined, postId: row.postId || undefined, employeeNo: row.employeeNo || '', entryDate: row.entryDate || '', roleIds: row.roleIds || [], remark: row.remark, createTime: row.createTime, createBy: row.createBy, updateTime: row.updateTime, updateBy: row.updateBy });
   try { const r = await fetchUserDetail(row.id) as any; formData.roleIds = r.data?.roleIds || []; } catch { /* keep */ }
   dialogVisible.value = true;
 };
@@ -534,7 +549,7 @@ const handleRowDblClick = async (record: UserVO) => {
   } else {
     formReadonly.value = true;
     dialogTitle.value = '查看用户';
-    Object.assign(formData, { id: record.id, username: record.username, nickname: record.nickname, password: '', phone: record.phone, email: record.email, gender: record.gender, status: record.status, orgId: record.orgId || undefined, deptId: record.deptId || undefined, postId: record.postId || undefined, employeeNo: record.employeeNo || '', entryDate: record.entryDate || '', roleIds: record.roleIds || [], remark: record.remark });
+    Object.assign(formData, { id: record.id, username: record.username, nickname: record.nickname, password: '', phone: record.phone, email: record.email, gender: record.gender, status: record.status, orgId: record.orgId || undefined, deptId: record.deptId || undefined, postId: record.postId || undefined, employeeNo: record.employeeNo || '', entryDate: record.entryDate || '', roleIds: record.roleIds || [], remark: record.remark, createTime: record.createTime, createBy: record.createBy, updateTime: record.updateTime, updateBy: record.updateBy });
     try { const r = await fetchUserDetail(record.id) as any; formData.roleIds = r.data?.roleIds || []; } catch { /* keep */ }
     dialogVisible.value = true;
   }

@@ -52,4 +52,14 @@ public class SysRoleVO implements Serializable {
 
     @Schema(description = "自定义数据权限时的部门ID列表")
     private List<Long> customDeptIds;
+
+    @Schema(description = "创建人ID")
+    private Long createBy;
+
+    @Schema(description = "更新时间")
+    private LocalDateTime updateTime;
+
+    @Schema(description = "更新人ID")
+    private Long updateBy;
+
 }

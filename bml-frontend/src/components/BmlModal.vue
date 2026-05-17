@@ -254,7 +254,8 @@ function handleMaskClick() {
   justify-content: space-between;
   gap: 12px;
   flex-shrink: 0;
-  padding: 10px 14px;
+  height: 40px;
+  padding: 0 14px;
   border-bottom: 1px solid rgba(226, 232, 240, 0.8);
   background: linear-gradient(180deg, #ffffff, #f8faff);
   cursor: grab;

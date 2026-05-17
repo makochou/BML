@@ -278,7 +278,22 @@ export function useBusinessTableColumns(
         /** 权限允许的列 key 集合（每次权限变化自动重算） */
         const permittedKeySet = new Set(permittedColumns.value.map(c => c.key));
         const allKeys = Object.keys(columnLayout)
-            .sort((a, b) => columnLayout[a].order - columnLayout[b].order);
+            .sort((a, b) => {
+                const la = columnLayout[a];
+                const lb = columnLayout[b];
+                const baseA = columnBaseMap.get(a);
+                const baseB = columnBaseMap.get(b);
+                // 固定左侧的列排在最前面
+                const fixedLeftA = la.fixedFront || (baseA?.locked && baseA?.fixed === 'left') ? 1 : 0;
+                const fixedLeftB = lb.fixedFront || (baseB?.locked && baseB?.fixed === 'left') ? 1 : 0;
+                if (fixedLeftA !== fixedLeftB) return fixedLeftB - fixedLeftA;
+                // 固定右侧的列排在最后面
+                const fixedRightA = baseA?.locked && baseA?.fixed === 'right' ? 1 : 0;
+                const fixedRightB = baseB?.locked && baseB?.fixed === 'right' ? 1 : 0;
+                if (fixedRightA !== fixedRightB) return fixedRightA - fixedRightB;
+                // 其余按 order 排序
+                return la.order - lb.order;
+            });
 
         return allKeys
             .filter(key => columnLayout[key].visible && permittedKeySet.has(key))
@@ -368,13 +383,13 @@ export function useBusinessTableColumns(
         if (col && columnLayout[col.key]) {
             columnLayout[col.key].width = resolveBusinessColumnWidth(col, width);
             persistLayout();
+            /* 不调用 applyTableElementWidth，让 Arco 自行管理拖拽后的表格宽度 */
         }
     }
 
     // ── 列显示/隐藏 ──
     function toggleColumnVisible(key: string, visible: boolean) {
         if (lockedKeys.has(key)) return;
-        /* 至少保留一列业务字段（与授权治理一致） */
         if (!visible && columnLayout[key]?.visible) {
             const activeCount = Object.keys(columnLayout)
                 .filter(k => !lockedKeys.has(k) && columnLayout[k].visible).length;
@@ -386,6 +401,8 @@ export function useBusinessTableColumns(
         if (columnLayout[key]) {
             columnLayout[key].visible = visible;
             persistLayout();
+            /* 列显示/隐藏变化时更新 Arco 的 scroll.x */
+            nextTick(() => { updateScrollXForArco(); tableResetKey.value += 1; });
         }
     }
 
@@ -419,6 +436,7 @@ export function useBusinessTableColumns(
         if (columnLayout[key]) {
             columnLayout[key].fixedFront = !columnLayout[key].fixedFront;
             persistLayout();
+            nextTick(() => { updateScrollXForArco(); tableResetKey.value += 1; });
         }
     }
 
@@ -538,13 +556,24 @@ export function useBusinessTableColumns(
             (sum, col) => sum + ((col.width as number) || 100),
             0
         );
-        /*
-         * 使用 CSS max() 确保表格宽度永远不小于容器宽度：
-         * - 列少时：100% 生效，表格撑满容器，列按比例分配，视觉饱满
-         * - 列多时：像素值生效，启用横向滚动，保证列对齐
-         */
-        return `max(${totalWidth}px, 100%)`;
+        return `${totalWidth}px`;
     });
+
+    /**
+     * 传给 Arco Table :scroll="{ x }" 的值。
+     * 使用 ref 而非 computed，仅在列显示/隐藏变化时更新，
+     * 拖拽列宽时不更新（避免 Arco 重新按比例分配列宽）。
+     */
+    const scrollXForArco = ref(0);
+    const updateScrollXForArco = () => {
+        const totalWidth = visibleColumns.value.reduce(
+            (sum, col) => sum + ((col.width as number) || 100),
+            0
+        );
+        scrollXForArco.value = totalWidth;
+    };
+    /* 初始化 */
+    updateScrollXForArco();
 
     /* ──────────────────────────────────────────────────────────
      * 表格列宽 CSS 变量注入（主机制）
@@ -566,7 +595,7 @@ export function useBusinessTableColumns(
      *   <a-table :style="tableStyle" ...>
      * ────────────────────────────────────────────────────────── */
     const tableStyle = computed(() => ({
-        '--bml-table-scroll-width': scrollX.value,
+        '--bml-table-scroll-width': `${scrollXForArco.value}px`,
     }));
 
     /* ──────────────────────────────────────────────────────────
@@ -602,9 +631,9 @@ export function useBusinessTableColumns(
     let isApplying = false;
 
     /**
-     * 将 scrollX 精确应用到所有 .arco-table-element（header + body 各一个）。
-     * 使用 style.setProperty 的第三参数 'important' 确保覆盖一切 CSS 规则。
-     * scrollX 使用 CSS max() 函数，确保表格宽度不小于容器宽度。
+     * 将 scrollX 应用到所有 .arco-table-element。
+     * 仅在首次加载和列配置变化时应用，不在列宽拖拽时干预。
+     * 使用 width 确保表格不会被容器压缩，但不阻止 Arco 的列宽拖拽行为。
      */
     const applyTableElementWidth = (): void => {
         const el = tableRef.value?.$el as HTMLElement | undefined;
@@ -613,7 +642,6 @@ export function useBusinessTableColumns(
         isApplying = true;
         el.querySelectorAll<HTMLElement>('.arco-table-element').forEach((table) => {
             table.style.setProperty('width', w, 'important');
-            table.style.setProperty('min-width', '0', 'important');
         });
         isApplying = false;
     };
@@ -635,15 +663,18 @@ export function useBusinessTableColumns(
         const el = tableRef.value?.$el as HTMLElement | undefined;
         if (!el) return;
 
-        /* 先立即应用一次 */
+        /* 首次应用宽度 */
         applyTableElementWidth();
 
         /* 收集所有 <table> 元素 */
         const tables = el.querySelectorAll<HTMLElement>('.arco-table-element');
         if (tables.length === 0) return;
 
+        /*
+         * MutationObserver：当 Arco 内部修改表格 style 时，
+         * 强制将 width 校正为我们计算的 scrollX，防止列宽被按比例重新分配。
+         */
         observer = new MutationObserver(() => {
-            /* 递归保护：自身 setProperty 触发的 mutation 不再处理 */
             if (isApplying) return;
             applyTableElementWidth();
         });
@@ -669,7 +700,7 @@ export function useBusinessTableColumns(
      */
     watch(tableRef, () => nextTick(setupObserver), { flush: 'post' });
     watch(tableResetKey, () => nextTick(setupObserver), { flush: 'post' });
-    watch(scrollX, () => nextTick(applyTableElementWidth), { flush: 'post' });
+    /* scrollX 变化时不再自动应用（避免与 Arco 列宽拖拽冲突） */
 
     onBeforeUnmount(() => {
         if (observer) {
@@ -686,8 +717,8 @@ export function useBusinessTableColumns(
         dragState,
         /** 表格重置键：绑定到 <a-table :key> 强制重新挂载，确保列宽恢复 */
         tableResetKey,
-        /** 表格横向滚动总宽度（所有可见列宽之和，数值） */
-        scrollX,
+        /** 表格横向滚动总宽度（传给 Arco :scroll="{ x: scrollX }"，仅在列增减时变化） */
+        scrollX: scrollXForArco,
         /**
          * 表格内联样式 —— 绑定到 &lt;a-table :style="tableStyle"&gt;。
          * 设置 CSS 变量 --bml-table-scroll-width，通过全局 CSS !important 规则

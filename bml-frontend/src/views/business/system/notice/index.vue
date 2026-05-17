@@ -15,21 +15,23 @@
 
     <a-card class="table-card" :bordered="false">
       <template #title>通知公告</template>
-      <template #extra><a-button type="primary" :disabled="!hasPermission('system:notice:add')" @click="openDialog('add')"><template #icon><icon-plus /></template>新增公告</a-button></template>
+      <template #extra><a-button type="primary" v-if="hasPermission('system:notice:add')" @click="openDialog('add')"><template #icon><icon-plus /></template>新增公告</a-button></template>
       <a-table row-key="id" :loading="loading" :data="tableData" :pagination="pagination" @page-change="onPageChange" @page-size-change="onPageSizeChange">
         <template #columns>
           <a-table-column title="标题" data-index="noticeTitle" :width="260" ellipsis tooltip />
           <a-table-column title="类型" :width="110" align="center"><template #cell="{ record }"><a-tag :color="noticeTypeColor(record.noticeType)">{{ noticeTypeText(record.noticeType) }}</a-tag></template></a-table-column>
           <a-table-column title="状态" :width="110" align="center"><template #cell="{ record }"><a-tag :color="record.status === 1 ? 'green' : 'gray'">{{ record.status === 1 ? '已发布' : '草稿' }}</a-tag></template></a-table-column>
           <a-table-column title="发布时间" data-index="publishTime" :width="180" />
+          <a-table-column title="创建时间" data-index="createTime" :width="180" />
           <a-table-column title="操作" :width="230" align="center" fixed="right">
-            <template #cell="{ record }"><a-space size="mini"><a-button size="mini" type="text" :disabled="!hasPermission('system:notice:edit')" @click="openDialog('edit', record)">编辑</a-button><a-button size="mini" type="text" :disabled="!hasPermission('system:notice:publish')" @click="togglePublish(record)">{{ record.status === 1 ? '撤回' : '发布' }}</a-button><a-button size="mini" type="text" status="danger" :disabled="!hasPermission('system:notice:remove')" @click="removeRow(record)">删除</a-button></a-space></template>
+            <template #cell="{ record }"><a-space size="mini"><a-button size="mini" type="text" v-if="hasPermission('system:notice:edit')" @click="openDialog('edit', record)">编辑</a-button><a-button size="mini" type="text" v-if="hasPermission('system:notice:publish')" @click="togglePublish(record)">{{ record.status === 1 ? '撤回' : '发布' }}</a-button><a-button size="mini" type="text" status="danger" v-if="hasPermission('system:notice:remove')" @click="removeRow(record)">删除</a-button></a-space></template>
           </a-table-column>
         </template>
       </a-table>
     </a-card>
 
     <a-modal v-model:visible="dialog.visible" :title="dialog.mode === 'add' ? '新增公告' : '编辑公告'" width="760px" :mask-closable="false" @ok="submitForm" @cancel="closeDialog">
+      <AuditInfoFooter :data="form" style="margin-bottom: 12px;" />
       <a-form ref="formRef" :model="form" :rules="rules" layout="vertical">
         <a-form-item field="noticeTitle" label="公告标题"><a-input v-model="form.noticeTitle" allow-clear /></a-form-item>
         <a-form-item field="noticeType" label="公告类型"><a-radio-group v-model="form.noticeType" type="button"><a-radio :value="1">通知</a-radio><a-radio :value="2">公告</a-radio><a-radio :value="3">维护</a-radio></a-radio-group></a-form-item>
@@ -46,6 +48,7 @@ import { onMounted, reactive, ref } from 'vue';
 import { Message, Modal } from '@arco-design/web-vue';
 import { normalizePageResult } from '../../../../utils/pageResult';
 import { useButtonPermission } from '../../../../composables/useButtonPermission';
+import AuditInfoFooter from '../../../../components/common/AuditInfoFooter.vue';
 import { createNotice, deleteNotice, fetchNoticeDetail, fetchNoticePage, publishNotice, revokeNotice, updateNotice, type NoticeForm, type NoticeQuery, type NoticeVO } from '../../../../api/system';
 
 const { hasPermission } = useButtonPermission();

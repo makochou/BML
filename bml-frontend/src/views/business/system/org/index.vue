@@ -81,7 +81,7 @@
          ════════════════════════════════════════════════ -->
     <GovernanceListStage density="ultra" body-fill>
       <template #actions>
-        <a-button type="primary" :disabled="permDisabled('system:org:add')" @click="handleAdd()">
+        <a-button type="primary" v-if="hasPermission('system:org:add')" @click="handleAdd()">
           <template #icon><icon-plus /></template>
           新增机构
         </a-button>
@@ -119,10 +119,10 @@
         @expand="handleExpandChange"
         size="small"
         :columns="visibleColumns"
-        :scroll="{ x: scrollX, y: '100%' }"
+        :scroll="{ x: '100%', y: '100%' }"
         :scrollbar="false"
         sticky-header
-        column-resizable
+        :column-resizable="{ mode: 'fixed' }"
         ref="tableRef"
         :style="tableStyle"
         :row-class="getRowClass"
@@ -196,13 +196,20 @@
         <template #status="{ record }">
           <a-tag :color="record.status === 1 ? 'green' : 'red'" size="small">{{ record.status === 1 ? '正常' : '停用' }}</a-tag>
         </template>
+        
+        <template #createBy="{ record }">
+          <UserNameCell :user-id="record.createBy" />
+        </template>
+        <template #updateBy="{ record }">
+          <UserNameCell :user-id="record.updateBy" />
+        </template>
         <template #actions="{ record }">
           <div class="table-row-actions" @click.stop @dblclick.stop>
-            <a-button type="primary" size="mini" class="table-action-btn table-action-btn--primary" :disabled="permDisabled('system:org:edit')" @click="handleEdit(record)">
+            <a-button type="primary" size="mini" class="table-action-btn table-action-btn--primary" v-if="hasPermission('system:org:edit')" @click="handleEdit(record)">
               <template #icon><icon-edit /></template>
               编辑
             </a-button>
-            <a-button size="mini" class="table-action-btn table-action-btn--danger" :disabled="permDisabled('system:org:remove')" @click="confirmDelete(record)">
+            <a-button size="mini" class="table-action-btn table-action-btn--danger" v-if="hasPermission('system:org:remove')" @click="confirmDelete(record)">
               <template #icon><icon-delete /></template>
               删除
             </a-button>
@@ -279,7 +286,7 @@
           新增共享规则
         </a-button>
       </div>
-      <a-table :data="shareTableData" :loading="shareLoading" :bordered="false" :pagination="false" row-key="id" size="small" :scroll="{ y: '100%' }" :scrollbar="true" sticky-header>
+      <a-table :data="shareTableData" :loading="shareLoading" :bordered="false" :pagination="false" row-key="id" size="small" :scroll="{ x: '100%', y: '100%' }" :scrollbar="true" sticky-header>
         <template #columns>
           <a-table-column title="目标机构" data-index="targetOrgId" :width="160">
             <template #cell="{ record }">
@@ -349,30 +356,33 @@
 
     <!-- 新增/编辑/查看弹窗 -->
     <BmlModal v-model:visible="dialogVisible" :title="dialogTitle" :width="820" :height="640" :min-width="640" :min-height="480">
+      <template #header-extra>
+        <AuditInfoFooter :data="formData" />
+      </template>
       <a-form :model="formData" ref="formRef" :rules="formReadonly ? undefined : formRules" layout="vertical" :disabled="formReadonly">
         <a-tabs default-active-key="basic" size="small" class="form-tabs">
           <a-tab-pane key="basic" title="基本信息">
             <a-row :gutter="16">
-              <a-col :span="12">
+              <a-col v-if="hasPermission('system:org:field:parentId')" :span="12">
                 <a-form-item field="parentId" label="上级机构">
                   <a-tree-select v-model="formData.parentId" :data="orgTreeOptions"
                     :field-names="{ key: 'id', title: 'orgName', children: 'children' }"
                     placeholder="请选择上级机构" allow-clear />
                 </a-form-item>
               </a-col>
-              <a-col :span="12">
+              <a-col v-if="hasPermission('system:org:field:orgName')" :span="12">
                 <a-form-item field="orgName" label="机构名称" required>
                   <a-input v-model="formData.orgName" placeholder="请输入机构名称" />
                 </a-form-item>
               </a-col>
             </a-row>
             <a-row :gutter="16">
-              <a-col :span="12">
+              <a-col v-if="hasPermission('system:org:field:orgCode')" :span="12">
                 <a-form-item field="orgCode" label="机构编码" required>
                   <a-input v-model="formData.orgCode" placeholder="请输入机构编码" />
                 </a-form-item>
               </a-col>
-              <a-col :span="12">
+              <a-col v-if="hasPermission('system:org:field:orgType')" :span="12">
                 <a-form-item field="orgType" label="机构类型" required>
                   <a-select v-model="formData.orgType" placeholder="请选择机构类型">
                     <a-option v-for="opt in ORG_TYPE_OPTIONS" :key="opt.value" :value="opt.value">{{ opt.label }}</a-option>
@@ -381,7 +391,7 @@
               </a-col>
             </a-row>
             <a-row :gutter="16">
-              <a-col :span="24">
+              <a-col v-if="hasPermission('system:org:field:dataIsolation')" :span="24">
                 <a-form-item field="dataIsolation" label="数据隔离模式" required>
                   <a-select v-model="formData.dataIsolation" placeholder="请选择">
                     <a-option v-for="iso in ISOLATION_OPTIONS" :key="iso.value" :value="iso.value">
@@ -393,19 +403,19 @@
               </a-col>
             </a-row>
             <a-row :gutter="16">
-              <a-col :span="12">
+              <a-col v-if="hasPermission('system:org:field:leader')" :span="12">
                 <a-form-item field="leader" label="负责人">
                   <a-input v-model="formData.leader" placeholder="请输入负责人" />
                 </a-form-item>
               </a-col>
-              <a-col :span="12">
+              <a-col v-if="hasPermission('system:org:field:sort')" :span="12">
                 <a-form-item field="sort" label="排序">
                   <a-input-number v-model="formData.sort" :min="0" placeholder="排序" style="width: 100%;" />
                 </a-form-item>
               </a-col>
             </a-row>
             <a-row :gutter="16">
-              <a-col :span="12">
+              <a-col v-if="hasPermission('system:org:field:status')" :span="12">
                 <a-form-item field="status" label="状态">
                   <a-select v-model="formData.status" placeholder="请选择">
                     <a-option :value="1">正常</a-option>
@@ -415,7 +425,7 @@
               </a-col>
             </a-row>
             <a-row :gutter="16">
-              <a-col :span="24">
+              <a-col v-if="hasPermission('system:org:field:remark')" :span="24">
                 <a-form-item field="remark" label="备注">
                   <a-textarea v-model="formData.remark" placeholder="请输入备注" :auto-size="{ minRows: 2, maxRows: 4 }" />
                 </a-form-item>
@@ -521,6 +531,8 @@ import GovernanceCompactQueryPanel from '../../../../components/governance/Gover
 import GovernanceListStage from '../../../../components/governance/GovernanceListStage.vue';
 import BusinessTableColumnSetting from '../../../../components/business/BusinessTableColumnSetting.vue';
 import TableColumnSearch from '../../../../components/common/TableColumnSearch.vue';
+import AuditInfoFooter from '../../../../components/common/AuditInfoFooter.vue';
+import UserNameCell from '../../../../components/common/UserNameCell.vue';
 import { useBusinessTableColumns, type BusinessTableColumn } from '../../../../composables/useBusinessTableColumns';
 import { useButtonPermission } from '../../../../composables/useButtonPermission';
 import { useTreeColumnFilter, resetColumnFilters } from '../../../../composables/useColumnFilter';
@@ -578,15 +590,18 @@ const columnFilters = reactive<Record<string, string>>({
 
 const defaultColumns: BusinessTableColumn[] = [
   /* ── 核心标识（默认显示） ── */
-  { key: 'orgName',       title: '机构名称',       dataIndex: 'orgName',       width: 220, visible: true, fixed: 'left', sortable: true, titleSlotName: 'th-orgName' },
-  { key: 'orgCode',       title: '机构编码',       dataIndex: 'orgCode',       width: 140, visible: true, sortable: true, titleSlotName: 'th-orgCode' },
-  { key: 'orgType',       title: '机构类型',       slotName: 'orgType',        width: 120, visible: true, align: 'center', sortable: true, titleSlotName: 'th-orgType' },
-  { key: 'leader',        title: '负责人',         dataIndex: 'leader',        width: 110, visible: true, sortable: true, titleSlotName: 'th-leader' },
+  { key: 'orgName',       title: '机构名称',       dataIndex: 'orgName',       width: 220, visible: true, fixed: 'left', sortable: true, titleSlotName: 'th-orgName', permission: 'system:org:field:orgName' },
+  { key: 'orgCode',       title: '机构编码',       dataIndex: 'orgCode',       width: 140, visible: true, sortable: true, titleSlotName: 'th-orgCode', permission: 'system:org:field:orgCode' },
+  { key: 'orgType',       title: '机构类型',       slotName: 'orgType',        width: 120, visible: true, align: 'center', sortable: true, titleSlotName: 'th-orgType', permission: 'system:org:field:orgType' },
+  { key: 'leader',        title: '负责人',         dataIndex: 'leader',        width: 110, visible: true, sortable: true, titleSlotName: 'th-leader', permission: 'system:org:field:leader' },
   { key: 'phone',         title: '联系电话',       dataIndex: 'phone',         width: 140, visible: true, sortable: true, titleSlotName: 'th-phone', permission: 'system:org:field:phone' },
-  { key: 'dataIsolation', title: '数据隔离',       slotName: 'dataIsolation',  width: 120, visible: true, align: 'center', sortable: true, titleSlotName: 'th-dataIsolation' },
+  { key: 'dataIsolation', title: '数据隔离',       slotName: 'dataIsolation',  width: 120, visible: true, align: 'center', sortable: true, titleSlotName: 'th-dataIsolation', permission: 'system:org:field:dataIsolation' },
   { key: 'sort',          title: '排序',           dataIndex: 'sort',          width: 80,  visible: true, align: 'center', sortable: true, titleSlotName: 'th-sort' },
   { key: 'status',        title: '状态',           slotName: 'status',         width: 90,  visible: true, align: 'center', sortable: true, titleSlotName: 'th-status' },
   { key: 'createTime',    title: '创建时间',       dataIndex: 'createTime',    width: 180, visible: true, sortable: true, titleSlotName: 'th-createTime' },
+  { key: 'createBy',      title: '创建人',         dataIndex: 'createBy', slotName: 'createBy',      width: 100, visible: false, sortable: true },
+  { key: 'updateTime',    title: '修改时间',       dataIndex: 'updateTime',    width: 180, visible: false, sortable: true },
+  { key: 'updateBy',      title: '修改人',         dataIndex: 'updateBy', slotName: 'updateBy',      width: 100, visible: false, sortable: true },
   /* ── 扩展字段（默认隐藏） ── */
   { key: 'creditCode',       title: '统一社会信用代码', dataIndex: 'creditCode',       width: 200, visible: false, sortable: true, titleSlotName: 'th-creditCode', permission: 'system:org:field:creditCode' },
   { key: 'legalPerson',      title: '法定代表人',       dataIndex: 'legalPerson',      width: 120, visible: false, sortable: true, titleSlotName: 'th-legalPerson', permission: 'system:org:field:legalPerson' },
@@ -595,7 +610,7 @@ const defaultColumns: BusinessTableColumn[] = [
   { key: 'email',            title: '邮箱',             dataIndex: 'email',            width: 180, visible: false, sortable: true, titleSlotName: 'th-email', permission: 'system:org:field:email' },
   { key: 'address',          title: '地址',             dataIndex: 'address',          width: 260, visible: false, ellipsis: true, sortable: true, titleSlotName: 'th-address', permission: 'system:org:field:address' },
   { key: 'businessScope',    title: '经营范围',         dataIndex: 'businessScope',    width: 260, visible: false, ellipsis: true, sortable: true, titleSlotName: 'th-businessScope', permission: 'system:org:field:businessScope' },
-  { key: 'remark',           title: '备注',             dataIndex: 'remark',           width: 200, visible: false, ellipsis: true, sortable: true, titleSlotName: 'th-remark' },
+  { key: 'remark',           title: '备注',             dataIndex: 'remark',           width: 200, visible: false, ellipsis: true, sortable: true, titleSlotName: 'th-remark', permission: 'system:org:field:remark' },
   /* ── 操作列（锁定） ── */
   { key: 'actions', title: '操作', slotName: 'actions', width: 170, visible: true, fixed: 'right', locked: true, align: 'center' },
 ];
@@ -696,7 +711,7 @@ const formRef = ref();
 const formReadonly = ref(false);
 
 /* 按钮级权限检查 */
-const { hasPermission, permDisabled } = useButtonPermission();
+const { hasPermission } = useButtonPermission();
 /** 是否拥有机构编辑权限 */
 const canEditOrg = computed(() => hasPermission('system:org:edit'));
 
@@ -776,7 +791,9 @@ const handleEdit = (row: OrgVO) => {
     sort: row.sort, leader: row.leader, phone: row.phone, email: row.email,
     province: row.province, city: row.city, district: row.district,
     address: row.address, businessScope: row.businessScope,
-    status: row.status, remark: row.remark, dataIsolation: row.dataIsolation
+    status: row.status, remark: row.remark, dataIsolation: row.dataIsolation,
+    createTime: row.createTime, createBy: row.createBy,
+    updateTime: row.updateTime, updateBy: row.updateBy,
   });
   dialogVisible.value = true;
 };
@@ -799,7 +816,9 @@ const handleRowDblClick = (record: OrgVO) => {
       sort: record.sort, leader: record.leader, phone: record.phone, email: record.email,
       province: record.province, city: record.city, district: record.district,
       address: record.address, businessScope: record.businessScope,
-      status: record.status, remark: record.remark, dataIsolation: record.dataIsolation
+      status: record.status, remark: record.remark, dataIsolation: record.dataIsolation,
+      createTime: record.createTime, createBy: record.createBy,
+      updateTime: record.updateTime, updateBy: record.updateBy,
     });
     dialogVisible.value = true;
   }

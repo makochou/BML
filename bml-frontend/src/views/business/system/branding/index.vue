@@ -9,7 +9,7 @@
         </div>
         <a-space>
           <a-button :loading="loading" @click="loadConfig"><template #icon><icon-refresh /></template>刷新</a-button>
-          <a-button type="primary" :loading="saving" :disabled="!hasPermission('system:setting:edit')" @click="saveAll"><template #icon><icon-save /></template>保存配置</a-button>
+          <a-button type="primary" :loading="saving" v-if="hasPermission('system:setting:edit')" @click="saveAll"><template #icon><icon-save /></template>保存配置</a-button>
         </a-space>
       </div>
     </a-card>
@@ -51,7 +51,7 @@
           </div>
           <a-space class="image-actions">
             <a-upload :auto-upload="false" :show-file-list="false" accept="image/*,.ico,.svg" @change="handleImageChange(item.type, $event)">
-              <template #upload-button><a-button type="primary" :disabled="!hasPermission('system:setting:upload')"><template #icon><icon-upload /></template>上传/替换</a-button></template>
+              <template #upload-button><a-button type="primary" v-if="hasPermission('system:setting:upload')"><template #icon><icon-upload /></template>上传/替换</a-button></template>
             </a-upload>
             <a-button status="danger" :disabled="!item.url || !hasPermission('system:setting:remove')" @click="deleteImage(item.type)"><template #icon><icon-delete /></template>恢复默认</a-button>
           </a-space>

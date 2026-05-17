@@ -10,7 +10,7 @@
     </a-card>
     <a-card class="table-card" :bordered="false">
       <template #title>任务日志</template>
-      <template #extra><a-button status="danger" :disabled="!hasPermission('system:joblog:clean')" @click="cleanRows">清空日志</a-button></template>
+      <template #extra><a-button status="danger" v-if="hasPermission('system:joblog:clean')" @click="cleanRows">清空日志</a-button></template>
       <a-table row-key="id" :loading="loading" :data="tableData" :pagination="pagination" @page-change="onPageChange" @page-size-change="onPageSizeChange">
         <template #columns>
           <a-table-column title="任务名称" data-index="jobName" :width="180" />

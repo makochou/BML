@@ -40,7 +40,7 @@
     >
       <template #actions>
         <a-space>
-          <a-button type="primary" :disabled="!hasPermission('system:config:add')" @click="openDialog('add')">
+          <a-button type="primary" v-if="hasPermission('system:config:add')" @click="openDialog('add')">
             <template #icon><icon-plus /></template>
             新增参数
           </a-button>
@@ -74,10 +74,11 @@
             </template>
           </a-table-column>
           <a-table-column title="更新时间" data-index="updateTime" :width="170" />
+          <a-table-column title="创建时间" data-index="createTime" :width="170" />
           <a-table-column title="操作" :width="150" align="center" fixed="right">
             <template #cell="{ record }">
               <a-space size="mini">
-                <a-button size="mini" type="text" :disabled="!hasPermission('system:config:edit')" @click="openDialog('edit', record)">编辑</a-button>
+                <a-button size="mini" type="text" v-if="hasPermission('system:config:edit')" @click="openDialog('edit', record)">编辑</a-button>
                 <a-button size="mini" type="text" status="danger" :disabled="record.configType === 1 || !hasPermission('system:config:remove')" @click="removeRow(record)">删除</a-button>
               </a-space>
             </template>
@@ -94,6 +95,7 @@
       @ok="submitForm"
       @cancel="closeDialog"
     >
+      <AuditInfoFooter :data="form" style="margin-bottom: 12px;" />
       <a-form ref="formRef" :model="form" :rules="rules" layout="vertical">
         <a-form-item field="configName" label="参数名称"><a-input v-model="form.configName" allow-clear placeholder="请输入参数名称" /></a-form-item>
         <a-form-item field="configKey" label="参数键名"><a-input v-model="form.configKey" allow-clear placeholder="如 sys.login.captchaEnabled" /></a-form-item>
@@ -117,6 +119,7 @@ import GovernanceCompactQueryPanel from '../../../../components/governance/Gover
 import GovernanceListStage from '../../../../components/governance/GovernanceListStage.vue';
 import { normalizePageResult } from '../../../../utils/pageResult';
 import { useButtonPermission } from '../../../../composables/useButtonPermission';
+import AuditInfoFooter from '../../../../components/common/AuditInfoFooter.vue';
 import {
   createConfig,
   deleteConfig,
