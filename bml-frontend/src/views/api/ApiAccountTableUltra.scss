@@ -21,12 +21,48 @@
  */
 
 /* ═══════════════════════════════════════════════════════════════
+   尺寸令牌（Design Tokens）—— 统一管控列表头部按钮工具栏紧凑度
+   ───────────────────────────────────────────────────────────────
+   说明：
+     列表区采用通用组件 GovernanceListStage（density="ultra"），其内部
+     间距由一组 CSS 变量（--stage-*）驱动。为在「不污染其他页面」的前提下
+     进一步压缩本页红框区��高度，这里仅在 .api-account-page 作用域内
+     覆盖这些 CSS 变量；按钮视觉（圆角/字号/渐变）仍由下方 SCSS 规则定制。
+
+     v3.4.0：红框区域再压缩——卡片上内边距、按钮区与表格的间距、按钮高度
+     全部下调，使按钮与表格更紧凑贴合。
+   ─────────────────────────────────────────────────────────────── */
+/* —— 覆盖给通用组件的 CSS 变量（仅影响本页）—— */
+$tb-stage-padding-top:     6px;      /* 卡片内部上内边距（density-ultra 默认 9px） */
+$tb-stage-padding-x:       12px;     /* 卡片内部左右内边距 */
+$tb-stage-padding-bottom:  12px;     /* 卡片内部下内边距 */
+$tb-stage-head-gap:        4px;      /* 按钮区与表格之间的间距（density-ultra 默认 8px） */
+$tb-stage-margin-top:      12px;     /* 卡片与查询面板的间距（density-ultra 默认 10px，本页略增以分隔） */
+/* —— 按钮自身视觉尺寸（本页定制）—— */
+$tb-actions-gap:           10px;     /* 按钮之间的间距 */
+$tb-btn-min-width:         100px;    /* 操作按钮最小宽度 */
+$tb-btn-height:            32px;     /* 操作按钮高度（再压低：34px → 32px） */
+$tb-btn-padding:           0 14px;   /* 操作按钮左右内边距 */
+$tb-btn-radius:            10px;     /* 操作按钮圆角 */
+$tb-btn-font:              13px;     /* 操作按钮字号 */
+$tb-btn-font:              13px;     /* 操作按钮字号（初版 14px） */
+
+/* ═══════════════════════════════════════════════════════════════
    表格容器 - 超级卡片设计
    ═══════════════════════════════════════════════════════════════ */
 .api-account-page .table-shell {
     position: relative;
-    margin-top: 20px;
-    padding: 16px;
+
+    /* —— 覆盖通用组件 GovernanceListStage 的密度变量（仅本页生效）——
+       通过下调内边距、按钮区与表格的间距、按钮高度，进一步压缩红框区域高度。
+       仅在 .api-account-page 作用域内覆盖，不影响业务系统等其他页面。 */
+    --stage-margin-top: #{$tb-stage-margin-top};
+    --stage-padding: #{$tb-stage-padding-top} #{$tb-stage-padding-x} #{$tb-stage-padding-bottom};
+    --stage-head-margin-bottom: #{$tb-stage-head-gap};
+    --stage-actions-gap: #{$tb-actions-gap};
+    --stage-button-min-width: #{$tb-btn-min-width};
+    --stage-button-height: #{$tb-btn-height};
+
     border-radius: 28px;
     overflow: hidden;
 
@@ -66,26 +102,32 @@
 
 /* ═══════════════════════════════════════════════════════════════
    表格头部操作区域
+   ───────────────────────────────��───────────────────────────────
+   设计：对齐前台业务系统（GovernanceListStage）——不再使用独立白色
+   底卡，按钮直接浮在列表背景层（.table-shell）之上。
+   说明：按钮区与表格的纵向间距由组件变量 --stage-head-margin-bottom
+   统一控制（见上方 .table-shell 覆盖），此处不再单独设 margin-bottom，
+   避免间距叠加；仅负责去底卡与排布对齐。
    ═══════════════════════════════════════════════════════════════ */
 .api-account-page .table-shell :deep(.governance-list-stage__actions) {
-    margin-bottom: 16px;
-    padding: 14px 20px;
-    border-radius: 18px;
-    background: linear-gradient(135deg,
-            rgba(255, 255, 255, 0.98) 0%,
-            rgba(248, 250, 252, 0.95) 100%);
-    border: 1.5px solid rgba(203, 213, 225, 0.5);
-    box-shadow:
-        0 0 0 1px rgba(255, 255, 255, 0.7) inset,
-        0 6px 18px -3px rgba(0, 0, 0, 0.06);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    /* 去除底卡：无背景、无边框、无阴影、无内边距 */
+    padding: 0;
+    background: none;
+    border: none;
+    box-shadow: none;
 }
 
 /* 操作按钮 */
 .api-account-page .table-shell :deep(.governance-list-stage__actions .arco-btn) {
-    height: 40px;
-    padding: 0 24px;
-    border-radius: 14px;
-    font-size: 14px;
+    min-width: $tb-btn-min-width;
+    height: $tb-btn-height;
+    padding: $tb-btn-padding;
+    border-radius: $tb-btn-radius;
+    font-size: $tb-btn-font;
     font-weight: 700;
     transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
@@ -378,7 +420,8 @@
    ═══════════════════════════════════════════════════════════════ */
 @media (max-width: 1024px) {
     .api-account-page .table-shell {
-        padding: 14px;
+        /* 覆盖组件密度变量（与默认态一致的写法），窄屏维持紧凑 */
+        --stage-padding: 6px 12px 12px;
         border-radius: 24px;
     }
 
@@ -390,7 +433,7 @@
 
 @media (max-width: 768px) {
     .api-account-page .table-shell {
-        padding: 12px;
+        --stage-padding: 6px 10px 10px;
         border-radius: 20px;
     }
 

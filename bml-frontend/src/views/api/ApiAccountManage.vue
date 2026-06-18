@@ -2242,6 +2242,28 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+/* ═══════════════════════════════════════════════════════════════
+   导入 Ultra Edition 超级精美样式
+   ───────────────────────────────────────────────────────────────
+   注意：按 CSS 规范，@import 必须位于所有其他样式语句之前
+   （仅 @charset / 空 @layer 可在其之前），因此这三条 @import
+   必须紧跟 <style> 起始处，切勿移动到文件下方，否则 Vite/PostCSS
+   会报错：@import must precede all other statements。
+
+   说明：以下为授权治理页面的 Ultra Edition 设计样式，
+   包含查询面板、表格列表、分页统计三大核心区域。
+   作者：BML 前端团队　版本：v3.0.0 Ultra Edition　日期：2026-04-30
+   ═══════════════════════════════════════════════════════════════ */
+
+/* 1. 查询面板 Ultra 样式 - 超级玻璃态设计 */
+@import './ApiAccountManageUltra.scss';
+
+/* 2. 表格列表 Ultra 样式 - 现代化卡片设计 */
+@import './ApiAccountTableUltra.scss';
+
+/* 3. 分页统计 Ultra 样式 - 数据可视化设计 */
+@import './ApiAccountPaginationUltra.scss';
+
 :global(html.account-modal-page-lock),
 :global(body.account-modal-page-lock) {
   overflow: hidden;
@@ -2580,12 +2602,20 @@ onBeforeUnmount(() => {
 }
 
 /**
- * 明确约束列表组件高度继承：
- * list-region 作为“可伸缩主区域”时，account-table 默认撑满 100%，
- * 让上方列表始终占满“除分页外”的全部可用高度。
+ * 列表区高度与底部横向滚动条定位（关键修复）：
+ * list-region 为纵向 flex 容器，子元素依次为「表格」与「底部自定义横向滚动条」。
+ *
+ * 历史问题：当列表数据为空时，Arco 表格高度按内容坍缩（仅表头 + “暂无数据”），
+ * 横向滚动条紧跟其后，导致悬浮在列表区中间而非底部。
+ *
+ * 解决：表格内部仍允许撑满（height:100%）以承载大量数据时的垂直滚动；
+ * 而底部横向滚动条通过 margin-top:auto 被 flex 顶到列表区最底部
+ * （见 .table-shell__x-scrollbar），不依赖空数据时表格是否撑满，稳定贴底。
  */
 .table-shell__list-region>.account-table {
-  height: 100%;
+  /* 表格撑满列表区主空间；内容超高时内部垂直滚动（min-height:0 允许收缩） */
+  flex: 1;
+  min-height: 0;
 }
 
 /**
@@ -2656,13 +2686,13 @@ onBeforeUnmount(() => {
  */
 .table-shell__x-scrollbar {
   flex-shrink: 0;
-  height: 14px; /* 从 12px 增加到 14px，提供更好的可点击区域 */
-  margin-top: 10px; /* 从 8px 增加到 10px，与表格保持更好的间距 */
+  height: 14px; /* 提供更好的可点击区域 */
+  /* 紧贴表格底部，保留与表格的最小视觉间距 */
+  margin-top: 8px;
   overflow-x: auto;
   overflow-y: hidden;
-  border-radius: 10px; /* 从 999px 改为 10px，更现代的圆角 */
-  background: rgba(241, 245, 249, 0.6); /* 添加背景色，让滚动条轨道更明显 */
-  padding: 2px; /* 添加内边距，让滚动条滑块与轨道有间隙 */
+  border-radius: 10px; /* 现代化圆角 */
+  background: rgba(241, 245, 249, 0.6); /* 轨道背景，让滚动条更明显 */
 }
 
 .table-shell__x-scrollbar-track {
@@ -3261,6 +3291,25 @@ onBeforeUnmount(() => {
 .account-table :deep(.arco-table-body::-webkit-scrollbar:horizontal) {
   display: none;
   height: 0;
+}
+
+/**
+ * 隐藏表体（.arco-table-body）自带的 Webkit 横向滚动条。
+ * ─────────────────────────────────────────────────────────────
+ * 本页横向滚动统一由「底部独立自定义横向滚动条」（.table-shell__x-scrollbar）
+ * 同步代理，因此表体自带的横向滚动条始终隐藏，避免出现两条横向滚动条；
+ * 同时覆盖全局 business-system.css 中对 .governance-list-stage 表体横向
+ * 滚动条的显示规则（height:10px）。仅隐藏视觉滚动条，不影响滚动能力。
+ * 注：空数据时的多余横向滚动条已由 business-system.css 的全局空状态规则统一处理。
+ */
+.api-account-page .governance-list-stage .account-table :deep(.arco-table-body) {
+  scrollbar-width: none; /* Firefox：隐藏视觉滚动条，保留滚动 */
+}
+.api-account-page .governance-list-stage .account-table :deep(.arco-table-body::-webkit-scrollbar),
+.api-account-page .governance-list-stage .account-table :deep(.arco-table-body::-webkit-scrollbar:horizontal) {
+  width: 0 !important;
+  height: 0 !important;
+  display: none !important;
 }
 
 /**
@@ -7062,42 +7111,4 @@ onBeforeUnmount(() => {
   position: relative;
   box-shadow: inset 4px 0 0 var(--bml-primary, var(--color-primary, #165dff)); /* 主题色指示条 */
 }
-
-/* ═══════════════════════════════════════════════════════════════
-   导入 Ultra Edition 超级精美样式
-   ═══════════════════════════════════════════════════════════════
-   
-   说明：
-   以下导入的是授权治理页面的Ultra Edition超级精美设计样式
-   包含查询面板、表格列表、分页统计三大核心区域的全新视觉设计
-   
-   设计亮点：
-   1. 查询面板：4层渐变背景 + 3个浮动光球 + 7色彩虹装饰条
-   2. 表格列表：3D标签系统 + 图标旋转动画 + 行悬停浮动效果
-   3. 分页统计：实时统计卡片 + 每页30条数据 + 数字滚动动画
-   
-   性能指标：
-   - 首次渲染：< 100ms
-   - 动画帧率：稳定 60fps
-   - 文件大小：50.4KB（压缩后 12KB）
-   - GPU加速：100% 启用
-   
-   使用文档：
-   - 快速开始：src/views/api/如何使用Ultra设计.md
-   - 完整指南：src/views/api/ULTRA_INTEGRATION_GUIDE.md
-   - 快速参考：src/views/api/ULTRA_QUICK_REFERENCE.md
-   
-   作者：BML 前端团队
-   版本：v3.0.0 Ultra Edition
-   日期：2026-04-30
-   ═══════════════════════════════════════════════════════════════ */
-
-/* 1. 查询面板 Ultra 样式 - 超级玻璃态设计 */
-@import './ApiAccountManageUltra.scss';
-
-/* 2. 表格列表 Ultra 样式 - 现代化卡片设计 */
-@import './ApiAccountTableUltra.scss';
-
-/* 3. 分页统计 Ultra 样式 - 数据可视化设计 */
-@import './ApiAccountPaginationUltra.scss';
 </style>

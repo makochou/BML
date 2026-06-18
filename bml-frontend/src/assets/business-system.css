@@ -1083,8 +1083,11 @@
    ─────────────────────────────────────────────────────────────
    统一表格空数据时的提示样式�?
    ───────────────────────────────────────────────────────────── */
+.governance-list-stage .arco-table-tr-empty td,
 .governance-list-stage .arco-table-empty-row td {
-    padding: 40px 0 !important;
+    /* 空数据占位的最小上下留白；垂直居中由全局空状态规则统一处理（见文件末尾）。
+       兼容两种空行类名（新版 arco-table-tr-empty / 旧版 arco-table-empty-row）。 */
+    padding: 24px 0;
 }
 
 .governance-list-stage .arco-empty-description {
@@ -1729,4 +1732,59 @@ body[arco-theme='dark'] .arco-table-tr.bml-row-active>.arco-table-td .arco-table
 
 body[arco-theme='dark'] .arco-table-tr.bml-row-active>.arco-table-td {
     border-bottom-color: rgba(var(--bml-primary-rgb, 22, 93, 255), 0.25) !important;
+}
+
+
+/* ══════════════════════════════════════════════════════════════════
+   【全局通用修复】空数据表格出现多余横向滚动条
+   ──────────────────────────────────────────────────────────────────
+   现象：使用 Arco Table 且开启 :scroll={ y: '...' } 的表格，在「暂无数据」
+        状态下，表体下方/表头下方会出现一条多余的横向滚动条，悬浮在表格中间
+        （例如：授权治理列表、角色「绑定用户」弹窗等）。
+   原因：Arco 表体为 overflow:auto；纵向滚动模式下会为竖向滚动条预留宽度，
+        而空数据时无竖向滚动条，内容宽度与容器出现几像素差，从而误触发横向
+        滚动条显示。这是 Arco 空状态下的通用表现，与具体页面无关。
+   方案：空状态（.arco-table-empty）下表格没有任何可横向滚动的数据，统一隐藏
+        其横向滚动条即可，安全且通用，一次性覆盖所有同类表格；不影响有数据
+        时的正常横向滚动。
+   ══════════════════════════════════════════════════════════════════ */
+.arco-table.arco-table-empty .arco-table-body {
+    overflow-x: hidden;
+    scrollbar-width: none; /* Firefox */
+}
+.arco-table.arco-table-empty .arco-table-body::-webkit-scrollbar:horizontal {
+    height: 0;
+    display: none;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   【全局通用】空数据占位垂直居中
+   ──────────────────────────────────────────────────────────────────
+   现象：开启纵向滚动（:scroll={ y: '...' }）的表格在「暂无数据」时，占位
+        图标与文案贴在表头正下方，而非在表格空白区域居中，视觉不协调。
+   原因：空状态下表体（.arco-table-body）按内容高度坍缩，内部 <table> 不会
+        撑满表体，空行（.arco-table-tr-empty）的高度仅由 padding 决定，于是
+        占位内容贴顶显示。
+   方案：仅针对「纵向滚动 + 空状态」的表格（.arco-table-scroll-y.arco-table-empty），
+        让表体内的 <table>（.arco-table-element）撑满表体高度，再借助表格单元格
+        原生的 vertical-align: middle 让空行占位内容在垂直方向自动居中；
+        min-height 作为兜底，保证即使外层未约束高度也有体面的居中区域。
+        不影响有数据时的正常布局，也不影响未开启纵向滚动的自适应高度表格。
+   ══════════════════════════════════════════════════════════════════ */
+.arco-table-scroll-y.arco-table-empty .arco-table-body {
+    /* 兜底高度：外层（flex/确定高度）会撑满表体；若外层未约束高度，至少给一块
+       体面的居中区域。注意：不修改 body 的 display，以免破坏 sticky-header
+       模式下随滚动容器定位的表头。 */
+    min-height: 220px;
+}
+.arco-table-scroll-y.arco-table-empty .arco-table-body .arco-table-element {
+    /* 让占位表格撑满表体高度，从而使空行单元格拥有整块可居中的高度 */
+    height: 100%;
+}
+.arco-table-scroll-y.arco-table-empty .arco-table-body .arco-table-tr-empty > td,
+.arco-table-scroll-y.arco-table-empty .arco-table-body .arco-table-empty-row > td {
+    /* 借助表格单元格原生的垂直对齐：在撑满高度的 td 内，占位内容自动上下居中 */
+    vertical-align: middle;
+    text-align: center;
+    border-bottom: none !important; /* 去掉占位行底部分隔线，更干净 */
 }

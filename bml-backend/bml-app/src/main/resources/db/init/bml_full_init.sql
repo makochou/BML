@@ -1,13 +1,15 @@
 -- =============================================================================
--- BML 企业中台管理系统 — Flyway 合并基线脚本（V1.0.0，当前生效基线）
---
--- 用途   : Flyway 的【新基线】，已替代原 V1.0.0~V2.24.0 共 44 个增量脚本。
---          内容 = 44 个迁移执行后的最终态（全部表结构 + 基础数据）。
---          原 44 个脚本已归档至 db/migration_archive/（仅留作历史参考，不再执行）。
--- 区别   : 不含 CREATE DATABASE / CREATE USER（Flyway 连接到已存在的空库后执行）。
--- 启动   : 后端启动时 Flyway 自动执行本脚本，前提是 bml_system 空库已存在。
--- 后续   : 新的数据库变更请追加 V2.25.0__xxx.sql（版本号只增不减，勿改动本文件）。
--- 教程   : 详见 db/init/《数据库初始化与合并教程.md》。
+-- BML 企业中台管理系统 — 全量初始化脚本（单文件，开箱即用）
+-- 
+-- 用途   : 全新环境一次性初始化 —— 创建数据库 + 业务账号 + 全部表结构 + 基础数据。
+-- 等价于 : 顺序执行 db/migration 下 V1.0.0 ~ V2.24.0 共 44 个 Flyway 迁移后的最终态。
+--          （本脚本由迁移脚本在 MariaDB 10.6 实跑后导出最终结构与数据生成，保证一致。）
+-- 适配   : MariaDB 10.4+ / MySQL 8.0+      字符集: utf8mb4 / utf8mb4_unicode_ci
+-- 执行   : mysql  -u root -p < bml_full_init.sql
+--          mariadb -u root -p < bml_full_init.sql
+-- 幂等   : 所有建表使用 CREATE TABLE IF NOT EXISTS；建库/建账号使用 IF NOT EXISTS。
+--          基础数据为普通 INSERT，请在【空库】上执行；重复执行会因主键冲突报错。
+-- 注意   : 默认超级管理员 admin / manager，生产环境务必登录后立即改密。
 -- =============================================================================
 
 SET NAMES utf8mb4;
@@ -15,6 +17,29 @@ SET @OLD_SQL_MODE = @@SQL_MODE;
 SET SQL_MODE = 'NO_AUTO_VALUE_ON_ZERO';
 SET @OLD_FOREIGN_KEY_CHECKS = @@FOREIGN_KEY_CHECKS;
 SET FOREIGN_KEY_CHECKS = 0;
+
+-- =============================================================================
+-- 【配置区】如需自定义"数据库名 / 账号 / 密码"，仅需修改以下区域，再全局替换库名。
+--   1) 库名默认 bml_system，与后端 application.yml 的 BML_DB_URL 保持一致；
+--      若要改名：把本文件中所有 `bml_system` 全局替换为新库名即可。
+--   2) 生产环境请将下面的初始密码 'Bml@2026_ChangeMe' 改为强密码，
+--      并与后端环境变量 BML_DB_USERNAME / BML_DB_PASSWORD 对应。
+--   3) 若数据库账号已由 DBA 统一创建，可注释掉 CREATE USER / GRANT 两段。
+-- =============================================================================
+
+-- 创建数据库（utf8mb4 完整 Unicode，支持 emoji 及多语言）
+CREATE DATABASE IF NOT EXISTS `bml_system`
+    DEFAULT CHARACTER SET utf8mb4
+    DEFAULT COLLATE utf8mb4_unicode_ci;
+
+-- 创建业务账号并授权（仅授予该库权限，遵循最小权限原则）
+-- 说明：'%' 允许任意主机连接；如仅本机访问可改为 'localhost'。
+CREATE USER IF NOT EXISTS 'bml'@'%' IDENTIFIED BY 'Bml@2026_ChangeMe';
+GRANT ALL PRIVILEGES ON `bml_system`.* TO 'bml'@'%';
+FLUSH PRIVILEGES;
+
+-- 切换到目标库（后续所有建表/数据均在此库内执行）
+USE `bml_system`;
 
 -- =============================================================================
 -- 第一部分：表结构（DDL） —— 共 29 张表
@@ -623,7 +648,7 @@ CREATE TABLE IF NOT EXISTS `sys_api_callback_log` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='API 回调日志表';;
 
 -- =============================================================================
--- 第二部分：基础数据（DML）
+-- 第二部分：基础数据（DML） —— 系统运行所需的初始数据
 -- =============================================================================
 
 -- -----------------------------------------------------------------------------

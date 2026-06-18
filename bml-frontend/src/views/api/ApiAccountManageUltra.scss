@@ -21,12 +21,55 @@
  */
 
 /* ═══════════════════════════════════════════════════════════════
+   尺寸令牌（Design Tokens）—— 统一管控查询面板紧凑度
+   ───────────────────────────────────────────────────────────────
+   说明：
+     为方便后续统一调整"大小"，此处把查询面板的关键尺寸抽成 SCSS
+     变量集中管理。如需整体再调大/调小，只改这里即可，无需逐处查找。
+
+     v3.5.0：在 v3.1.0 基础上进一步压缩、精致化——外层与内容区内边距
+     收紧、输入框与按钮高度下调、圆角更克制；同时覆盖通用组件
+     GovernanceCompactQueryPanel 的底部按钮区间距变量（--query-panel-*），
+     使「条件行 → 操作按钮行」之间更紧凑。覆盖仅在 .api-account-page
+     作用域内生效，不影响业务系统等其他页面。
+
+     v3.6.0：再次精致小巧化——输入框/按钮高度降至 30px，内容区内边距与
+     上下间距进一步收紧，标签字号微调，圆角统一为 8px，配合更小的
+     按钮区间距，整体观感更轻盈紧凑。
+   ─────────────────────────────────────────────────────────────── */
+$qp-padding:           6px;    /* 面板外层内边距（v3.6.0：8px → 6px） */
+$qp-radius:            16px;   /* 面板外层圆角（v3.6.0：18px → 16px） */
+$qp-body-margin-top:   5px;    /* 内容区与顶部间距（v3.6.0：6px → 5px） */
+$qp-body-padding:      8px 12px 4px; /* 内容区内边距（v3.6.0：10/14/6 → 8/12/4） */
+$qp-body-radius:       11px;   /* 内容区圆角（v3.6.0：12px → 11px） */
+$qp-label-font:        12px;   /* 表单标签字号 */
+$qp-control-height:    30px;   /* 输入框/选择器最小高度（v3.6.0：32px → 30px） */
+$qp-control-radius:    8px;    /* 输入框/选择器圆角（v3.6.0：9px → 8px） */
+$qp-control-font:      13px;   /* 输入框字号 */
+$qp-btn-min-width:     78px;   /* 按钮最小宽度（v3.6.0：84px → 78px） */
+$qp-btn-height:        30px;   /* 按钮高度（v3.6.0：32px → 30px） */
+$qp-btn-padding:       0 14px; /* 按钮左右内边距（v3.6.0：0 16px → 0 14px） */
+$qp-btn-radius:        8px;    /* 按钮圆角（v3.6.0：9px → 8px） */
+$qp-btn-font:          13px;   /* 按钮字号 */
+/* —— 覆盖通用组件 GovernanceCompactQueryPanel 的间距变量（仅本页生效）—— */
+$qp-footer-margin-top: 3px;    /* 操作按钮行与条件行的间距（v3.6.0：4px → 3px） */
+$qp-footer-gap:        8px;    /* 操作按钮之间的间距（组件默认 10px） */
+$qp-form-item-gap:     2px;    /* 表单项 label 与控件的间距（组件默认 4px） */
+
+/* ═══════════════════════════════════════════════════════════════
    查询面板主容器 - 超级精美设计
    ═══════════════════════════════════════════════════════════════ */
 .api-account-page .query-panel {
     position: relative;
-    padding: 16px;
-    border-radius: 28px;
+
+    /* —— 覆盖通用组件 GovernanceCompactQueryPanel 的密度变量（仅本页生效）——
+       进一步收紧「条件行 ↔ 操作按钮行」以及表单项内部的间距，使面板更紧凑。 */
+    --query-panel-footer-margin-top: #{$qp-footer-margin-top};
+    --query-panel-footer-gap: #{$qp-footer-gap};
+    --query-panel-form-item-gap: #{$qp-form-item-gap};
+
+    padding: $qp-padding;
+    border-radius: $qp-radius;
     overflow: hidden;
 
     /* 3D玻璃态背景 - 多层渐变 */
@@ -105,7 +148,7 @@
             #6366f1 100%
             /* Indigo */
         );
-    border-radius: 28px 28px 0 0;
+    border-radius: $qp-radius $qp-radius 0 0;
     opacity: 1;
     z-index: 2;
 
@@ -249,18 +292,18 @@
 .api-account-page .query-panel .governance-compact-query-panel__body {
     position: relative;
     z-index: 3;
-    margin-top: 12px;
-    padding: 20px 24px 16px;
-    border-radius: 20px;
+    margin-top: $qp-body-margin-top;
+    padding: $qp-body-padding;
+    border-radius: $qp-body-radius;
     background: linear-gradient(135deg,
             rgba(255, 255, 255, 0.92) 0%,
             rgba(248, 250, 252, 0.88) 50%,
             rgba(241, 245, 249, 0.85) 100%);
-    border: 1.5px solid rgba(203, 213, 225, 0.5);
+    border: 1px solid rgba(203, 213, 225, 0.45);
     box-shadow:
-        0 0 0 1px rgba(255, 255, 255, 0.7) inset,
-        0 10px 30px -5px rgba(0, 0, 0, 0.08),
-        0 5px 15px -5px rgba(0, 0, 0, 0.05);
+        0 0 0 1px rgba(255, 255, 255, 0.6) inset,
+        0 4px 14px -6px rgba(0, 0, 0, 0.06),
+        0 2px 6px -4px rgba(0, 0, 0, 0.04);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
 }
@@ -271,7 +314,7 @@
 .api-account-page .query-panel :deep(.arco-form-item-label-col > label) {
     color: #1e293b;
     font-weight: 700;
-    font-size: 13px;
+    font-size: $qp-label-font;
     line-height: 1.5;
     letter-spacing: 0.02em;
     text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
@@ -282,16 +325,16 @@
    ═══════════════════════════════════════════════════════════════ */
 .api-account-page .query-panel :deep(.arco-input-wrapper),
 .api-account-page .query-panel :deep(.arco-select-view) {
-    min-height: 42px;
-    border-radius: 14px;
-    border: 1.5px solid rgba(203, 213, 225, 0.6);
+    min-height: $qp-control-height;
+    border-radius: $qp-control-radius;
+    border: 1px solid rgba(203, 213, 225, 0.6);
     background: rgba(255, 255, 255, 0.98);
-    font-size: 14px;
+    font-size: $qp-control-font;
     font-weight: 500;
-    transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     box-shadow:
         0 0 0 1px rgba(255, 255, 255, 0.5) inset,
-        0 2px 8px -2px rgba(0, 0, 0, 0.04);
+        0 1px 4px -2px rgba(0, 0, 0, 0.04);
 }
 
 /* 悬停效果 */
@@ -299,11 +342,10 @@
 .api-account-page .query-panel :deep(.arco-select-view:hover) {
     border-color: rgba(99, 102, 241, 0.5);
     background: rgba(255, 255, 255, 1);
-    transform: translateY(-1px);
     box-shadow:
         0 0 0 1px rgba(255, 255, 255, 0.6) inset,
-        0 0 0 3px rgba(99, 102, 241, 0.08),
-        0 4px 12px -2px rgba(99, 102, 241, 0.12);
+        0 0 0 2px rgba(99, 102, 241, 0.07),
+        0 2px 8px -2px rgba(99, 102, 241, 0.10);
 }
 
 /* 聚焦效果 - 发光 */
@@ -311,24 +353,21 @@
 .api-account-page .query-panel :deep(.arco-select-view-focus) {
     border-color: rgba(99, 102, 241, 0.7);
     background: #ffffff;
-    transform: translateY(-2px) scale(1.005);
     box-shadow:
         0 0 0 1px rgba(255, 255, 255, 0.8) inset,
-        0 0 0 4px rgba(99, 102, 241, 0.15),
-        0 0 0 1px rgba(99, 102, 241, 0.4),
-        0 8px 24px -4px rgba(99, 102, 241, 0.20),
-        0 0 40px -10px rgba(99, 102, 241, 0.25);
+        0 0 0 3px rgba(99, 102, 241, 0.12),
+        0 4px 14px -4px rgba(99, 102, 241, 0.18);
 }
 
 /* ═══════════════════════════════════════════════════════════════
    按钮 - 3D效果
    ═══════════════════════════════════════════════════════════════ */
 .api-account-page .query-panel :deep(.arco-btn) {
-    min-width: 120px;
-    height: 42px;
-    padding: 0 28px;
-    border-radius: 14px;
-    font-size: 14px;
+    min-width: $qp-btn-min-width;
+    height: $qp-btn-height;
+    padding: $qp-btn-padding;
+    border-radius: $qp-btn-radius;
+    font-size: $qp-btn-font;
     font-weight: 700;
     letter-spacing: 0.02em;
     transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
@@ -403,21 +442,21 @@
    ═══════════════════════════════════════════════════════════════ */
 @media (max-width: 1024px) {
     .api-account-page .query-panel {
-        padding: 14px;
-        border-radius: 24px;
+        padding: 6px;
+        border-radius: 14px;
     }
 
     .api-account-page .query-panel :deep(.arco-btn) {
-        min-width: 100px;
-        height: 40px;
-        padding: 0 24px;
+        min-width: 68px;
+        height: 28px;
+        padding: 0 12px;
     }
 }
 
 @media (max-width: 768px) {
     .api-account-page .query-panel {
-        padding: 12px;
-        border-radius: 20px;
+        padding: 5px;
+        border-radius: 12px;
     }
 
     .api-account-page .query-panel::before {
@@ -427,7 +466,7 @@
     .api-account-page .query-panel :deep(.arco-btn) {
         min-width: 0;
         width: 100%;
-        height: 38px;
+        height: 28px;
     }
 }
 
